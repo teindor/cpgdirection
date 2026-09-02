@@ -411,7 +411,7 @@ test_that("cpgd_build_manifest_genes() parses an Illumina-format CSV", {
     "ctl1,negative,0,0"), f)
   out <- tempfile(fileext = ".csv.gz")
   suppressMessages(cpgd_build_manifest_genes(f, out = out))
-  a <- data.table::fread(out)
+  a <- read.csv(out, stringsAsFactors = FALSE)  # base R: no R.utils on the builders
 
   # every semicolon-delimited gene preserved, never just the first
   expect_setequal(a[a$cpg_id == "cg10000001", ]$target_gene,

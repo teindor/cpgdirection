@@ -1,3 +1,15 @@
+# cpgdirection 2.6.1
+
+* **Build fix (Bioconductor #174; the same code as the 2.99.5 submission
+  branch).** Every platform failed `R CMD check` on 2.99.4 because
+  `data.table::fread()` on a `.csv.gz` path silently requires the
+  `R.utils` package, which the Bioconductor builders do not have (and
+  this package never declared). All compressed reads now go through one
+  internal helper (`.cpgd_fread()`) that decompresses with base R
+  (`gzfile()`) before parsing; the tables it returns are identical to the
+  previous ones. No new dependency. A test that read its own `.gz` output
+  with `fread()` now uses `read.csv()`.
+
 # cpgdirection 2.6.0
 
 * **Bioconductor-ready data backend.** All data layers now resolve through

@@ -61,7 +61,7 @@ cpgd_build_gene_tss <- function(out = "gene_tss_hg19.csv",
   } else {
     if (is.null(manifest_file) || !file.exists(manifest_file))
       stop("Supply manifest_file when source = \"manifest\".", call. = FALSE)
-    m <- data.table::fread(manifest_file, showProgress = FALSE)
+    m <- .cpgd_fread(manifest_file)
     nm <- names(m)
     gcol <- nm[grepl("RefGene_Name|UCSC_RefGene_Name", nm)][1]
     ccol <- nm[grepl("^CHR$|^chr$|CHR_hg38|Chromosome", nm)][1]
@@ -137,7 +137,7 @@ cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
 
   G <- if (is.null(gene_tss)) cpgd_gene_tss()
        else if (is.character(gene_tss) && length(gene_tss) == 1L)
-         data.table::fread(gene_tss, showProgress = FALSE)
+         .cpgd_fread(gene_tss)
        else data.table::as.data.table(gene_tss)
   if (!all(c("gene", "chr", "tss") %in% names(G)))
     stop("gene_tss needs columns: gene, chr, tss.", call. = FALSE)
@@ -278,7 +278,7 @@ cpgd_gene_tss <- function(refresh = FALSE) {
   dir <- tools::R_user_dir("cpgdirection", "cache")
   f <- file.path(dir, "gene_tss_hg19.csv.gz")
   if (!refresh && file.exists(f)) {
-    G <- data.table::fread(f, showProgress = FALSE)
+    G <- .cpgd_fread(f)
     .cpgd_env$gene_tss <- G
     return(G)
   }

@@ -76,8 +76,8 @@ stopifnot(!anyDuplicated(CPGD_EVIDENCE))
     raw <- as.character(cpgs[[cc]])
     if (!is.na(gc_)) { given <- toupper(trimws(as.character(cpgs[[gc_]]))); origin <- "user" }
   } else if (is.character(cpgs) && length(cpgs) == 1L && file.exists(cpgs)) {
-    if (grepl("\\.(csv|tsv)$", cpgs, ignore.case = TRUE)) {
-      return(.cpgd_parse_input(data.table::fread(cpgs, showProgress = FALSE), genes,
+    if (grepl("\\.(csv|tsv)(\\.gz)?$", cpgs, ignore.case = TRUE)) {
+      return(.cpgd_parse_input(.cpgd_fread(cpgs), genes,
                                dedupe = dedupe))
     }
     raw <- trimws(readLines(cpgs, warn = FALSE))

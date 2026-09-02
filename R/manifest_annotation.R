@@ -140,8 +140,7 @@ cpgd_build_manifest_genes <- function(manifest_file,
   close(con)
   assay_at <- grep("^\\[Assay\\]", first)[1]
   skip <- if (is.na(assay_at)) 0L else assay_at
-  m <- data.table::fread(manifest_file, skip = skip, showProgress = FALSE,
-                         fill = TRUE)
+  m <- .cpgd_fread(manifest_file, skip = skip, fill = TRUE)
   # rows past [Controls] have a bracketed first field; cut them
   ctrl <- grep("^\\[Controls\\]", m[[1]])[1]
   if (!is.na(ctrl)) m <- m[seq_len(ctrl - 1L)]

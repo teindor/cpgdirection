@@ -28,11 +28,32 @@
   "saliva_bridge_scores",
   "epicv2_probe_gene_annotation")
 
+# fread() on a .gz path delegates to the R.utils package, which this package
+# does not (and should not) depend on: the Bioconductor builders do not have
+# it, and cpgdirection 2.99.4 failed R CMD check on every platform for exactly
+# that reason. Decompress with base R into a temporary file first, then let
+# fread parse the plain text. Same result on every machine, no extra
+# dependency.
+.cpgd_fread <- function(path, ...) {
+  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
+    tmp <- tempfile(fileext = ".txt")
+    on.exit(unlink(tmp), add = TRUE)
+    inn <- gzfile(path, "rb")
+    out <- file(tmp, "wb")
+    tryCatch({
+      while (length(chunk <- readBin(inn, "raw", 8L * 1024L * 1024L)))
+        writeBin(chunk, out)
+    }, finally = { close(inn); close(out) })
+    path <- tmp
+  }
+  data.table::fread(path, showProgress = FALSE, ...)
+}
+
 .cpgd_read_data_file <- function(path) {
   if (grepl("\\.rds$", path)) {
     data.table::as.data.table(readRDS(path))
   } else {
-    data.table::fread(path, showProgress = FALSE)
+    .cpgd_fread(path)
   }
 }
 
