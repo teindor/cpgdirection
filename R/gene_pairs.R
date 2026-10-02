@@ -21,8 +21,9 @@
   EPICv2_manifest  = 4L,
   distal_link      = 5L,
   brain_SMR        = 6L,
-  input_annotation = 7L,
-  requested_pair   = 8L)
+  tumour_eQTM      = 7L,
+  input_annotation = 8L,
+  requested_pair   = 9L)
 
 
 #' All supported target genes and pair-specific directions for a set of CpGs

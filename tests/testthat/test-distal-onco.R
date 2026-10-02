@@ -104,6 +104,16 @@ test_that("include_onco reports tumour evidence beside, never inside, best_direc
   expect_equal(a$onco_n_cancers, 7L)
   expect_false(a$onco_agreement)             # tumours disagree with blood: visible
   expect_true(a$has_onco)
+  # provenance: the tumour layer never outranks a peripheral source, and every
+  # mapping source the function can emit has a rank (an unranked source sorts
+  # first and silently becomes mapping_primary)
+  expect_equal(a$mapping_primary, "measured_eQTM")
+  expect_true(all(unlist(strsplit(p$mapping_sources, ";")) %in%
+                    names(.CPGD_MAPPING_PRIORITY)))
+  srcm <- src_with(onco = fx_onco(CG1, "GENEA"))   # manifest + tumour only
+  pm <- cpg_gene_pairs(CG1, include_onco = TRUE, universal = FALSE,
+                       verbose = FALSE, sources = srcm)
+  expect_equal(pm[pm$target_gene == "GENEA", ]$mapping_primary, "EPICv2_manifest")
 
   # a gene known only to the tumour layer is discovered, flagged, and abstains
   src2 <- src_with(onco = fx_onco(CG1, "TUMGENE", direction = -1))

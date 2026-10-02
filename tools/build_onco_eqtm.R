@@ -8,17 +8,35 @@
 # pipeline: https://github.com/CGnTLab/onco_eqtm; web DB:
 # https://project.iith.ac.in/cgntlab/OncoeQTM/. Licence CC BY-NC 4.0.
 #
-# What the input looks like. The pipeline (scripts/analysis/05_run_eqtm_pipeline.sh
-# in the authors' repository) writes one `final_<CANCER>.csv` per TCGA cancer
-# type with the consensus of Torch-eCpG and MatrixEQTL (FDR < 0.05 in both,
-# |r| > 0.3), columns:
-#   mt_id gt_id mt_chrom mt_chromStart mt_strand gt_chrom gt_chromStart
-#   gt_strand region mt_est mt_err mt_t mt_p beta t-stat p-value FDR correlation
-# mt_id is the 450K probe (cg...), gt_id the gene symbol (Xena HiSeqV2), region
-# one of CIS / PROMOTER / DISTAL. Coordinates are TCGA/Xena, i.e. hg19 -- the
-# same build as every other layer in cpgdirection, so no liftover is needed.
-# 450K probes are a subset of EPIC v2 CpG identifiers (replicate suffixes are
-# already collapsed to the cg ID everywhere in this package).
+# What the input looks like. Two layouts are accepted, detected per file:
+#
+#   (a) the authors' pipeline output `final_<CANCER>.csv` (scripts/analysis/
+#       05_run_eqtm_pipeline.sh): consensus of Torch-eCpG and MatrixEQTL
+#       (FDR < 0.05 in both, |r| > 0.3), with a `correlation` column;
+#   (b) the web Data Download Center export
+#       `OncoeQTM_<CANCER>_cis_results.csv` (POST cancerType=<CANCER>&module=cis
+#       to download_module_data.php): the same inner join of both methods, but
+#       WITHOUT the correlation column and without the |r| > 0.3 cut. For (b)
+#       the correlation is recovered from the MatrixEQTL t statistic,
+#       r = t / sqrt(df + t^2) with df = n_samples - 2 - n_covariates, using
+#       the per-cancer sample sizes reported in the paper (Fig. 1A; 6,880
+#       tumours) and the two covariates (age, sex) of the published model.
+#       The |r| > --min-r cut (default 0.3, as in the paper) is then applied
+#       here so both layouts yield the same consensus definition.
+#
+# Common columns: mt_id gt_id mt_chrom mt_chromStart mt_strand gt_chrom
+# gt_chromStart gt_strand region mt_est mt_err mt_t mt_p beta t-stat p-value
+# FDR [correlation]. mt_id is the 450K probe (cg...), gt_id the gene symbol
+# (Xena HiSeqV2), region one of CIS / PROMOTER / DISTAL. Coordinates are
+# TCGA/Xena, i.e. hg19 -- the same build as every other layer in cpgdirection,
+# so no liftover is needed. 450K probes are a subset of EPIC v2 CpG identifiers
+# (replicate suffixes are already collapsed to the cg ID in this package).
+#
+# The web site also lists composites (COADREAD, GBMLGG, LUNG) and six cancer
+# types absent from the paper (CESC, LAML, OV, PRAD, UCEC, UCS). Composites are
+# always skipped (they would double-count their members); the six extras are
+# skipped unless --all-cancers is given, because no published sample size is
+# available to recover r for them.
 #
 # What this script does NOT do by default: it does not append anything to
 # `measured_eqtms`. In the pair ladder (R/direction_full.R) a measured record
@@ -31,9 +49,9 @@
 # catalogue; it writes a SEPARATE file and labels every row it adds.
 #
 # Usage
-#   Rscript tools/build_onco_eqtm.R --dir ~/onco_eqtm/Results \
+#   Rscript tools/build_onco_eqtm.R --dir ~/onco_eqtm \
 #       --out inst/extdata/onco_eqtm_consensus.csv.gz \
-#       [--min-cancers 2] [--min-agreement 0.9] \
+#       [--min-cancers 2] [--min-agreement 0.9] [--min-r 0.3] [--all-cancers] \
 #       [--append-solid inst/extdata/measured_eqtms.csv.gz --append-out measured_eqtms_plus_onco.csv.gz]
 #
 # `--dir` is searched recursively for final_*.csv (the Zenodo archive keeps the
@@ -61,25 +79,68 @@ min_cancers   <- as.integer(get_arg("--min-cancers", "2"))
 min_agreement <- as.numeric(get_arg("--min-agreement", "0.9"))
 append_solid  <- get_arg("--append-solid")
 append_out    <- get_arg("--append-out", "measured_eqtms_plus_onco.csv.gz")
+min_r         <- as.numeric(get_arg("--min-r", "0.3"))
+all_cancers   <- "--all-cancers" %in% args
+
+# per-cancer primary-tumour sample sizes with complete multi-omics profiles
+# (Korra et al. 2026, Fig. 1A; total 6,880) and the covariate count of the
+# published model (age, sex). df = n - 2 - n_cov.
+N_SAMPLES <- c(ACC = 79L, BLCA = 407L, BRCA = 783L, CHOL = 36L, COAD = 278L,
+               DLBC = 48L, ESCA = 184L, GBM = 51L, HNSC = 520L, KICH = 66L,
+               KIRC = 318L, KIRP = 274L, LGG = 516L, LIHC = 371L, LUAD = 453L,
+               LUSC = 371L, MESO = 87L, PAAD = 178L, PCPG = 179L, READ = 92L,
+               SARC = 259L, SKCM = 103L, STAD = 372L, TGCT = 150L, THCA = 505L,
+               THYM = 120L, UVM = 80L)
+N_COV <- 2L
+COMPOSITES <- c("COADREAD", "GBMLGG", "LUNG")
 
 if (is.null(in_dir) || !dir.exists(in_dir))
   stop("--dir must be a directory holding final_<CANCER>.csv tables.", call. = FALSE)
-files <- list.files(in_dir, pattern = "^final_[A-Za-z0-9]+\\.csv(\\.gz)?$",
+files <- list.files(in_dir,
+                    pattern = "^(final_[A-Za-z0-9]+|OncoeQTM_[A-Za-z0-9]+_cis_results)\\.csv(\\.gz)?$",
                     recursive = TRUE, full.names = TRUE)
-if (!length(files)) stop("no final_<CANCER>.csv files under ", in_dir)
+if (!length(files)) stop("no final_<CANCER>.csv or OncoeQTM_<CANCER>_cis_results.csv files under ", in_dir)
+cancer_of <- function(f) sub("^(final_|OncoeQTM_)([A-Za-z0-9]+?)(_cis_results)?\\.csv(\\.gz)?$", "\\2", basename(f))
+cancers <- toupper(cancer_of(files))
+drop <- cancers %in% COMPOSITES | (!all_cancers & !cancers %in% names(N_SAMPLES))
+if (any(drop)) message("skipping: ", paste(unique(cancers[drop]), collapse = ", "),
+                       " (composites, or no published sample size; use --all-cancers to keep the latter)")
+files <- files[!drop]
+if (!length(files)) stop("no usable cancer-type files left after skipping composites/extras")
 
 read_one <- function(f) {
   d <- fread(f, showProgress = FALSE)
-  cancer <- sub("^final_([A-Za-z0-9]+)\\.csv(\\.gz)?$", "\\1", basename(f))
-  need <- c("mt_id", "gt_id", "correlation")
+  cancer <- toupper(cancer_of(f))
+  need <- c("mt_id", "gt_id")
   miss <- setdiff(need, names(d))
   if (length(miss)) stop(basename(f), " lacks columns: ", paste(miss, collapse = ", "))
+  if ("correlation" %in% names(d)) {
+    rr <- as.numeric(d$correlation)
+    r_source <- "pipeline"
+  } else {
+    tcol <- if ("t-stat" %in% names(d)) "t-stat" else if ("mt_t" %in% names(d)) "mt_t" else NA
+    if (is.na(tcol)) stop(basename(f), ": neither correlation nor a t statistic column")
+    n <- N_SAMPLES[cancer]
+    if (is.na(n)) {
+      # extra cancer without a published n: keep the sign only, at a nominal
+      # magnitude just above the cut so the row survives the |r| filter and
+      # contributes to the sign vote but not to the r summaries (set to NA below)
+      rr <- sign(as.numeric(d[[tcol]])) * (min_r + 1e-6)
+      r_source <- "sign_only"
+      message(sprintf("  %s: no sample size on record; direction kept, |r| unavailable", cancer))
+    } else {
+      tt <- as.numeric(d[[tcol]])
+      df <- n - 2L - N_COV
+      rr <- tt / sqrt(df + tt^2)
+      r_source <- sprintf("t_to_r(n=%d)", n)
+    }
+  }
   m <- regexpr("cg[0-9]{6,}", d$mt_id, ignore.case = TRUE)
   d <- d[, list(
     cpg_id      = ifelse(m > 0, tolower(substr(mt_id, m, m + attr(m, "match.length") - 1L)), NA_character_),
     target_gene = toupper(trimws(as.character(gt_id))),
     cancer      = cancer,
-    r           = as.numeric(correlation),
+    r           = rr,
     beta        = if ("beta" %in% names(d)) as.numeric(beta) else NA_real_,
     fdr         = if ("FDR" %in% names(d)) as.numeric(FDR) else NA_real_,
     region      = if ("region" %in% names(d)) toupper(as.character(region)) else NA_character_,
@@ -87,6 +148,10 @@ read_one <- function(f) {
     gene_start  = if ("gt_chromStart" %in% names(d)) as.integer(gt_chromStart) else NA_integer_,
     gene_strand = if ("gt_strand" %in% names(d)) as.character(gt_strand) else NA_character_)]
   d <- d[!is.na(cpg_id) & nzchar(target_gene) & !grepl("^ENSG[0-9]+", target_gene) & !is.na(r)]
+  n_before <- nrow(d)
+  d <- d[abs(r) > min_r]
+  message(sprintf("  %-6s %7d rows -> %7d with |r| > %.2f  (r from %s)",
+                  cancer, n_before, nrow(d), min_r, r_source))
   unique(d, by = c("cpg_id", "target_gene"))
 }
 all <- rbindlist(lapply(files, read_one))
