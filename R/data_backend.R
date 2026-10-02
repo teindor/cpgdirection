@@ -26,7 +26,9 @@
   "cpg_positions_hg19",
   "brain_directions",
   "saliva_bridge_scores",
-  "epicv2_probe_gene_annotation")
+  "epicv2_probe_gene_annotation",
+  "distal_links",
+  "onco_eqtm_consensus")
 
 # fread() on a .gz path delegates to the R.utils package, which this package
 # does not (and should not) depend on: the Bioconductor builders do not have

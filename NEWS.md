@@ -1,3 +1,51 @@
+# cpgdirection 2.99.6
+
+* **Two new opt-in evidence layers, both kept OUT of `best_direction`.** The
+  October 2026 horizon scan turned up resources that propose targets or carry
+  signs from contexts the peripheral ladder does not answer for. They enter as
+  reported columns, with their own provenance, so that agreement or
+  disagreement with the peripheral call is visible instead of silently
+  resolved by precedence -- the same rule brain SMR has followed since 2.3.
+
+  - `cpgd_distal_links()` and `cpg_gene_pairs(include = "distal")`: CpG-to-gene
+    links from ENCODE-rE2G enhancer-gene predictions (Gschwind et al. 2026,
+    Nature; 1,458 biosamples), scE2G single-cell maps (Sheth et al. 2026,
+    Nature Genetics; PBMC and bone-marrow clusters) and Human Cell Epigenome
+    Atlas chromatin loops (Zhou et al. 2026, Science; snm3C-seq, blood and
+    cortex among 16 tissues), intersected with each probe's hg38 coordinate
+    and keyed on the cg ID. A distal link is a TARGET proposal with no sign:
+    `mapping_source = "distal_link"` (priority below every direction-bearing
+    source and below the manifest), `has_distal`, `distal_sources`,
+    `distal_n_biosamples`, `distal_score_max`, `distal_biosamples`. It is
+    not counted in `n_annotation_sources`, which tallies positional tracks.
+    A blood question consults blood-class biosamples only. Built by
+    `tools/build_distal_links.R`; served as Hub resource `distal_links`.
+  - `cpgd_onco_eqtm()` and `cpg_gene_pairs(include_onco = TRUE)`: the
+    Onco-eQTM cross-tumour consensus (Korra, Nishana and Kumar 2026, NAR
+    Genomics and Bioinformatics; 27 TCGA cancer types, 6,880 tumours, 450K,
+    hg19; CC BY-NC 4.0), pooled per CpG-gene pair with tiers O1 (>= 5
+    cancers, one sign) to O4 (one cancer). Reported as `onco_direction`,
+    `onco_tier`, `onco_n_cancers`, `onco_sign_agreement` and
+    `onco_agreement` (does the tumour sign match the peripheral
+    `best_direction` of the same pair?). Tumour evidence never enters
+    `best_direction`. Built by `tools/build_onco_eqtm.R`; its
+    `--append-solid` option is deliberately opt-in and labelled: a measured
+    record is the top rung and tissue-blind, and 5.25 million tumour pairs
+    would otherwise outrank blood SMR for a saliva study.
+
+* **Exeter re-annotation v3.0 (GENCODE 49).** `tools/build_exeter_v3_annotation.R`
+  swaps the Exeter gene and regulatory tracks of the packaged EPIC v2
+  annotation union from v2.0 (GENCODE 47, Zenodo 15181885) to v3.0 (GENCODE
+  49, Zenodo 20704849, June 2026), leaves the other three tracks byte-identical,
+  recomputes `annotation_source`/`n_annotation_sources`, and writes a diff
+  report (pairs gained/lost, feature labels changed, TSS200/TSS1500 flips).
+  The track is named `Exeter_GENCODEv49` in rebuilt tables; no package code
+  keys on the old name.
+
+* New Hub resources registered: `distal_links`, `onco_eqtm_consensus`.
+  Installations without them behave exactly as before (the accessors return
+  `NULL` with a message; the defaults of `cpg_gene_pairs()` do not touch them).
+
 # cpgdirection 2.99.5
 
 * **Build fix (Bioconductor #174).** Every platform failed `R CMD check` on

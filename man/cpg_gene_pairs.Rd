@@ -12,6 +12,7 @@ cpg_gene_pairs(
   annotation_mode = c("augment", "strict"),
   include = c("manifest", "lookup", "measured", "smr"),
   include_brain = FALSE,
+  include_onco = FALSE,
   probe_qc = c("exclude", "flag", "ignore"),
   direction_policy = c("best", "all_evidence"),
   universal = TRUE,
@@ -48,8 +49,17 @@ are restricted to their annotated gene(s); bare inputs still
 auto-discover.}
 
 \item{include}{Which mapping sources contribute candidate targets. Any
-subset of \code{c("manifest", "lookup", "measured", "smr")}; default all
-four.}
+subset of \code{c("manifest", "lookup", "measured", "smr", "distal")};
+default the first four. \code{"distal"} is opt-in: it adds targets from
+the \code{\link{cpgd_distal_links}} layer (ENCODE-rE2G / scE2G
+enhancer-gene predictions and Human Cell Epigenome Atlas loops), which
+propose a gene on regulatory-element evidence rather than proximity. A
+distal link is a TARGET proposal with no sign; the pair's direction is
+still resolved by the evidence ladder, and the link's provenance is
+reported in \code{distal_sources}, \code{distal_n_biosamples},
+\code{distal_score_max} and \code{distal_biosamples}. The biosamples
+consulted follow \code{tissue}: blood-class biosamples for
+\code{tissue = "blood"}, all biosamples otherwise.}
 
 \item{include_brain}{Add brain SMR targets (\code{\link{cpgd_brain_directions}})
 to candidate discovery and report \code{brain_direction}/\code{brain_tier}
@@ -58,6 +68,14 @@ never mixed into a default peripheral run. Even when included, brain
 directions are reported alongside and never enter \code{best_direction},
 which is peripheral; use \code{\link{cpg_brain_bridge}} for the brain
 question.}
+
+\item{include_onco}{Add the tumour eQTM consensus
+(\code{\link{cpgd_onco_eqtm}}; Onco-eQTM, 27 TCGA cancer types) as a
+candidate-discovery source and report \code{onco_direction},
+\code{onco_tier}, \code{onco_n_cancers} and \code{onco_agreement} per
+pair. Default \code{FALSE}. As with brain, tumour directions are reported
+alongside and never enter \code{best_direction}; \code{onco_agreement}
+says whether the tumour sign matches the peripheral call.}
 
 \item{probe_qc}{How to treat CpGs whose probes are flagged as unreliable by
 the packaged QC table (\code{\link{cpgd_probe_qc}}: cross-hybridizing or
@@ -96,7 +114,8 @@ A \code{data.table} of class \code{cpgd_pairs}, one row per
     \item{mapping_sources, mapping_primary, mapping_strength}{how the gene
       entered the candidate set: \code{EPICv2_manifest},
       \code{tissue_lookup}, \code{measured_eQTM}, \code{SMR},
-      \code{brain_SMR}, \code{input_annotation}, \code{requested_pair} --
+      \code{distal_link}, \code{brain_SMR}, \code{tumour_eQTM},
+      \code{input_annotation}, \code{requested_pair} --
       plus \code{has_*} flags. Mapping provenance is deliberately distinct
       from direction evidence: manifest annotation says "Illumina annotates
       this CpG to this gene", not "this CpG regulates this gene"}

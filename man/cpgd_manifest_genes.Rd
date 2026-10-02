@@ -11,7 +11,7 @@ A \code{data.table} with columns \code{cpg_id}, \code{target_gene},
   \code{array}, \code{annotation_source} (semicolon-joined supporting
   tracks), \code{n_annotation_sources}, the per-track logical flags
   \code{src_Illumina_UCSC_RefGene}, \code{src_Illumina_GencodeV41},
-  \code{src_Zhou_GENCODEv41}, \code{src_Exeter_GENCODEv47},
+  \code{src_Zhou_GENCODEv41}, \code{src_Exeter_GENCODEv49},
   \code{src_Exeter_regulatory}, plus \code{refgene_group} (Illumina),
   \code{exeter_feature}, \code{in_genehancer}, \code{zhou_dist_tss},
   \code{zhou_tx_types}, \code{manifest_probe_id}, \code{chr},
@@ -32,9 +32,10 @@ support flags and an agreement count:
   \item \code{Zhou_GENCODEv41} -- the Zhou lab (SeSAMe) transcript-aware
     GENCODE v41 annotation, contributing \code{zhou_dist_tss} (signed bp to
     the nearest annotated TSS of that gene) and transcript types;
-  \item \code{Exeter_GENCODEv47} -- the Exeter re-annotation (Mallabar-Rimmer
-    et al. 2025, GENCODE release 47): gene-body and TSS features per
-    transcript;
+  \item \code{Exeter_GENCODEv49} -- the Exeter re-annotation v3.0
+    (Mallabar-Rimmer et al. 2026, Zenodo 20704849, GENCODE release 49;
+    tables built before 3.0.0 carry the v2.0 track as
+    \code{Exeter_GENCODEv47}): gene-body and TSS features per transcript;
   \item \code{Exeter_regulatory} -- the Exeter distance-based regulatory
     assignments (\code{Promoter_2000bp} / \code{Enhancer_5000bp} element
     genes), plus the probe-level \code{in_genehancer} flag.

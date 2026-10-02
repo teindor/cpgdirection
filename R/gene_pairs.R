@@ -19,9 +19,10 @@
   SMR              = 2L,
   tissue_lookup    = 3L,
   EPICv2_manifest  = 4L,
-  brain_SMR        = 5L,
-  input_annotation = 6L,
-  requested_pair   = 7L)
+  distal_link      = 5L,
+  brain_SMR        = 6L,
+  input_annotation = 7L,
+  requested_pair   = 8L)
 
 
 #' All supported target genes and pair-specific directions for a set of CpGs
@@ -62,8 +63,17 @@
 #'   are restricted to their annotated gene(s); bare inputs still
 #'   auto-discover.
 #' @param include Which mapping sources contribute candidate targets. Any
-#'   subset of \code{c("manifest", "lookup", "measured", "smr")}; default all
-#'   four.
+#'   subset of \code{c("manifest", "lookup", "measured", "smr", "distal")};
+#'   default the first four. \code{"distal"} is opt-in: it adds targets from
+#'   the \code{\link{cpgd_distal_links}} layer (ENCODE-rE2G / scE2G
+#'   enhancer-gene predictions and Human Cell Epigenome Atlas loops), which
+#'   propose a gene on regulatory-element evidence rather than proximity. A
+#'   distal link is a TARGET proposal with no sign; the pair's direction is
+#'   still resolved by the evidence ladder, and the link's provenance is
+#'   reported in \code{distal_sources}, \code{distal_n_biosamples},
+#'   \code{distal_score_max} and \code{distal_biosamples}. The biosamples
+#'   consulted follow \code{tissue}: blood-class biosamples for
+#'   \code{tissue = "blood"}, all biosamples otherwise.
 #' @param probe_qc How to treat CpGs whose probes are flagged as unreliable by
 #'   the packaged QC table (\code{\link{cpgd_probe_qc}}: cross-hybridizing or
 #'   degenerate mapping, SNP-contaminated extension base, unverified hg19
@@ -81,6 +91,13 @@
 #'   directions are reported alongside and never enter \code{best_direction},
 #'   which is peripheral; use \code{\link{cpg_brain_bridge}} for the brain
 #'   question.
+#' @param include_onco Add the tumour eQTM consensus
+#'   (\code{\link{cpgd_onco_eqtm}}; Onco-eQTM, 27 TCGA cancer types) as a
+#'   candidate-discovery source and report \code{onco_direction},
+#'   \code{onco_tier}, \code{onco_n_cancers} and \code{onco_agreement} per
+#'   pair. Default \code{FALSE}. As with brain, tumour directions are reported
+#'   alongside and never enter \code{best_direction}; \code{onco_agreement}
+#'   says whether the tumour sign matches the peripheral call.
 #' @param direction_policy \code{"best"} (default) returns the pair-level
 #'   best-evidence record with the standard audit columns.
 #'   \code{"all_evidence"} additionally keeps every per-tissue catalogue and
@@ -103,7 +120,8 @@
 #'     \item{mapping_sources, mapping_primary, mapping_strength}{how the gene
 #'       entered the candidate set: \code{EPICv2_manifest},
 #'       \code{tissue_lookup}, \code{measured_eQTM}, \code{SMR},
-#'       \code{brain_SMR}, \code{input_annotation}, \code{requested_pair} --
+#'       \code{distal_link}, \code{brain_SMR}, \code{tumour_eQTM},
+#'       \code{input_annotation}, \code{requested_pair} --
 #'       plus \code{has_*} flags. Mapping provenance is deliberately distinct
 #'       from direction evidence: manifest annotation says "Illumina annotates
 #'       this CpG to this gene", not "this CpG regulates this gene"}
@@ -159,6 +177,7 @@ cpg_gene_pairs <- function(cpgs,
                            annotation_mode = c("augment", "strict"),
                            include = c("manifest", "lookup", "measured", "smr"),
                            include_brain = FALSE,
+                           include_onco = FALSE,
                            probe_qc = c("exclude", "flag", "ignore"),
                            direction_policy = c("best", "all_evidence"),
                            universal = TRUE,
@@ -170,7 +189,8 @@ cpg_gene_pairs <- function(cpgs,
   annotation_mode <- match.arg(annotation_mode)
   probe_qc <- match.arg(probe_qc)
   direction_policy <- match.arg(direction_policy)
-  include <- match.arg(include, c("manifest", "lookup", "measured", "smr"),
+  include <- match.arg(include,
+                       c("manifest", "lookup", "measured", "smr", "distal"),
                        several.ok = TRUE)
 
   if (gene_mode == "pairwise" && is.null(genes)) {
@@ -239,7 +259,8 @@ cpg_gene_pairs <- function(cpgs,
   cand <- list()
   src_counts <- c(manifest = NA_integer_, lookup = NA_integer_,
                   measured = NA_integer_, smr = NA_integer_,
-                  brain = NA_integer_, input = NA_integer_)
+                  distal = NA_integer_, brain = NA_integer_,
+                  onco = NA_integer_, input = NA_integer_)
   # gene symbols known to any loaded source, dash-normalised; used to decide
   # whether a compound parsed tail ("LINC02210_CRHR1") is itself a gene or a
   # parsing artefact
@@ -304,6 +325,41 @@ cpg_gene_pairs <- function(cpgs,
       if (nrow(bb)) cand$brain <- bb[, "mapping_source" := "brain_SMR"]
     }
   }
+  # Distal links: a regulatory element containing the CpG is predicted or
+  # observed to contact the gene. Opt-in, and consulted per tissue class so a
+  # blood question is not answered with an islet enhancer map. These are
+  # target proposals, not annotation: they never raise n_annotation_sources.
+  dist_summary <- NULL
+  if ("distal" %in% include) {
+    D <- .cpgd_source_table(sources, "distal", cpgd_distal_links)
+    if (!is.null(D) && nrow(D)) {
+      tc <- if (identical(tissue, "blood")) "blood" else NULL
+      dist_summary <- .cpgd_distal_summary(D, u, tissue_class = tc)
+      if (!nrow(dist_summary) && !is.null(tc)) {
+        # no blood-class biosample in the layer: fall back to everything,
+        # and say so in the biosample column rather than silently
+        dist_summary <- .cpgd_distal_summary(D, u, tissue_class = NULL)
+      }
+      known_gkeys <- c(known_gkeys,
+                       gsub("_", "-", toupper(unique(D$target_gene))))
+      dd <- dist_summary[, c("cpg_id", "target_gene"), with = FALSE]
+      src_counts["distal"] <- nrow(unique(dd))
+      if (nrow(dd)) cand$distal <- dd[, "mapping_source" := "distal_link"]
+    } else if (verbose) {
+      message("distal_links layer unavailable; distal targets not discovered.")
+    }
+  }
+  if (isTRUE(include_onco)) {
+    O <- .cpgd_source_table(sources, "onco", cpgd_onco_eqtm)
+    if (!is.null(O) && nrow(O)) {
+      known_gkeys <- c(known_gkeys,
+                       gsub("_", "-", toupper(unique(O$target_gene))))
+      oo <- O[get("cpg_id") %chin% u,
+              c("cpg_id", "target_gene"), with = FALSE]
+      src_counts["onco"] <- nrow(unique(oo))
+      if (nrow(oo)) cand$onco <- oo[, "mapping_source" := "tumour_eQTM"]
+    }
+  }
   known_gkeys <- unique(known_gkeys)
 
   # input/parsed annotation: provenance, not an exclusive target
@@ -343,6 +399,8 @@ cpg_gene_pairs <- function(cpgs,
     has_measured_eqtm    = any(get("mapping_source") == "measured_eQTM"),
     has_smr              = any(get("mapping_source") == "SMR"),
     has_brain            = any(get("mapping_source") == "brain_SMR"),
+    has_distal           = any(get("mapping_source") == "distal_link"),
+    has_onco             = any(get("mapping_source") == "tumour_eQTM"),
     has_input_annotation = any(get("mapping_source") %in%
                                  c("input_annotation", "requested_pair"))),
     by = c("cpg_id", ".gkey")]
@@ -413,6 +471,43 @@ cpg_gene_pairs <- function(cpgs,
     }
   }
 
+  # distal provenance columns, only when distal discovery was on
+  if ("distal" %in% include) {
+    if (!is.null(dist_summary) && nrow(dist_summary)) {
+      DS <- dist_summary[, setdiff(names(dist_summary), "target_gene"), with = FALSE]
+      out <- merge(out, DS, by = c("cpg_id", ".gkey"), all.x = TRUE, sort = FALSE)
+    } else {
+      out[, c("distal_sources", "distal_n_biosamples", "distal_score_max",
+              "distal_biosamples") :=
+            list(NA_character_, NA_integer_, NA_real_, NA_character_)]
+    }
+  }
+
+  # tumour audit columns, only when explicitly requested. onco_agreement
+  # compares the tumour sign with the peripheral best_direction of the SAME
+  # pair; NA where either is missing.
+  if (isTRUE(include_onco)) {
+    O <- .cpgd_source_table(sources, "onco", cpgd_onco_eqtm)
+    if (!is.null(O) && nrow(O)) {
+      OO <- data.table::as.data.table(O)
+      OO <- OO[, list(cpg_id = get("cpg_id"),
+                      .gkey = gsub("_", "-", toupper(get("target_gene"))),
+                      onco_direction = as.numeric(get("direction")),
+                      onco_tier = as.character(get("onco_tier")),
+                      onco_n_cancers = as.integer(get("n_cancers")),
+                      onco_sign_agreement = as.numeric(get("sign_agreement")))]
+      OO <- unique(OO, by = c("cpg_id", ".gkey"))
+      out <- merge(out, OO, by = c("cpg_id", ".gkey"), all.x = TRUE, sort = FALSE)
+    } else {
+      out[, c("onco_direction", "onco_tier", "onco_n_cancers",
+              "onco_sign_agreement") :=
+            list(NA_real_, NA_character_, NA_integer_, NA_real_)]
+    }
+    out[, "onco_agreement" := data.table::fifelse(
+          is.na(get("onco_direction")) | is.na(get("best_direction")), NA,
+          get("onco_direction") == get("best_direction"))]
+  }
+
   # ---- input provenance: trace every pair back to submitted rows ----------
   inp <- q[, list(
     input_id  = get("input_id")[1L],
@@ -469,7 +564,7 @@ cpg_gene_pairs <- function(cpgs,
             "usable", "abstain_reason",
             "n_targets_for_cpg", "is_coeffect",
             "has_manifest", "has_lookup", "has_measured_eqtm", "has_smr",
-            "has_brain", "has_input_annotation",
+            "has_brain", "has_distal", "has_onco", "has_input_annotation",
             "measured_direction", "measured_tissues",
             "lookup_direction", "lookup_probability_plus1",
             "lookup_confidence", "lookup_evidence_tier",
@@ -478,6 +573,10 @@ cpg_gene_pairs <- function(cpgs,
             "instrument_agreement", "p_HEIDI", "heidi_status",
             "abs_dist", "p_universal", "dir_universal", "dist_unanimous",
             "brain_direction", "brain_tier",
+            "distal_sources", "distal_n_biosamples", "distal_score_max",
+            "distal_biosamples",
+            "onco_direction", "onco_tier", "onco_n_cancers",
+            "onco_sign_agreement", "onco_agreement",
             "probe_masked", "probe_masked_partial", "probe_mask_reasons",
             "cross_hybridizing", "mapping_flagged", "pos_hg19_verified",
             "input_ids", "inputs")
@@ -568,7 +667,9 @@ print.cpgd_pairs <- function(x, ...) {
              lookup   = "tissue lookup targets:",
              measured = "measured eQTM targets:",
              smr      = "SMR targets:",
+             distal   = "distal-link targets:",
              brain    = "brain targets:",
+             onco     = "tumour eQTM targets:",
              input    = "input-annotation targets:")
     for (k in names(lab)) {
       if (!is.na(sc[[k]])) cat(sprintf("    %-30s %6d\n", lab[[k]], sc[[k]]))
