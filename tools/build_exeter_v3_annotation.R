@@ -124,6 +124,13 @@ message(sprintf("Exeter file: %d rows; gene track = %s (GENCODE %s); regulatory 
                 nrow(ex), gene_col, gencode_release,
                 ifelse(is.na(prom_col), "none", prom_col),
                 ifelse(is.na(enh_col), "none", enh_col)))
+has_reg <- !is.na(prom_col) || !is.na(enh_col)
+if (!has_reg) {
+  message("No Promoter_2000bp / Enhancer_5000bp columns in this Exeter release: the ",
+          "existing Exeter_regulatory track is KEPT from the current table (v2.0 ",
+          "assignments), only the gene track and In_GeneHancer are replaced.\n",
+          "Columns in the Exeter file:\n  ", paste(nm, collapse = "\n  "))
+}
 
 probe <- as.character(ex[[id_col]])
 m <- regexpr("cg[0-9]{6,}", probe, ignore.case = TRUE)
@@ -175,12 +182,28 @@ message(sprintf("Exeter v%s: %d gene-track pairs, %d regulatory pairs, %d CpGs w
 before <- copy(cur)
 old_pairs <- cur[, paste(cpg_id, target_gene)]
 cur[, (old_ex_col) := NULL]
-cur[, src_Exeter_regulatory := FALSE]
+# Tables built from Exeter v2.0 carried the regulatory labels INSIDE
+# exeter_feature ("Promoter_2000bp;TSS1500"). Lift them into their own column
+# before the feature label is replaced, so the Promoter/Enhancer distinction
+# survives as more than the src_Exeter_regulatory boolean.
+if (!"exeter_regulatory" %in% names(cur)) {
+  tok <- regmatches(cur$exeter_feature,
+                    gregexpr("Promoter_2000bp|Enhancer_5000bp", cur$exeter_feature))
+  cur[, exeter_regulatory := vapply(tok, function(t)
+    if (length(t)) paste(sort(unique(t)), collapse = ";") else NA_character_, character(1))]
+  message(sprintf("lifted regulatory labels out of exeter_feature for %d pairs",
+                  sum(!is.na(cur$exeter_regulatory))))
+}
 cur[, exeter_feature := NA_character_]
-if ("exeter_regulatory" %in% names(cur)) cur[, exeter_regulatory := NA_character_]
-cur[, in_genehancer := NA]
+if (has_reg) {
+  cur[, src_Exeter_regulatory := FALSE]
+  if ("exeter_regulatory" %in% names(cur)) cur[, exeter_regulatory := NA_character_]
+}
+if (!is.null(gh)) cur[, in_genehancer := NA]
 non_ex <- c("src_Illumina_UCSC_RefGene", "src_Illumina_GencodeV41", "src_Zhou_GENCODEv41")
-cur[, .keep := Reduce(`|`, lapply(.SD, function(x) x %in% TRUE)), .SDcols = non_ex]
+# a pair survives the strip if any track NOT being replaced supports it
+keep_cols <- if (has_reg) non_ex else c(non_ex, "src_Exeter_regulatory")
+cur[, .keep := Reduce(`|`, lapply(.SD, function(x) x %in% TRUE)), .SDcols = keep_cols]
 dropped_only_exeter <- cur[.keep == FALSE]
 cur <- cur[.keep == TRUE][, .keep := NULL]
 
@@ -195,16 +218,20 @@ setkeyv(ex_gene, c("cpg_id", "target_gene"))
 cur[ex_gene, (new_ex_col) := TRUE]
 cur[ex_gene, exeter_feature := i.exeter_feature]
 new_gene_rows <- ex_gene[!cur, on = c("cpg_id", "target_gene")]
-if (nrow(ex_reg)) {
+if (has_reg && nrow(ex_reg)) {
   setkeyv(ex_reg, c("cpg_id", "target_gene"))
   cur[ex_reg, `:=`(src_Exeter_regulatory = TRUE, exeter_regulatory = i.exeter_regulatory)]
   new_reg_rows <- ex_reg[!cur, on = c("cpg_id", "target_gene")]
-} else new_reg_rows <- ex_reg
-new_rows <- merge(new_gene_rows, new_reg_rows, by = c("cpg_id", "target_gene"), all = TRUE)
+  new_rows <- merge(new_gene_rows, new_reg_rows, by = c("cpg_id", "target_gene"), all = TRUE)
+} else {
+  new_rows <- copy(new_gene_rows)
+}
 if (nrow(new_rows)) {
   new_rows[, (new_ex_col) := !is.na(exeter_feature)]
   new_rows[, src_Exeter_regulatory := if ("exeter_regulatory" %in% names(new_rows))
     !is.na(exeter_regulatory) else FALSE]
+  if (!"exeter_regulatory" %in% names(new_rows) && "exeter_regulatory" %in% names(cur))
+    new_rows[, exeter_regulatory := NA_character_]
   new_rows[, `:=`(array = "EPICv2", src_Illumina_UCSC_RefGene = FALSE,
                   src_Illumina_GencodeV41 = FALSE, src_Zhou_GENCODEv41 = FALSE,
                   refgene_group = NA_character_, zhou_dist_tss = NA_real_,
@@ -213,7 +240,7 @@ if (nrow(new_rows)) {
   cur <- rbindlist(list(cur, new_rows), use.names = TRUE, fill = TRUE)
 }
 if (!is.null(gh)) {
-  cur[, in_genehancer := NULL]
+  if ("in_genehancer" %in% names(cur)) cur[, in_genehancer := NULL]
   cur <- merge(cur, gh, by = "cpg_id", all.x = TRUE)
 }
 for (cc in c(non_ex, new_ex_col, "src_Exeter_regulatory"))
@@ -261,6 +288,7 @@ rep <- c(
   sprintf("| pairs on the Exeter regulatory track | %d | %d |",
           sum(before$src_Exeter_regulatory %in% TRUE), sum(cur$src_Exeter_regulatory %in% TRUE)),
   "",
+  if (!has_reg) "* this Exeter release carries no Promoter_2000bp/Enhancer_5000bp columns; the Exeter_regulatory track was kept unchanged from the previous table" else NULL,
   sprintf("* pairs gained: %d; pairs lost: %d (lost pairs were supported only by the old Exeter tracks: %d)",
           length(gained), length(lost), nrow(dropped_only_exeter)),
   sprintf("* pairs whose Exeter feature label changed: %d", nrow(feat_changed)),
