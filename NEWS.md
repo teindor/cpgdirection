@@ -9,42 +9,66 @@
 
   - `cpgd_distal_links()` and `cpg_gene_pairs(include = "distal")`: CpG-to-gene
     links from ENCODE-rE2G enhancer-gene predictions (Gschwind et al. 2026,
-    Nature; 1,458 biosamples), scE2G single-cell maps (Sheth et al. 2026,
-    Nature Genetics; PBMC and bone-marrow clusters) and Human Cell Epigenome
-    Atlas chromatin loops (Zhou et al. 2026, Science; snm3C-seq, blood and
-    cortex among 16 tissues), intersected with each probe's hg38 coordinate
-    and keyed on the cg ID. A distal link is a TARGET proposal with no sign:
-    `mapping_source = "distal_link"` (priority below every direction-bearing
-    source and below the manifest), `has_distal`, `distal_sources`,
-    `distal_n_biosamples`, `distal_score_max`, `distal_biosamples`. It is
-    not counted in `n_annotation_sources`, which tallies positional tracks.
-    A blood question consults blood-class biosamples only. Built by
-    `tools/build_distal_links.R`; served as Hub resource `distal_links`.
+    Nature), intersected with each probe's hg38 coordinate and keyed on the
+    cg ID. The shipped layer (Hub resource `distal_links`) holds the
+    thresholded rE2G tables of 47 released ENCODE annotation sets covering 26
+    resting peripheral-blood cell types (monocytes, B, CD4, CD8, naive and
+    memory T, regulatory T, NK, dendritic cells, GM12878, Th1/Th17) and brain
+    regions and cell types (dorsolateral prefrontal and frontal cortex,
+    caudate, putamen, temporal and frontal gyri, bulk brain, astrocytes,
+    glutamatergic neurons): 8,036,254 rows, 1,149,157 CpG-gene pairs,
+    514,549 CpGs, 19,551 genes; rE2G scores 0.20-1.00. Activated and
+    stimulated cell types are excluded because the eQTM reference data are
+    unstimulated blood. ENCODE ships an ABC-model table beside every rE2G
+    table; the builder recognises its header and skips it (`--keep-abc`
+    keeps it as `source = "ABC"`) so one score scale applies. A distal link
+    is a TARGET proposal with no sign: `mapping_source = "distal_link"`
+    (priority below every direction-bearing source and below the manifest),
+    `has_distal`, `distal_sources`, `distal_n_biosamples`,
+    `distal_score_max`, `distal_biosamples`. It is not counted in
+    `n_annotation_sources`, which tallies positional tracks. A blood
+    question consults blood-class biosamples only. Built by
+    `tools/build_distal_links.R` from files fetched with
+    `tools/fetch_encode_re2g.py` and mapped by `tools/distal_biosamples.csv`.
+    The builder also accepts scE2G single-cell maps (Sheth et al. 2026,
+    Nature Genetics) and Human Cell Epigenome Atlas loops (Zhou et al. 2026,
+    Science); neither is in this release's table.
   - `cpgd_onco_eqtm()` and `cpg_gene_pairs(include_onco = TRUE)`: the
     Onco-eQTM cross-tumour consensus (Korra, Nishana and Kumar 2026, NAR
     Genomics and Bioinformatics; 27 TCGA cancer types, 6,880 tumours, 450K,
-    hg19; CC BY-NC 4.0), pooled per CpG-gene pair with tiers O1 (>= 5
-    cancers, one sign) to O4 (one cancer). Reported as `onco_direction`,
-    `onco_tier`, `onco_n_cancers`, `onco_sign_agreement` and
-    `onco_agreement` (does the tumour sign match the peripheral
-    `best_direction` of the same pair?). Tumour evidence never enters
-    `best_direction`. Built by `tools/build_onco_eqtm.R`; its
+    hg19; CC BY-NC 4.0), pooled per CpG-gene pair from the per-cancer cis
+    tables of the Onco-eQTM download centre (5,233,328 CpG-gene-cancer rows,
+    r recovered from the t statistic and the per-cancer n). 2,464,990 pairs
+    with tiers O1 (>= 5 cancers, one sign; 113,560), O2 (2-4 cancers, one
+    sign; 566,351), O3 (cancers disagree; 549,150) and O4 (one cancer;
+    1,235,929). Sign sanity check: promoter pairs (|TSS distance| < 1.5 kb)
+    are 86% negative, gene-body pairs 39% negative -- the textbook pattern.
+    Reported as `onco_direction`, `onco_tier`, `onco_n_cancers`,
+    `onco_sign_agreement` and `onco_agreement` (does the tumour sign match
+    the peripheral `best_direction` of the same pair?); `mapping_source =
+    "tumour_eQTM"` ranks below every peripheral source. Tumour evidence
+    never enters `best_direction`. Built by `tools/build_onco_eqtm.R`; its
     `--append-solid` option is deliberately opt-in and labelled: a measured
-    record is the top rung and tissue-blind, and 5.25 million tumour pairs
+    record is the top rung and tissue-blind, and 2.5 million tumour pairs
     would otherwise outrank blood SMR for a saliva study.
 
 * **Exeter re-annotation v3.0 (GENCODE 49).** `tools/build_exeter_v3_annotation.R`
-  swaps the Exeter gene and regulatory tracks of the packaged EPIC v2
-  annotation union from v2.0 (GENCODE 47, Zenodo 15181885) to v3.0 (GENCODE
-  49, Zenodo 20704849, June 2026), leaves the other three tracks byte-identical,
-  recomputes `annotation_source`/`n_annotation_sources`, and writes a diff
-  report (pairs gained/lost, feature labels changed, TSS200/TSS1500 flips).
-  The track is named `Exeter_GENCODEv49` in rebuilt tables; no package code
-  keys on the old name.
+  swaps the Exeter gene track of the packaged EPIC v2 annotation union from
+  v2.0 (GENCODE 47, Zenodo 15181885) to v3.0 (GENCODE 49, Zenodo 20704849,
+  June 2026), leaves the other tracks byte-identical, recomputes
+  `annotation_source`/`n_annotation_sources`, and writes a diff report
+  (`tools/reports/exeter_v3_diff.md`). The rebuilt table has 1,006,212
+  pairs over 793,233 CpGs (was 996,697 / 791,550): 9,647 pairs gained, 132
+  lost, 14,214 TSS200/TSS1500 relabels. v3.0 drops the Promoter_2000bp /
+  Enhancer_5000bp columns, so those labels are lifted out of the v2.0
+  feature strings into a dedicated `exeter_regulatory` column (416,200
+  pairs) and the regulatory track is kept. The gene track is named
+  `Exeter_GENCODEv49`; no package code keys on the old name.
 
-* New Hub resources registered: `distal_links`, `onco_eqtm_consensus`.
-  Installations without them behave exactly as before (the accessors return
-  `NULL` with a message; the defaults of `cpg_gene_pairs()` do not touch them).
+* New Hub resources registered in cpgdirectionData 0.99.2: `distal_links`,
+  `onco_eqtm_consensus`. Installations without them behave exactly as before
+  (the accessors return `NULL` with a message; the defaults of
+  `cpg_gene_pairs()` do not touch them).
 
 # cpgdirection 2.99.5
 

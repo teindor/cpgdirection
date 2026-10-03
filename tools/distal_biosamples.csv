@@ -1,0 +1,189 @@
+file,source,biosample,tissue_class,annotation,output_type
+ENCFF935HWW_CD14_positive_monocyte.bed.gz,rE2G,CD14-positive monocyte,blood,ENCSR055KKJ,thresholded element gene links
+ENCFF104YFC_CD14_positive_monocyte.bed.gz,rE2G,CD14-positive monocyte,blood,ENCSR055KKJ,thresholded element gene links
+ENCFF365OJR_CD14_positive_monocyte.bedpe.gz,rE2G,CD14-positive monocyte,blood,ENCSR055KKJ,thresholded links
+ENCFF015BNX_CD14_positive_monocyte.bedpe.gz,rE2G,CD14-positive monocyte,blood,ENCSR055KKJ,thresholded links
+ENCFF446GNO_CD14_positive_monocyte.bed.gz,rE2G,CD14-positive monocyte,blood,ENCSR149LPI,thresholded element gene links
+ENCFF329WCB_CD14_positive_monocyte.bed.gz,rE2G,CD14-positive monocyte,blood,ENCSR149LPI,thresholded element gene links
+ENCFF291CZS_CD14_positive_monocyte.bedpe.gz,rE2G,CD14-positive monocyte,blood,ENCSR149LPI,thresholded links
+ENCFF400NJX_CD14_positive_monocyte.bedpe.gz,rE2G,CD14-positive monocyte,blood,ENCSR149LPI,thresholded links
+ENCFF550IQA_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR024DIA,thresholded element gene links
+ENCFF756UNN_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR024DIA,thresholded element gene links
+ENCFF529WFJ_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR024DIA,thresholded links
+ENCFF640QLU_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR024DIA,thresholded links
+ENCFF674XRT_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR079ZFC,thresholded element gene links
+ENCFF122PLG_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR079ZFC,thresholded element gene links
+ENCFF076UVE_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR079ZFC,thresholded links
+ENCFF402SAV_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta T cell",blood,ENCSR079ZFC,thresholded links
+ENCFF365KSD_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR037RXN,thresholded element gene links
+ENCFF364MKM_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR037RXN,thresholded element gene links
+ENCFF140DPY_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR037RXN,thresholded links
+ENCFF471ZOG_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR037RXN,thresholded links
+ENCFF495LUA_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR115FXR,thresholded element gene links
+ENCFF085YRI_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR115FXR,thresholded element gene links
+ENCFF334JWQ_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR115FXR,thresholded links
+ENCFF313WFK_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta T cell",blood,ENCSR115FXR,thresholded links
+ENCFF077BJF_B_cell.bed.gz,rE2G,B cell,blood,ENCSR074ZJQ,thresholded element gene links
+ENCFF826TIA_B_cell.bed.gz,rE2G,B cell,blood,ENCSR074ZJQ,thresholded element gene links
+ENCFF416EDB_B_cell.bedpe.gz,rE2G,B cell,blood,ENCSR074ZJQ,thresholded links
+ENCFF024DXG_B_cell.bedpe.gz,rE2G,B cell,blood,ENCSR074ZJQ,thresholded links
+ENCFF308MSM_B_cell.bed.gz,rE2G,B cell,blood,ENCSR195EYQ,thresholded element gene links
+ENCFF014QGG_B_cell.bed.gz,rE2G,B cell,blood,ENCSR195EYQ,thresholded element gene links
+ENCFF223HJO_B_cell.bedpe.gz,rE2G,B cell,blood,ENCSR195EYQ,thresholded links
+ENCFF747RXK_B_cell.bedpe.gz,rE2G,B cell,blood,ENCSR195EYQ,thresholded links
+ENCFF872DTU_natural_killer_cell.bed.gz,rE2G,natural killer cell,blood,ENCSR315PBR,thresholded element gene links
+ENCFF403PLV_natural_killer_cell.bed.gz,rE2G,natural killer cell,blood,ENCSR315PBR,thresholded element gene links
+ENCFF589AGE_natural_killer_cell.bedpe.gz,rE2G,natural killer cell,blood,ENCSR315PBR,thresholded links
+ENCFF262QRJ_natural_killer_cell.bedpe.gz,rE2G,natural killer cell,blood,ENCSR315PBR,thresholded links
+ENCFF366IZN_natural_killer_cell.bed.gz,rE2G,natural killer cell,blood,ENCSR444CPF,thresholded element gene links
+ENCFF240QXS_natural_killer_cell.bed.gz,rE2G,natural killer cell,blood,ENCSR444CPF,thresholded element gene links
+ENCFF751STF_natural_killer_cell.bedpe.gz,rE2G,natural killer cell,blood,ENCSR444CPF,thresholded links
+ENCFF807QGR_natural_killer_cell.bedpe.gz,rE2G,natural killer cell,blood,ENCSR444CPF,thresholded links
+ENCFF329MTE_naive_B_cell.bed.gz,rE2G,naive B cell,blood,ENCSR114JRP,thresholded element gene links
+ENCFF808LCP_naive_B_cell.bed.gz,rE2G,naive B cell,blood,ENCSR114JRP,thresholded element gene links
+ENCFF769AKG_naive_B_cell.bedpe.gz,rE2G,naive B cell,blood,ENCSR114JRP,thresholded links
+ENCFF533IEY_naive_B_cell.bedpe.gz,rE2G,naive B cell,blood,ENCSR114JRP,thresholded links
+ENCFF413EWE_naive_B_cell.bed.gz,rE2G,naive B cell,blood,ENCSR172AKA,thresholded element gene links
+ENCFF947FOH_naive_B_cell.bed.gz,rE2G,naive B cell,blood,ENCSR172AKA,thresholded element gene links
+ENCFF604CKW_naive_B_cell.bedpe.gz,rE2G,naive B cell,blood,ENCSR172AKA,thresholded links
+ENCFF406BUI_naive_B_cell.bedpe.gz,rE2G,naive B cell,blood,ENCSR172AKA,thresholded links
+ENCFF714FCF_memory_B_cell.bed.gz,rE2G,memory B cell,blood,ENCSR228RAU,thresholded element gene links
+ENCFF480JWK_memory_B_cell.bed.gz,rE2G,memory B cell,blood,ENCSR228RAU,thresholded element gene links
+ENCFF303STK_memory_B_cell.bedpe.gz,rE2G,memory B cell,blood,ENCSR228RAU,thresholded links
+ENCFF669QQD_memory_B_cell.bedpe.gz,rE2G,memory B cell,blood,ENCSR228RAU,thresholded links
+ENCFF754SST_memory_B_cell.bed.gz,rE2G,memory B cell,blood,ENCSR300MTO,thresholded element gene links
+ENCFF324LSG_memory_B_cell.bed.gz,rE2G,memory B cell,blood,ENCSR300MTO,thresholded element gene links
+ENCFF712SLN_memory_B_cell.bedpe.gz,rE2G,memory B cell,blood,ENCSR300MTO,thresholded links
+ENCFF277YVX_memory_B_cell.bedpe.gz,rE2G,memory B cell,blood,ENCSR300MTO,thresholded links
+ENCFF862RMX_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR049XWT,thresholded element gene links
+ENCFF816AEM_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR049XWT,thresholded element gene links
+ENCFF111NUV_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR049XWT,thresholded links
+ENCFF964FZF_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR049XWT,thresholded links
+ENCFF718TMZ_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR057JRS,thresholded element gene links
+ENCFF741MDJ_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR057JRS,thresholded element gene links
+ENCFF408VQU_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR057JRS,thresholded links
+ENCFF523PAD_naive_thymus_derived_CD4_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD4-positive, alpha-beta T cell",blood,ENCSR057JRS,thresholded links
+ENCFF274KGI_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR015QKR,thresholded element gene links
+ENCFF531IQD_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR015QKR,thresholded element gene links
+ENCFF894NCO_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR015QKR,thresholded links
+ENCFF836OOP_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR015QKR,thresholded links
+ENCFF027VJO_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR019JIM,thresholded element gene links
+ENCFF090ZNB_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bed.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR019JIM,thresholded element gene links
+ENCFF396ABW_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR019JIM,thresholded links
+ENCFF791YNX_naive_thymus_derived_CD8_positive_alpha_beta_T_cell.bedpe.gz,rE2G,"naive thymus-derived CD8-positive, alpha-beta T cell",blood,ENCSR019JIM,thresholded links
+ENCFF582WFR_CD4_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR097KSH,thresholded element gene links
+ENCFF539VOI_CD4_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR097KSH,thresholded element gene links
+ENCFF072BSK_CD4_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR097KSH,thresholded links
+ENCFF062IYF_CD4_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR097KSH,thresholded links
+ENCFF427CYJ_CD4_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR100ASN,thresholded element gene links
+ENCFF084LYU_CD4_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR100ASN,thresholded element gene links
+ENCFF284XFF_CD4_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR100ASN,thresholded links
+ENCFF701JOH_CD4_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD4-positive, alpha-beta memory T cell",blood,ENCSR100ASN,thresholded links
+ENCFF777MWZ_CD8_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR175JCM,thresholded element gene links
+ENCFF239WFA_CD8_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR175JCM,thresholded element gene links
+ENCFF873UFS_CD8_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR175JCM,thresholded links
+ENCFF421PUS_CD8_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR175JCM,thresholded links
+ENCFF721JSQ_CD8_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR333SDH,thresholded element gene links
+ENCFF294UFR_CD8_positive_alpha_beta_memory_T_cell.bed.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR333SDH,thresholded element gene links
+ENCFF526SRQ_CD8_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR333SDH,thresholded links
+ENCFF612BHV_CD8_positive_alpha_beta_memory_T_cell.bedpe.gz,rE2G,"CD8-positive, alpha-beta memory T cell",blood,ENCSR333SDH,thresholded links
+ENCFF149HFC_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bed.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR145FXK,thresholded element gene links
+ENCFF429ZUJ_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bed.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR145FXK,thresholded element gene links
+ENCFF442FCD_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bedpe.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR145FXK,thresholded links
+ENCFF939FJR_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bedpe.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR145FXK,thresholded links
+ENCFF475ULW_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bed.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR389YOA,thresholded element gene links
+ENCFF645MEK_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bed.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR389YOA,thresholded element gene links
+ENCFF417VHF_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bedpe.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR389YOA,thresholded links
+ENCFF087FBU_CD4_positive_CD25_positive_alpha_beta_regulatory_T_cell.bedpe.gz,rE2G,"CD4-positive, CD25-positive, alpha-beta regulatory T cell",blood,ENCSR389YOA,thresholded links
+ENCFF575NMX_CD1c_positive_myeloid_dendritic_cell.bed.gz,rE2G,CD1c-positive myeloid dendritic cell,blood,ENCSR719BDF,thresholded element gene links
+ENCFF843QDK_CD1c_positive_myeloid_dendritic_cell.bed.gz,rE2G,CD1c-positive myeloid dendritic cell,blood,ENCSR719BDF,thresholded element gene links
+ENCFF578NDO_CD1c_positive_myeloid_dendritic_cell.bedpe.gz,rE2G,CD1c-positive myeloid dendritic cell,blood,ENCSR719BDF,thresholded links
+ENCFF032RFW_CD1c_positive_myeloid_dendritic_cell.bedpe.gz,rE2G,CD1c-positive myeloid dendritic cell,blood,ENCSR719BDF,thresholded links
+ENCFF727YIH_T_cell.bed.gz,rE2G,T-cell,blood,ENCSR000MZA,thresholded element gene links
+ENCFF014OMV_T_cell.bed.gz,rE2G,T-cell,blood,ENCSR000MZA,thresholded element gene links
+ENCFF654AMU_T_cell.bedpe.gz,rE2G,T-cell,blood,ENCSR000MZA,thresholded links
+ENCFF242QSD_T_cell.bedpe.gz,rE2G,T-cell,blood,ENCSR000MZA,thresholded links
+ENCFF867IRY_T_cell.bed.gz,rE2G,T-cell,blood,ENCSR057VHV,thresholded element gene links
+ENCFF460ZDI_T_cell.bed.gz,rE2G,T-cell,blood,ENCSR057VHV,thresholded element gene links
+ENCFF021JAJ_T_cell.bedpe.gz,rE2G,T-cell,blood,ENCSR057VHV,thresholded links
+ENCFF955SHL_T_cell.bedpe.gz,rE2G,T-cell,blood,ENCSR057VHV,thresholded links
+ENCFF978BWG_GM12878.bed.gz,rE2G,GM12878,blood,ENCSR604WPK,thresholded element gene links
+ENCFF425UVS_GM12878.bed.gz,rE2G,GM12878,blood,ENCSR604WPK,thresholded element gene links
+ENCFF312JGU_GM12878.bedpe.gz,rE2G,GM12878,blood,ENCSR604WPK,thresholded links
+ENCFF586MVU_GM12878.bedpe.gz,rE2G,GM12878,blood,ENCSR604WPK,thresholded links
+ENCFF811DOR_GM12878.bed.gz,rE2G,GM12878,blood,ENCSR997TVR,thresholded element gene links
+ENCFF094BVF_GM12878.bed.gz,rE2G,GM12878,blood,ENCSR997TVR,thresholded element gene links
+ENCFF105LII_GM12878.bedpe.gz,rE2G,GM12878,blood,ENCSR997TVR,thresholded links
+ENCFF547ARY_GM12878.bedpe.gz,rE2G,GM12878,blood,ENCSR997TVR,thresholded links
+ENCFF726DIZ_T_helper_1_cell.bed.gz,rE2G,T-helper 1 cell,blood,ENCSR139NVM,thresholded element gene links
+ENCFF421MLV_T_helper_1_cell.bed.gz,rE2G,T-helper 1 cell,blood,ENCSR139NVM,thresholded element gene links
+ENCFF403MWP_T_helper_1_cell.bedpe.gz,rE2G,T-helper 1 cell,blood,ENCSR139NVM,thresholded links
+ENCFF964IYJ_T_helper_1_cell.bedpe.gz,rE2G,T-helper 1 cell,blood,ENCSR139NVM,thresholded links
+ENCFF836MPT_T_helper_1_cell.bed.gz,rE2G,T-helper 1 cell,blood,ENCSR180OLB,thresholded element gene links
+ENCFF014KVI_T_helper_1_cell.bed.gz,rE2G,T-helper 1 cell,blood,ENCSR180OLB,thresholded element gene links
+ENCFF225RFK_T_helper_1_cell.bedpe.gz,rE2G,T-helper 1 cell,blood,ENCSR180OLB,thresholded links
+ENCFF852DOX_T_helper_1_cell.bedpe.gz,rE2G,T-helper 1 cell,blood,ENCSR180OLB,thresholded links
+ENCFF559OZH_T_helper_17_cell.bed.gz,rE2G,T-helper 17 cell,blood,ENCSR107AVB,thresholded element gene links
+ENCFF878DLN_T_helper_17_cell.bed.gz,rE2G,T-helper 17 cell,blood,ENCSR107AVB,thresholded element gene links
+ENCFF327KRO_T_helper_17_cell.bedpe.gz,rE2G,T-helper 17 cell,blood,ENCSR107AVB,thresholded links
+ENCFF443AIS_T_helper_17_cell.bedpe.gz,rE2G,T-helper 17 cell,blood,ENCSR107AVB,thresholded links
+ENCFF055SWV_T_helper_17_cell.bed.gz,rE2G,T-helper 17 cell,blood,ENCSR364QWC,thresholded element gene links
+ENCFF080DWB_T_helper_17_cell.bed.gz,rE2G,T-helper 17 cell,blood,ENCSR364QWC,thresholded element gene links
+ENCFF719XAC_T_helper_17_cell.bedpe.gz,rE2G,T-helper 17 cell,blood,ENCSR364QWC,thresholded links
+ENCFF380SIL_T_helper_17_cell.bedpe.gz,rE2G,T-helper 17 cell,blood,ENCSR364QWC,thresholded links
+ENCFF199QZT_dorsolateral_prefrontal_cortex.bed.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR004ZDG,thresholded element gene links
+ENCFF851BDG_dorsolateral_prefrontal_cortex.bed.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR004ZDG,thresholded element gene links
+ENCFF053LFW_dorsolateral_prefrontal_cortex.bedpe.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR004ZDG,thresholded links
+ENCFF649KEI_dorsolateral_prefrontal_cortex.bedpe.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR004ZDG,thresholded links
+ENCFF173EUD_dorsolateral_prefrontal_cortex.bed.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR007SKZ,thresholded element gene links
+ENCFF509QJH_dorsolateral_prefrontal_cortex.bed.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR007SKZ,thresholded element gene links
+ENCFF645YJN_dorsolateral_prefrontal_cortex.bedpe.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR007SKZ,thresholded links
+ENCFF859EUF_dorsolateral_prefrontal_cortex.bedpe.gz,rE2G,dorsolateral prefrontal cortex,brain,ENCSR007SKZ,thresholded links
+ENCFF341GPP_frontal_cortex.bed.gz,rE2G,frontal cortex,brain,ENCSR052OIR,thresholded element gene links
+ENCFF119YQR_frontal_cortex.bed.gz,rE2G,frontal cortex,brain,ENCSR052OIR,thresholded element gene links
+ENCFF075KRH_frontal_cortex.bedpe.gz,rE2G,frontal cortex,brain,ENCSR052OIR,thresholded links
+ENCFF551EJT_frontal_cortex.bedpe.gz,rE2G,frontal cortex,brain,ENCSR052OIR,thresholded links
+ENCFF566EEG_frontal_cortex.bed.gz,rE2G,frontal cortex,brain,ENCSR110KGA,thresholded element gene links
+ENCFF240GNZ_frontal_cortex.bed.gz,rE2G,frontal cortex,brain,ENCSR110KGA,thresholded element gene links
+ENCFF332PBG_frontal_cortex.bedpe.gz,rE2G,frontal cortex,brain,ENCSR110KGA,thresholded links
+ENCFF867YML_frontal_cortex.bedpe.gz,rE2G,frontal cortex,brain,ENCSR110KGA,thresholded links
+ENCFF340AHB_head_of_caudate_nucleus.bed.gz,rE2G,head of caudate nucleus,brain,ENCSR002YWN,thresholded element gene links
+ENCFF252GVK_head_of_caudate_nucleus.bed.gz,rE2G,head of caudate nucleus,brain,ENCSR002YWN,thresholded element gene links
+ENCFF435DPV_head_of_caudate_nucleus.bedpe.gz,rE2G,head of caudate nucleus,brain,ENCSR002YWN,thresholded links
+ENCFF862SCK_head_of_caudate_nucleus.bedpe.gz,rE2G,head of caudate nucleus,brain,ENCSR002YWN,thresholded links
+ENCFF572XDT_head_of_caudate_nucleus.bed.gz,rE2G,head of caudate nucleus,brain,ENCSR010JRN,thresholded element gene links
+ENCFF476PHB_head_of_caudate_nucleus.bed.gz,rE2G,head of caudate nucleus,brain,ENCSR010JRN,thresholded element gene links
+ENCFF554KGH_head_of_caudate_nucleus.bedpe.gz,rE2G,head of caudate nucleus,brain,ENCSR010JRN,thresholded links
+ENCFF457HSF_head_of_caudate_nucleus.bedpe.gz,rE2G,head of caudate nucleus,brain,ENCSR010JRN,thresholded links
+ENCFF084UIL_putamen.bed.gz,rE2G,putamen,brain,ENCSR639WRL,thresholded element gene links
+ENCFF078JWO_putamen.bed.gz,rE2G,putamen,brain,ENCSR639WRL,thresholded element gene links
+ENCFF760DLA_putamen.bedpe.gz,rE2G,putamen,brain,ENCSR639WRL,thresholded links
+ENCFF698MGD_putamen.bedpe.gz,rE2G,putamen,brain,ENCSR639WRL,thresholded links
+ENCFF516SOR_superior_temporal_gyrus.bed.gz,rE2G,superior temporal gyrus,brain,ENCSR411DDW,thresholded element gene links
+ENCFF580YTA_superior_temporal_gyrus.bed.gz,rE2G,superior temporal gyrus,brain,ENCSR411DDW,thresholded element gene links
+ENCFF591CJZ_superior_temporal_gyrus.bedpe.gz,rE2G,superior temporal gyrus,brain,ENCSR411DDW,thresholded links
+ENCFF354MXT_superior_temporal_gyrus.bedpe.gz,rE2G,superior temporal gyrus,brain,ENCSR411DDW,thresholded links
+ENCFF611QJV_middle_frontal_gyrus.bed.gz,rE2G,middle frontal gyrus,brain,ENCSR524AYL,thresholded element gene links
+ENCFF330HUB_middle_frontal_gyrus.bed.gz,rE2G,middle frontal gyrus,brain,ENCSR524AYL,thresholded element gene links
+ENCFF114SUA_middle_frontal_gyrus.bedpe.gz,rE2G,middle frontal gyrus,brain,ENCSR524AYL,thresholded links
+ENCFF311LSD_middle_frontal_gyrus.bedpe.gz,rE2G,middle frontal gyrus,brain,ENCSR524AYL,thresholded links
+ENCFF307BFL_brain.bed.gz,rE2G,brain,brain,ENCSR027MZW,thresholded element gene links
+ENCFF292DNF_brain.bed.gz,rE2G,brain,brain,ENCSR027MZW,thresholded element gene links
+ENCFF702BSH_brain.bedpe.gz,rE2G,brain,brain,ENCSR027MZW,thresholded links
+ENCFF027XSS_brain.bedpe.gz,rE2G,brain,brain,ENCSR027MZW,thresholded links
+ENCFF679SQC_brain.bed.gz,rE2G,brain,brain,ENCSR031NQT,thresholded element gene links
+ENCFF562KKD_brain.bed.gz,rE2G,brain,brain,ENCSR031NQT,thresholded element gene links
+ENCFF032IVW_brain.bedpe.gz,rE2G,brain,brain,ENCSR031NQT,thresholded links
+ENCFF084LFB_brain.bedpe.gz,rE2G,brain,brain,ENCSR031NQT,thresholded links
+ENCFF858MAK_astrocyte.bed.gz,rE2G,astrocyte,brain,ENCSR414CMA,thresholded element gene links
+ENCFF799KYO_astrocyte.bed.gz,rE2G,astrocyte,brain,ENCSR414CMA,thresholded element gene links
+ENCFF249IWT_astrocyte.bedpe.gz,rE2G,astrocyte,brain,ENCSR414CMA,thresholded links
+ENCFF529HJN_astrocyte.bedpe.gz,rE2G,astrocyte,brain,ENCSR414CMA,thresholded links
+ENCFF614IKJ_astrocyte.bed.gz,rE2G,astrocyte,brain,ENCSR777RNP,thresholded element gene links
+ENCFF828UZK_astrocyte.bed.gz,rE2G,astrocyte,brain,ENCSR777RNP,thresholded element gene links
+ENCFF461WLP_astrocyte.bedpe.gz,rE2G,astrocyte,brain,ENCSR777RNP,thresholded links
+ENCFF024BKP_astrocyte.bedpe.gz,rE2G,astrocyte,brain,ENCSR777RNP,thresholded links
+ENCFF988MLT_glutamatergic_neuron.bed.gz,rE2G,glutamatergic neuron,brain,ENCSR805MWQ,thresholded element gene links
+ENCFF662JCI_glutamatergic_neuron.bed.gz,rE2G,glutamatergic neuron,brain,ENCSR805MWQ,thresholded element gene links
+ENCFF511KXS_glutamatergic_neuron.bedpe.gz,rE2G,glutamatergic neuron,brain,ENCSR805MWQ,thresholded links
+ENCFF977RQY_glutamatergic_neuron.bedpe.gz,rE2G,glutamatergic neuron,brain,ENCSR805MWQ,thresholded links

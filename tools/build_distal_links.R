@@ -36,7 +36,15 @@
 #     --tss-hg38  ~/gencode_v49_tss.bed        # chr start end gene (0-based) for --loops
 #     --biosample-map tools/distal_biosamples.csv   # file,source,biosample,tissue_class
 #     --min-score 0                            # keep links at or above this score
+#     --keep-abc                               # also keep ABC-model files (see below)
 #     --out inst/extdata/distal_links.csv.gz
+#
+# ENCODE rE2G annotation sets ship two prediction tables per biosample: the
+# ENCODE-rE2G model (header carries ABC.Score.Feature or an rE2G score column;
+# thresholded scores run ~0.2-1) and the older ABC model it was trained from
+# (header carries ABC.Score and powerlaw.Score; thresholded scores start ~0.018).
+# The two score scales must not share one column, so ABC files are skipped
+# unless --keep-abc is given, in which case they enter as source = "ABC".
 #
 # --biosample-map is optional: a CSV with columns file (basename), source
 # (rE2G|scE2G|HCEA), biosample (free text), tissue_class (one of blood, brain,
@@ -60,6 +68,7 @@ loop_dir  <- get_arg("--loops")
 tss_bed   <- get_arg("--tss-hg38")
 bs_map    <- get_arg("--biosample-map")
 min_score <- as.numeric(get_arg("--min-score", "0"))
+keep_abc  <- "--keep-abc" %in% args
 out_file  <- get_arg("--out", "distal_links.csv.gz")
 
 if (is.null(manifest) || !file.exists(manifest))
@@ -128,7 +137,14 @@ read_e2g <- function(f, src) {
   if (anyNA(c(chr_c, st_c, en_c, g_c, sc_c)))
     stop(basename(f), ": cannot find chr/start/end/TargetGene/Score columns; have: ",
          paste(nm, collapse = ", "))
-  bs <- lookup_bs(f, src)
+  # ENCODE sets carry an ABC-model table beside the rE2G one (see header note)
+  is_abc <- src == "rE2G" && "ABC.Score" %in% nm &&
+            !any(grepl("ABC\\.Score\\.Feature|rE2G|E2G\\.Score", nm))
+  if (is_abc) {
+    if (!keep_abc) { message("  skip ABC-model file: ", basename(f)); return(NULL) }
+    src <- "ABC"
+  }
+  bs <- lookup_bs(f, if (src == "ABC") "rE2G" else src)
   e <- data.table(chr = sub("^chr", "", as.character(d[[chr_c]])),
                   start = as.integer(d[[st_c]]) + 1L,       # BED 0-based -> 1-based
                   end   = as.integer(d[[en_c]]),
