@@ -94,11 +94,17 @@
 #'   question.
 #' @param include_onco Add the tumour eQTM consensus
 #'   (\code{\link{cpgd_onco_eqtm}}; Onco-eQTM, 27 TCGA cancer types) as a
-#'   candidate-discovery source and report \code{onco_direction},
-#'   \code{onco_tier}, \code{onco_n_cancers} and \code{onco_agreement} per
-#'   pair. Default \code{FALSE}. As with brain, tumour directions are reported
-#'   alongside and never enter \code{best_direction}; \code{onco_agreement}
-#'   says whether the tumour sign matches the peripheral call.
+#'   candidate-discovery source, so that genes known only to the tumour
+#'   layer become pairs (\code{mapping_source = "tumour_eQTM"}). Default
+#'   \code{FALSE}. Independently of this switch, every pair reports
+#'   \code{onco_direction}, \code{onco_tier}, \code{onco_n_cancers},
+#'   \code{onco_sign_agreement}, \code{onco_median_r} and
+#'   \code{onco_agreement} (tumour sign equals the peripheral
+#'   \code{best_direction}; \code{NA} where either is missing or where the
+#'   tumour sign IS the best direction), and tier O1 supplies
+#'   \code{best_direction} as evidence \code{"onco_consensus"} when no
+#'   measured, SMR S1/S2 or catalogue call exists for the pair -- see
+#'   \code{\link{cpgd_onco_eqtm}} for the validation behind that rung.
 #' @param direction_policy \code{"best"} (default) returns the pair-level
 #'   best-evidence record with the standard audit columns.
 #'   \code{"all_evidence"} additionally keeps every per-tissue catalogue and
@@ -484,30 +490,11 @@ cpg_gene_pairs <- function(cpgs,
     }
   }
 
-  # tumour audit columns, only when explicitly requested. onco_agreement
-  # compares the tumour sign with the peripheral best_direction of the SAME
-  # pair; NA where either is missing.
-  if (isTRUE(include_onco)) {
-    O <- .cpgd_source_table(sources, "onco", cpgd_onco_eqtm)
-    if (!is.null(O) && nrow(O)) {
-      OO <- data.table::as.data.table(O)
-      OO <- OO[, list(cpg_id = get("cpg_id"),
-                      .gkey = gsub("_", "-", toupper(get("target_gene"))),
-                      onco_direction = as.numeric(get("direction")),
-                      onco_tier = as.character(get("onco_tier")),
-                      onco_n_cancers = as.integer(get("n_cancers")),
-                      onco_sign_agreement = as.numeric(get("sign_agreement")))]
-      OO <- unique(OO, by = c("cpg_id", ".gkey"))
-      out <- merge(out, OO, by = c("cpg_id", ".gkey"), all.x = TRUE, sort = FALSE)
-    } else {
-      out[, c("onco_direction", "onco_tier", "onco_n_cancers",
-              "onco_sign_agreement") :=
-            list(NA_real_, NA_character_, NA_integer_, NA_real_)]
-    }
-    out[, "onco_agreement" := data.table::fifelse(
-          is.na(get("onco_direction")) | is.na(get("best_direction")), NA,
-          get("onco_direction") == get("best_direction"))]
-  }
+  # tumour columns (onco_direction, onco_tier, onco_n_cancers,
+  # onco_sign_agreement, onco_median_r, onco_agreement) come from the pair
+  # resolver on every run since 2.99.7: the layer is always reported, O1 may
+  # supply best_direction, and include_onco only governs whether tumour-only
+  # TARGETS enter the candidate set.
 
   # ---- input provenance: trace every pair back to submitted rows ----------
   inp <- q[, list(
@@ -577,7 +564,7 @@ cpg_gene_pairs <- function(cpgs,
             "distal_sources", "distal_n_biosamples", "distal_score_max",
             "distal_biosamples",
             "onco_direction", "onco_tier", "onco_n_cancers",
-            "onco_sign_agreement", "onco_agreement",
+            "onco_sign_agreement", "onco_median_r", "onco_agreement",
             "probe_masked", "probe_masked_partial", "probe_mask_reasons",
             "cross_hybridizing", "mapping_flagged", "pos_hg19_verified",
             "input_ids", "inputs")

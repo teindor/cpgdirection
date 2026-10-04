@@ -48,6 +48,8 @@ cpgd_report <- function(x,
         # they were about the requested gene.
         "smr_direction", "smr_gene", "smr_gene_match", "smr_tier",
         "smr_agreement", "smr_heidi_status",
+        "onco_direction", "onco_gene", "onco_gene_match", "onco_tier",
+        "onco_agreement",
         "n_tissues_calling", "dist_universal",
         "dist_dir_blood", "dist_dir_nasal", "dist_dir_solid",
         "measured_genes", "note")

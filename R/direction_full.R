@@ -66,10 +66,11 @@
 #'     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
 #'       evidence available}
 #'     \item{best_evidence}{which source it came from — \code{measured},
-#'       \code{catalogue_consensus}, \code{catalogue_single},
+#'       \code{smr_high}, \code{catalogue_consensus}, \code{smr_moderate},
+#'       \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
 #'       \code{distance_only}, \code{distance_tissue_conflict},
 #'       \code{distance_uninformative}, \code{tissue_conflict} or
-#'       \code{no_evidence}}
+#'       \code{no_evidence}, in ladder order}
 #'     \item{best_confidence, best_expected_accuracy}{what that answer is worth}
 #'     \item{consensus_direction, n_tissues_calling, tissue_agreement}{the
 #'       catalogue layer}
@@ -95,6 +96,15 @@
 #'     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
 #'       gene. Distinguishes "no instrument exists" from "the instrument points
 #'       at a different gene", which are different facts with different remedies}
+#'     \item{onco_direction, onco_tier, onco_n_cancers, onco_median_r,
+#'       onco_gene, onco_gene_match, onco_agreement}{the tumour consensus layer
+#'       (Onco-eQTM, 27 TCGA cancer types; \code{\link{cpgd_onco_eqtm}}),
+#'       keyed and gated exactly like SMR: only a gene match may reach
+#'       \code{best_direction}, and only tier O1 does so (as
+#'       \code{onco_consensus}, below every single-tissue peripheral call).
+#'       \code{onco_agreement} compares the tumour sign with a peripheral
+#'       \code{best_direction} for the same pair; \code{NA} when the tumour
+#'       sign is itself the best direction}
 #'     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
 #'       evidence, and whether it concerns a gene other than the one requested}
 #'   }
@@ -431,6 +441,52 @@ cpg_expression_direction <- function(cpgs,
                           NA_character_, NA_real_)]
   }
 
+  # ---- layer 1c: tumour consensus (Onco-eQTM) -----------------------------
+  # Keyed on the same gene candidates as SMR (requested gene, its last token,
+  # then the catalogue-assigned genes where nothing was requested), and gated
+  # the same way: only a gene MATCH may reach best_direction, and only tier O1
+  # (see ?cpgd_onco_eqtm). Reported for every CpG the layer covers.
+  ocols <- c("onco_direction", "onco_tier", "onco_n_cancers", "onco_median_r",
+             "onco_gene", "onco_gene_match")
+  OO <- .cpgd_onco_keyed()
+  if (!is.null(OO)) {
+    gcols <- intersect(paste0("gene_", short), names(out))
+    cand  <- c(list(req, last),
+               if (length(gcols)) lapply(gcols, function(cc) toupper(out[[cc]])))
+    asked <- !is.na(req)
+    od <- rep(NA_real_, n); ot <- rep(NA_character_, n); on_ <- rep(NA_integer_, n)
+    om <- rep(NA_real_, n); og <- rep(NA_character_, n)
+    for (k in seq_along(cand)) {
+      key <- cand[[k]]
+      if (k > 2L) key[asked] <- NA_character_
+      need <- is.na(ot) & !is.na(key)
+      if (!any(need)) next
+      hit <- OO[data.table::data.table(cpg_id = out$cpg_id, .gkey = gsub("_", "-", key)),
+                on = c("cpg_id", ".gkey")]
+      take <- need & !is.na(hit$tier)
+      if (!any(take)) next
+      od[take] <- hit$d[take];  ot[take] <- hit$tier[take]
+      on_[take] <- hit$nc[take]; om[take] <- hit$mr[take]; og[take] <- key[take]
+    }
+    matched <- !is.na(ot)
+    # no gene matched: still report the CpG's strongest tumour pair, named,
+    # exactly as the SMR layer does -- visible, but barred from best_direction
+    OB <- OO[, .SD[1L], by = "cpg_id"]
+    hb <- OB[data.table::data.table(cpg_id = out$cpg_id), on = "cpg_id"]
+    fill <- !matched & !is.na(hb$tier)
+    od[fill] <- hb$d[fill];  ot[fill] <- hb$tier[fill]
+    on_[fill] <- hb$nc[fill]; om[fill] <- hb$mr[fill]; og[fill] <- hb$g[fill]
+    out[, "onco_direction"  := od]
+    out[, "onco_tier"       := ot]
+    out[, "onco_n_cancers"  := on_]
+    out[, "onco_median_r"   := om]
+    out[, "onco_gene"       := og]
+    out[, "onco_gene_match" := matched]
+  } else {
+    out[, (ocols) := list(NA_real_, NA_character_, NA_integer_, NA_real_,
+                          NA_character_, FALSE)]
+  }
+
   # ---- layer 3: distance only --------------------------------------------
   ucols <- c("gene_universal", "dist_universal", "dir_universal", "p_universal",
              "agree_universal", "dist_unanimous",
@@ -519,6 +575,14 @@ cpg_expression_direction <- function(cpgs,
   i <- which(is.na(src) & out$n_tissues_calling == 1L & !is.na(out$.single))
   best[i] <- out$.single[i];                       src[i] <- "catalogue_single"
 
+  # Onco-eQTM O1 (0.82 blood / 0.93 nasal / 0.70 SMR-S1 against the peripheral
+  # references; tools/validate_onco.R) sits below every single-tissue
+  # peripheral call and above S3 and the distance curves.
+  onco_ok <- out$onco_gene_match %in% TRUE & !is.na(out$onco_direction) &
+             out$onco_tier %in% "O1"
+  i <- which(is.na(src) & onco_ok)
+  best[i] <- out$onco_direction[i];                src[i] <- "onco_consensus"
+
   # S3 (70.4%) is weaker than a single-tissue catalogue call: its instruments
   # disagree, which is a warning rather than extra evidence.
   i <- which(is.na(src) & smr_ok & out$smr_tier == "S3")
@@ -599,6 +663,7 @@ cpg_expression_direction <- function(cpgs,
   bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
   bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
   bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
+  bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
   bacc[which(src == "catalogue_consensus" & wt == "A")] <- "0.77-0.87 (tier A, tissues agree)"
   bacc[which(src == "catalogue_consensus" & wt == "B")] <- "0.64-0.84 (tier B, tissues agree)"
   bacc[which(src == "catalogue_single"    & wt == "A")] <- "0.62-0.87 (tier A, one tissue only)"
@@ -665,6 +730,11 @@ cpg_expression_direction <- function(cpgs,
           !(get("smr_gene_match") %in% TRUE), NA,
         get("smr_direction") == best)]
 
+  out[, "onco_agreement" := data.table::fifelse(
+        is.na(get("onco_direction")) | is.na(best) |
+          !(get("onco_gene_match") %in% TRUE) | src == "onco_consensus", NA,
+        get("onco_direction") == best)]
+
   out[, "best_direction"  := best]
   out[, "best_evidence"   := src]
   out[, "best_confidence" := bconf]
@@ -699,6 +769,12 @@ cpg_expression_direction <- function(cpgs,
         "causal direction from SMR (blood); consistent with methylation affecting expression AND with linkage - HEIDI not run"]
   out[get("best_evidence") == "catalogue_single", "note" :=
         "only one tissue called; no cross-tissue corroboration"]
+  out[get("best_evidence") == "onco_consensus", "note" :=
+        "direction from the tumour consensus (Onco-eQTM O1, >=5 cancer types); no measured, SMR S1/S2 or catalogue call for this pair"]
+  out[which(get("onco_agreement") == FALSE), "note" := paste0(
+        get("note"), " | tumour consensus (Onco-eQTM O1/O2) says ",
+        ifelse(get("onco_direction") > 0, "+1", "-1"),
+        " but a peripheral layer supplied the opposite sign")]
   out[which(get("annotation_mismatch")), "note" := trimws(paste0(
         get("note"), " | measured association is with ", get("measured_genes"),
         ", not the requested gene"), which = "left")]
@@ -710,6 +786,8 @@ cpg_expression_direction <- function(cpgs,
            "smr_direction", "smr_gene", "smr_gene_match", "smr_tier", "smr_p",
            "smr_n_instruments", "smr_gene_dist", "smr_agreement", "smr_in_table",
            "smr_heidi_status", "smr_p_heidi",
+           "onco_direction", "onco_tier", "onco_n_cancers", "onco_median_r",
+           "onco_gene", "onco_gene_match", "onco_agreement",
            "consensus_direction", "n_tissues_calling", "tissue_agreement",
            as.vector(rbind(paste0("gene_", short), paste0("dir_", short),
                            paste0("conf_", short), paste0("tier_", short),
@@ -813,6 +891,17 @@ print.cpgd_full <- function(x, ...) {
             "        A causal estimate and a correlational prediction pointing\n",
             "        opposite ways. See smr_agreement and smr_direction.\n", sep = "")
     }
+  }
+  if ("onco_direction" %in% names(x) && any(!is.na(x$onco_direction))) {
+    no  <- sum(!is.na(x$onco_direction))
+    nm_ <- if ("onco_gene_match" %in% names(x)) sum(x$onco_gene_match %in% TRUE) else no
+    nou <- sum(x$best_evidence %in% "onco_consensus")
+    nod <- sum(x$onco_agreement %in% FALSE)
+    cat("\n  tumour consensus layer (Onco-eQTM, 27 TCGA cancer types):\n")
+    cat(sprintf("    evidence for %d CpGs; %d concern the same gene as the rest of the row;\n", no, nm_))
+    cat(sprintf("    tier O1 supplied best_direction for %d (onco_consensus; 0.70-0.93 validated)\n", nou))
+    if (nod > 0)
+      cat(sprintf("    %d CpGs where the tumour sign disagrees with the peripheral direction - see onco_agreement\n", nod))
   }
   nna <- sum(is.na(x$best_direction))
   if (nna > 0 && is.null(attr(x, "target_tissue"))) {
@@ -954,6 +1043,23 @@ print.cpgd_full <- function(x, ...) {
              NA_real_, NA_character_)]
   }
 
+  # ---- tumour consensus (Onco-eQTM), this pair only ----------------------
+  # Always reported; tier O1 alone may supply best_direction (see the
+  # onco_consensus rung below and ?cpgd_onco_eqtm for its validation).
+  OO <- .cpgd_onco_keyed(sources)
+  if (!is.null(OO)) {
+    hit <- OO[P[, c("cpg_id", ".gkey"), with = FALSE], on = c("cpg_id", ".gkey")]
+    P[, "onco_direction"      := hit$d]
+    P[, "onco_tier"           := hit$tier]
+    P[, "onco_n_cancers"      := hit$nc]
+    P[, "onco_sign_agreement" := hit$agr]
+    P[, "onco_median_r"       := hit$mr]
+  } else {
+    P[, c("onco_direction", "onco_tier", "onco_n_cancers",
+          "onco_sign_agreement", "onco_median_r") :=
+        list(NA_real_, NA_character_, NA_integer_, NA_real_, NA_real_)]
+  }
+
   # ---- catalogue models, per tissue, this pair only ----------------------
   short <- c(blood = "blood", nasal_epithelium = "nasal", solid_tissue = "solid")
   for (t in CPGD_TISSUES) {
@@ -1064,6 +1170,13 @@ print.cpgd_full <- function(x, ...) {
   i <- which(is.na(src) & n_call == 1L & !is.na(single))
   best[i] <- single[i];                src[i] <- "catalogue_single"
 
+  # Onco-eQTM O1 (>= 5 cancer types, one sign): 0.82 blood / 0.93 nasal / 0.70
+  # SMR-S1 against the peripheral references (tools/validate_onco.R). Below
+  # every single-tissue peripheral call, above S3 and the distance curves.
+  onco_ok <- !is.na(P$onco_direction) & P$onco_tier %in% "O1"
+  i <- which(is.na(src) & onco_ok)
+  best[i] <- P$onco_direction[i];      src[i] <- "onco_consensus"
+
   i <- which(is.na(src) & smr_ok & P$smr_tier == "S3")
   best[i] <- P$smr_direction[i];       src[i] <- "smr_weak"
 
@@ -1102,6 +1215,7 @@ print.cpgd_full <- function(x, ...) {
   tier[which(src == "measured")] <- "M"
   i <- which(src %in% c("smr_high", "smr_moderate", "smr_weak"))
   tier[i] <- P$smr_tier[i]
+  tier[which(src == "onco_consensus")] <- "O1"
   tier[which(src %in% c("distance_only", "distance_uninformative",
                         "distance_tissue_conflict"))] <- "U"
 
@@ -1114,7 +1228,14 @@ print.cpgd_full <- function(x, ...) {
   bacc[which(src == "catalogue_consensus" & worst_tier == "B")] <- "0.64-0.84 (tier B, tissues agree)"
   bacc[which(src == "catalogue_single"    & worst_tier == "A")] <- "0.62-0.87 (tier A, one tissue only)"
   bacc[which(src == "catalogue_single"    & worst_tier == "B")] <- "0.55-0.84 (tier B, one tissue only)"
+  bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
   bacc[which(src == "distance_only")] <- "0.60-0.65 (distance only, tier U)"
+
+  # agreement is a statement about two INDEPENDENT signs for the same pair;
+  # where the tumour sign IS best_direction there is nothing to agree with
+  P[, "onco_agreement" := data.table::fifelse(
+        is.na(get("onco_direction")) | is.na(best) | src == "onco_consensus", NA,
+        get("onco_direction") == best)]
 
   P[, "best_direction"  := best]
   P[, "best_evidence"   := src]

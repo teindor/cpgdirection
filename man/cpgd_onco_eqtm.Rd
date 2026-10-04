@@ -37,6 +37,23 @@ disagreement with the peripheral call is visible. Cross-tumour agreement
 (O1) is strong evidence that a CpG-gene coupling is constitutive rather
 than context-specific, which is useful; it is not evidence about saliva.
 }
+\section{The onco_consensus rung (2.99.7)}{
+
+Tier O1 (five or more cancer types, one sign) was validated against the
+package's peripheral references in \code{tools/validate_onco.R}: agreement
+0.82 with measured blood eQTMs (n = 1,455; majority baseline 0.72), 0.93
+with nasal epithelium (n = 1,221; baseline 0.71) and 0.70 with SMR tier S1
+(n = 1,033; baseline 0.60). Near the TSS that agreement is mostly the
+shared -1 base rate; the information is in gene-body and 1.5-100 kb pairs
+(0.76-0.94 against baselines of 0.53-0.60), where the tumour layer also
+calls +1 at the reference rate and is right 72-87\% of the time. O1
+therefore supplies \code{best_direction} as \code{"onco_consensus"},
+placed below \code{catalogue_single} and above \code{smr_weak}, for pairs
+the peripheral sources already propose. O2-O4 are reported only. The
+solid-tissue reference (0.97) was excluded from the decision because it may
+share TCGA material with Onco-eQTM.
+}
+
 \examples{
 \dontshow{if (cpgd_has_data("onco_eqtm_consensus")) withAutoprint(\{ # examplesIf}
 o <- cpgd_onco_eqtm()

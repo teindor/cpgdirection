@@ -14,6 +14,7 @@ CPGD_EVIDENCE <- c(
   "catalogue_consensus",
   "smr_moderate",
   "catalogue_single",
+  "onco_consensus",
   "smr_weak",
   "distance_only",
   "distance_targeted",
@@ -24,6 +25,12 @@ CPGD_EVIDENCE <- c(
   "tissue_conflict",
   "no_evidence")
 stopifnot(!anyDuplicated(CPGD_EVIDENCE))
+
+# Validated once, quoted in two ladders: tools/validate_onco.R, 3 Oct 2026.
+CPGD_ONCO_ACCURACY <- paste0(
+  "0.70-0.93 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.82 n=1,455, ",
+  "nasal 0.93 n=1,221, SMR-S1 0.70 n=1,033; near-TSS agreement is largely ",
+  "the -1 base rate)")
 
 # Path of the BUNDLED lookup file, or NA when this (thin) installation holds
 # none and the table comes from the cpgdirectionData ExperimentHub package

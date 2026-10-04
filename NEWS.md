@@ -1,3 +1,44 @@
+# cpgdirection 2.99.7
+
+* **The tumour consensus earns a rung.** `tools/validate_onco.R` (new, with
+  `tools/validate_distal.R`) scores every Onco-eQTM tier against the package's
+  independent peripheral references. Tier O1 (>= 5 cancer types, one sign)
+  agrees with measured blood eQTMs 0.82 (n = 1,455; majority baseline 0.72),
+  with nasal epithelium 0.93 (n = 1,221; baseline 0.71) and with SMR tier S1
+  0.70 (n = 1,033; baseline 0.60). Near the TSS the agreement is mostly the
+  shared -1 base rate (0.88 vs 0.87 at <= 1.5 kb); the information is in
+  gene-body and 1.5-100 kb pairs (blood 0.76-0.80 vs baselines 0.56-0.58,
+  nasal 0.94 vs 0.56-0.60), where the layer also calls +1 at the reference
+  rate and is right 72-87% of the time -- the one thing no current rung does.
+  Against SMR S2 the agreement is 0.61 (n = 8,499; baseline 0.54) and against S3 0.47 (n = 429; baseline 0.53), consistent with the placement above `smr_weak`. O2 is a few points above baseline, O3/O4 are at chance. The solid-tissue
+  reference (0.97) is excluded from the decision because it may share TCGA
+  material with Onco-eQTM.
+
+  - New evidence level `onco_consensus`, between `catalogue_single` and
+    `smr_weak`, supplied by tier O1 only, in both `cpg_gene_pairs()` and
+    `cpg_expression_direction()`; `direction_tier` "O1"; expected accuracy
+    "0.70-0.93 (Onco-eQTM O1 ...)" with the three validated figures.
+  - The tumour layer is now reported on every run (`onco_direction`,
+    `onco_tier`, `onco_n_cancers`, `onco_sign_agreement`, `onco_median_r`,
+    `onco_agreement`); `include_onco = TRUE` in `cpg_gene_pairs()` only
+    governs whether tumour-only TARGETS enter the candidate set.
+    `cpg_expression_direction()` keys and gates the layer exactly like SMR
+    (`onco_gene`, `onco_gene_match`; the strongest tumour pair is named even
+    when no gene matched, and barred from `best_direction`).
+  - `onco_agreement` is `NA` where the tumour sign IS the best direction:
+    agreement is a statement about two independent signs.
+  - `--append-solid` in `tools/build_onco_eqtm.R` is answered: no. The rung is
+    the right home for this evidence; the measured layer is not.
+
+* **distal_links validated as a target source, not a direction source.** On
+  the blood CpGs both sources cover, rE2G recall exceeds the manifest's (0.46
+  vs 0.43) and the high-confidence subset (score >= 0.9, or >= 10 biosamples)
+  is more precise than the manifest (0.52 vs 0.43); the 1,567 blood pairs the
+  links find that the manifest lacks sit at a median 30 kb (p90 115 kb). The
+  sign check came out as it should: non-promoter links at the base rate,
+  promoter-class links negative -- the TSS-distance effect already on the
+  ladder. No direction rung; `include = "distal"` stays opt-in.
+
 # cpgdirection 2.99.6
 
 * **Two new opt-in evidence layers, both kept OUT of `best_direction`.** The

@@ -71,11 +71,17 @@ question.}
 
 \item{include_onco}{Add the tumour eQTM consensus
 (\code{\link{cpgd_onco_eqtm}}; Onco-eQTM, 27 TCGA cancer types) as a
-candidate-discovery source and report \code{onco_direction},
-\code{onco_tier}, \code{onco_n_cancers} and \code{onco_agreement} per
-pair. Default \code{FALSE}. As with brain, tumour directions are reported
-alongside and never enter \code{best_direction}; \code{onco_agreement}
-says whether the tumour sign matches the peripheral call.}
+candidate-discovery source, so that genes known only to the tumour
+layer become pairs (\code{mapping_source = "tumour_eQTM"}). Default
+\code{FALSE}. Independently of this switch, every pair reports
+\code{onco_direction}, \code{onco_tier}, \code{onco_n_cancers},
+\code{onco_sign_agreement}, \code{onco_median_r} and
+\code{onco_agreement} (tumour sign equals the peripheral
+\code{best_direction}; \code{NA} where either is missing or where the
+tumour sign IS the best direction), and tier O1 supplies
+\code{best_direction} as evidence \code{"onco_consensus"} when no
+measured, SMR S1/S2 or catalogue call exists for the pair -- see
+\code{\link{cpgd_onco_eqtm}} for the validation behind that rung.}
 
 \item{probe_qc}{How to treat CpGs whose probes are flagged as unreliable by
 the packaged QC table (\code{\link{cpgd_probe_qc}}: cross-hybridizing or

@@ -71,10 +71,11 @@ With \code{tissue = "all"}, a \code{data.table} of class
     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
       evidence available}
     \item{best_evidence}{which source it came from — \code{measured},
-      \code{catalogue_consensus}, \code{catalogue_single},
+      \code{smr_high}, \code{catalogue_consensus}, \code{smr_moderate},
+      \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
       \code{distance_only}, \code{distance_tissue_conflict},
       \code{distance_uninformative}, \code{tissue_conflict} or
-      \code{no_evidence}}
+      \code{no_evidence}, in ladder order}
     \item{best_confidence, best_expected_accuracy}{what that answer is worth}
     \item{consensus_direction, n_tissues_calling, tissue_agreement}{the
       catalogue layer}
@@ -100,6 +101,15 @@ With \code{tissue = "all"}, a \code{data.table} of class
     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
       gene. Distinguishes "no instrument exists" from "the instrument points
       at a different gene", which are different facts with different remedies}
+    \item{onco_direction, onco_tier, onco_n_cancers, onco_median_r,
+      onco_gene, onco_gene_match, onco_agreement}{the tumour consensus layer
+      (Onco-eQTM, 27 TCGA cancer types; \code{\link{cpgd_onco_eqtm}}),
+      keyed and gated exactly like SMR: only a gene match may reach
+      \code{best_direction}, and only tier O1 does so (as
+      \code{onco_consensus}, below every single-tissue peripheral call).
+      \code{onco_agreement} compares the tumour sign with a peripheral
+      \code{best_direction} for the same pair; \code{NA} when the tumour
+      sign is itself the best direction}
     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
       evidence, and whether it concerns a gene other than the one requested}
   }

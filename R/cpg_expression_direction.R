@@ -213,13 +213,15 @@
 #' @export
 cpgd_accuracy_table <- function() {
   data.frame(
-    tissue = c(rep("blood", 3), rep("nasal_epithelium", 2), rep("solid_tissue", 2), "any"),
+    tissue = c(rep("blood", 3), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
+               "any (tumour consensus)", "any"),
     status = c("DIRECT_eQTM", "PREDICTED (tier A)", "PREDICTED (tier B)",
                "PREDICTED (tier A)", "PREDICTED (tier B)",
-               "PREDICTED (tier A)", "PREDICTED (tier B)", "majority baseline"),
+               "PREDICTED (tier A)", "PREDICTED (tier B)",
+               "onco_consensus (Onco-eQTM O1)", "majority baseline"),
     expected_accuracy = c("~1.00", "0.77-0.85", "0.64-0.85",
                           "0.84-0.87", "0.70-0.84",
-                          "0.62-0.70", "0.55-0.66", "0.55-0.63"),
+                          "0.62-0.70", "0.55-0.66", "0.70-0.93", "0.55-0.63"),
     basis = c("read from a catalogue, not predicted",
               "HELIX locked test 0.766; EVA-PR white blood cell 0.854",
               "HELIX locked test 0.642; EVA-PR white blood cell 0.854",
@@ -227,6 +229,7 @@ cpgd_accuracy_table <- function() {
               "grouped CV AUC 0.865; NOT independently validated",
               "grouped CV AUC 0.664; tumour tissue; brain and kidney below baseline",
               "grouped CV AUC 0.664; provisional",
+              "agreement with measured blood 0.82 (n=1,455), nasal 0.93 (n=1,221), SMR S1 0.70 (n=1,033); tools/validate_onco.R",
               "always predicting an inverse association"),
     stringsAsFactors = FALSE)
 }
