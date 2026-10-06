@@ -107,6 +107,11 @@
 #'       sign is itself the best direction}
 #'     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
 #'       evidence, and whether it concerns a gene other than the one requested}
+#'     \item{measured_n_cohorts, measured_cohort_agreement}{for a measured
+#'       call, how many independent cohorts measured the pair and the share
+#'       agreeing on its sign (2.99.8, eQTM Atlas build). Replicated pairs
+#'       (2+ cohorts, same sign) read \code{~1.00}; single-cohort pairs read
+#'       \code{0.96-0.99}, the between-cohort replication rate on shared pairs}
 #'   }
 #'
 #' @section The two alternative codings:
@@ -312,25 +317,33 @@ cpg_expression_direction <- function(cpgs,
                  function(p) if (length(p)) p[length(p)] else NA_character_,
                  character(1))
 
-  md <- rep(NA_real_, nrow(out))
+  md <- rep(NA_real_, nrow(out)); mn <- rep(NA_integer_, nrow(out)); ma <- rep(NA_real_, nrow(out))
   M <- tryCatch(cpgd_measured_eqtms(), error = function(e) NULL)
   if (!is.null(M)) {
     # Match the measured record to the gene actually requested, not to whatever
     # the CpG happens to have been measured against: a measured association with
     # a DIFFERENT gene is reported separately, in annotation_mismatch.
+    nco <- if ("n_cohorts" %in% names(M)) suppressWarnings(as.integer(M$n_cohorts)) else rep(1L, nrow(M))
+    agr <- if ("cohort_agreement" %in% names(M)) suppressWarnings(as.numeric(M$cohort_agreement)) else rep(1, nrow(M))
     MM <- data.table::data.table(cpg_id = M$cpg_id,
                                  g = toupper(M$target_gene),
-                                 d = sign(as.numeric(M$direction)))
-    MM <- MM[, list(d = if (length(unique(get("d"))) == 1L) get("d")[1] else NA_real_),
+                                 d = sign(as.numeric(M$direction)),
+                                 nco = ifelse(is.na(nco), 1L, nco),
+                                 agr = ifelse(is.na(agr), 1, agr))
+    MM <- MM[, list(d = if (length(unique(get("d"))) == 1L) get("d")[1] else NA_real_,
+                    nco = sum(get("nco")), agr = min(get("agr"))),
              by = c("cpg_id", "g")]
     data.table::setkeyv(MM, c("cpg_id", "g"))
-    d1 <- MM[data.table::data.table(cpg_id = out$cpg_id, g = req),
-             on = c("cpg_id", "g")]$d
-    d2 <- MM[data.table::data.table(cpg_id = out$cpg_id, g = last),
-             on = c("cpg_id", "g")]$d
+    h1 <- MM[data.table::data.table(cpg_id = out$cpg_id, g = req), on = c("cpg_id", "g")]
+    h2 <- MM[data.table::data.table(cpg_id = out$cpg_id, g = last), on = c("cpg_id", "g")]
+    d1 <- h1$d; d2 <- h2$d
     md <- ifelse(!is.na(d1), d1, d2)
+    mn <- ifelse(!is.na(d1), h1$nco, ifelse(!is.na(d2), h2$nco, NA_integer_))
+    ma <- ifelse(!is.na(d1), h1$agr, ifelse(!is.na(d2), h2$agr, NA_real_))
   }
   out[, "measured_direction_requested" := md]
+  out[, "measured_n_cohorts" := as.integer(mn)]
+  out[, "measured_cohort_agreement" := as.numeric(ma)]
 
   # ---- layer 1b: causal directions from SMR --------------------------------
   # GoDMC mQTL as exposure, eQTLGen cis-eQTL as outcome. This asks whether a
@@ -659,7 +672,9 @@ cpg_expression_direction <- function(cpgs,
   bconf[i] <- round(abs(out$p_universal[i] - 0.5) * 2, 4)
 
   bacc <- rep(NA_character_, nrow(out))
-  bacc[which(src == "measured")] <- "~1.00 (measured, not predicted)"
+  i <- which(src == "measured")
+  bacc[i] <- ifelse((out$measured_n_cohorts[i] >= 2L & out$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
+                    CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
   bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
   bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
   bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
@@ -794,7 +809,8 @@ cpg_expression_direction <- function(cpgs,
                            paste0("status_", short))),
            ucols,
            "measured_genes", "measured_tissues", "measured_direction",
-           "measured_direction_requested",
+           "measured_direction_requested", "measured_n_cohorts",
+           "measured_cohort_agreement",
            "annotation_mismatch", "mismatch_note", "note")
   drop <- intersect(c(".single", ".worst_tier", ".conf_cat"), names(out))
   if (length(drop)) out[, (drop) := NULL]
@@ -989,22 +1005,33 @@ print.cpgd_full <- function(x, ...) {
   # ---- measured eQTMs, this pair only ------------------------------------
   M <- .cpgd_source_table(sources, "measured", cpgd_measured_eqtms)
   if (!is.null(M) && nrow(M)) {
+    # 2.99.8: the table carries n_cohorts / cohort_agreement per tissue row
+    # (eQTM Atlas build); older tables do not, and read as one cohort.
+    nco <- if ("n_cohorts" %in% names(M)) suppressWarnings(as.integer(M$n_cohorts)) else rep(1L, nrow(M))
+    agr <- if ("cohort_agreement" %in% names(M)) suppressWarnings(as.numeric(M$cohort_agreement)) else rep(1, nrow(M))
     MM <- data.table::data.table(
       cpg_id = M$cpg_id,
       .gkey  = gsub("_", "-", toupper(M$target_gene)),
       d      = sign(as.numeric(M$direction)),
-      tis    = as.character(M$tissue))
+      tis    = as.character(M$tissue),
+      nco    = ifelse(is.na(nco), 1L, nco),
+      agr    = ifelse(is.na(agr), 1, agr))
     MM <- MM[, list(
       d   = if (length(unique(get("d"))) == 1L) get("d")[1] else NA_real_,
-      tis = paste(sort(unique(get("tis"))), collapse = ";")),
+      tis = paste(sort(unique(get("tis"))), collapse = ";"),
+      nco = sum(get("nco")),
+      agr = min(get("agr"))),
       by = c("cpg_id", ".gkey")]
     data.table::setkeyv(MM, c("cpg_id", ".gkey"))
     hit <- MM[P[, c("cpg_id", ".gkey"), with = FALSE], on = c("cpg_id", ".gkey")]
     P[, "measured_direction" := hit$d]
     P[, "measured_tissues"   := hit$tis]
+    P[, "measured_n_cohorts" := ifelse(is.na(hit$d), NA_integer_, as.integer(hit$nco))]
+    P[, "measured_cohort_agreement" := ifelse(is.na(hit$d), NA_real_, hit$agr)]
   } else {
-    P[, c("measured_direction", "measured_tissues") :=
-        list(NA_real_, NA_character_)]
+    P[, c("measured_direction", "measured_tissues",
+          "measured_n_cohorts", "measured_cohort_agreement") :=
+        list(NA_real_, NA_character_, NA_integer_, NA_real_)]
   }
 
   # ---- SMR, this pair only ------------------------------------------------
@@ -1220,7 +1247,9 @@ print.cpgd_full <- function(x, ...) {
                         "distance_tissue_conflict"))] <- "U"
 
   bacc <- rep(NA_character_, n)
-  bacc[which(src == "measured")]     <- "~1.00 (measured, not predicted)"
+  i <- which(src == "measured")
+  bacc[i] <- ifelse((P$measured_n_cohorts[i] >= 2L & P$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
+                    CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
   bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
   bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
   bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"

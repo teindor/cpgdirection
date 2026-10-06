@@ -1,3 +1,47 @@
+# cpgdirection 2.99.8
+
+* **The measured layer is rebuilt from the eQTM Atlas, with cohort provenance.**
+  `tools/build_measured_eqtms.R` (new) reads the per-cohort exports of the
+  eQTM Atlas (Sriram et al. 2026; hg19) and keeps cis pairs (|CpG - TSS| <=
+  250 kb, the window of the earlier build; decided from coordinates because
+  the Atlas labels every FUSION row "trans") with a usable sign that pass each
+  cohort's own threshold. Eighteen cohort files were read: EVA-PR nasal
+  epithelium (four subsets) and white blood cells, GTEx whole blood and seven
+  organs, FUSION muscle, Colonomics colon, Framingham whole blood. HELIX and
+  EvoImmunoPop carry no sign in the export and the Framingham export is a
+  10,000-row cap, so the earlier build's Framingham + HELIX blood pairs are
+  kept as `cohorts = "packaged_v1"`. The measured table grows from 26,633 to
+  ~75,000 pairs (blood ~26,500, nasal ~11,000, solid ~37,500) and gains
+  `n_cohorts`, `cohort_agreement`, `cohorts` and `source`.
+
+  - **Cross-cohort sign agreement** on shared pairs is 0.89-1.00 for every
+    cohort pair with >= 20 shared pairs, within and across tissues (EVA-PR WBC
+    vs Framingham 0.992 on 2,869; FUSION vs GTEx muscle 0.993 on 299; GTEx lung
+    vs ovary 0.985 on 2,227). The measured rung's expected accuracy is now
+    stated from this replication rather than assumed: `~1.00` where 2+ cohorts
+    agree, `0.96-0.99` for a single-cohort pair (`CPGD_MEASURED_ACCURACY`).
+    Both ladders report `measured_n_cohorts` and `measured_cohort_agreement`.
+  - **Tumour pairs leave the measured rung.** The 1,704 solid-tissue pairs of
+    the earlier build are tumour-derived (the solid catalogue is documented as
+    tumour tissue) and agree with the normal-tissue cohorts on only 0.58 of
+    shared pairs; tumour evidence is the Onco-eQTM layer. `solid_tissue` now
+    means normal muscle, lung, ovary, colon, breast, prostate and testis,
+    pooled for the direction call with the organ kept in the long table.
+  - The far-cis pairs the Atlas calls "cis" up to 1 Mb are not ingested: beyond
+    100 kb they are majority-positive and single-cohort, a different population
+    from the near-TSS pairs the rung was built on.
+
+* **distal_links gains scE2G cell-type links.** `tools/build_distal_links.R`
+  reads the scE2G_multiome "pairs" files served by the Broad
+  (`data.broadinstitute.org/scE2Gpredictions/PBMC_9_Cell_Types/scE2G/`),
+  streaming each 650-770 MB file through `gzip | awk` so only links at or above
+  the model's calling threshold (`E2G.Score.qnorm >= 0.177`,
+  `--sce2g-min-score`) reach R, and names the biosample from the file's
+  `CellType` column (PBMC/BMMC clusters are `tissue_class = "blood"`). The nine
+  PBMC cell types (cDC, CD14 monocytes x2, CD16 monocytes, B, naive and memory
+  CD4, central-memory CD8, NK) join the 26 bulk ENCODE-rE2G biosamples, so a
+  blood link can be read per cell type.
+
 # cpgdirection 2.99.7
 
 * **The tumour consensus earns a rung.** `tools/validate_onco.R` (new, with

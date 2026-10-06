@@ -161,7 +161,7 @@
     nasal_epithelium = c(A = "0.84-0.87", B = "0.70-0.84"),
     solid_tissue     = c(A = "0.62-0.70", B = "0.55-0.66"))
   out[, "expected_accuracy" := fcase(
-        get("status") == "DIRECT_eQTM", "~1.00 (measured, not predicted)",
+        get("status") == "DIRECT_eQTM", CPGD_MEASURED_ACCURACY[["single"]],
         get("status") == "PREDICTED" & get("evidence_tier") == "A", acc[["A"]],
         get("status") == "PREDICTED" & get("evidence_tier") == "B", acc[["B"]],
         default = NA_character_)]
@@ -213,16 +213,19 @@
 #' @export
 cpgd_accuracy_table <- function() {
   data.frame(
-    tissue = c(rep("blood", 3), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
+    tissue = c("any (measured)", "any (measured)",
+               rep("blood", 2), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
                "any (tumour consensus)", "any"),
-    status = c("DIRECT_eQTM", "PREDICTED (tier A)", "PREDICTED (tier B)",
+    status = c("DIRECT_eQTM (2+ cohorts agree)", "DIRECT_eQTM (one cohort)",
+               "PREDICTED (tier A)", "PREDICTED (tier B)",
                "PREDICTED (tier A)", "PREDICTED (tier B)",
                "PREDICTED (tier A)", "PREDICTED (tier B)",
                "onco_consensus (Onco-eQTM O1)", "majority baseline"),
-    expected_accuracy = c("~1.00", "0.77-0.85", "0.64-0.85",
+    expected_accuracy = c("~1.00", "0.96-0.99", "0.77-0.85", "0.64-0.85",
                           "0.84-0.87", "0.70-0.84",
                           "0.62-0.70", "0.55-0.66", "0.70-0.93", "0.55-0.63"),
-    basis = c("read from a catalogue, not predicted",
+    basis = c("same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
+              "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; tools/build_measured_eqtms.R",
               "HELIX locked test 0.766; EVA-PR white blood cell 0.854",
               "HELIX locked test 0.642; EVA-PR white blood cell 0.854",
               "grouped CV AUC 0.865; NOT independently validated (both cohorts, one study)",

@@ -75,18 +75,19 @@ O[, tss_bin := cut(abs(tss_dist_approx), c(-Inf, 1500, 10000, 100000, Inf),
                    labels = c("<=1.5kb", "1.5-10kb", "10-100kb", ">100kb"))]
 
 M <- as.data.table(cpgd_measured_eqtms())
+if (!"cohorts" %in% names(M)) M[, cohorts := "packaged_v1"]
 # a measured gene field may hold "A;B": one reference row per gene
 M <- M[, list(target_gene = toupper(trimws(unlist(strsplit(target_gene, ";", fixed = TRUE))))),
-       by = c("cpg_id", "tissue", "direction", "tss_dist")]
+       by = c("cpg_id", "tissue", "direction", "tss_dist", "cohorts")]
 M <- unique(M[nzchar(target_gene)])
 
 S <- tryCatch(as.data.table(cpgd_smr_directions()), error = function(e) NULL)
 refs <- list(
-  blood  = M[tissue == "blood",            list(cpg_id, target_gene, ref_dir = direction)],
-  nasal  = M[tissue == "nasal_epithelium", list(cpg_id, target_gene, ref_dir = direction)],
-  solid  = M[tissue == "solid_tissue",     list(cpg_id, target_gene, ref_dir = direction)])
+  blood  = M[tissue == "blood",            list(cpg_id, target_gene, ref_dir = direction, cohorts)],
+  nasal  = M[tissue == "nasal_epithelium", list(cpg_id, target_gene, ref_dir = direction, cohorts)],
+  solid  = M[tissue == "solid_tissue",     list(cpg_id, target_gene, ref_dir = direction, cohorts)])
 if (!is.null(S) && "smr_tier" %in% names(S)) {
-  refs$smr_S1 <- S[smr_tier == "S1", list(cpg_id, target_gene = toupper(target_gene), ref_dir = direction)]
+  refs$smr_S1 <- S[smr_tier == "S1", list(cpg_id, target_gene = toupper(target_gene), ref_dir = direction, cohorts = "SMR")]
 }
 refs <- lapply(refs, function(r) unique(r[!is.na(ref_dir) & ref_dir != 0]))
 
@@ -134,6 +135,12 @@ for (nm in names(refs)) {
   J[, r_bin := cut(abs(median_r), c(0, 0.3, 0.5, 1), labels = c("|r|<0.3", "0.3-0.5", ">=0.5"), include.lowest = TRUE)]
   t5 <- eval_block(J[onco_tier %in% c("O1", "O2")], c("onco_tier", "r_bin"))
   report <- c(report, "### O1/O2 by median |r|", "", md_table(t5), "")
+  # 2.99.8: the measured table names its cohorts, so O1 can be scored against
+  # each measured cohort separately (a true leave-one-cohort-out reading)
+  if (uniqueN(J$cohorts) > 1L) {
+    t6 <- eval_block(J[onco_tier == "O1"], c("cohorts"))[n >= 50]
+    report <- c(report, "### O1 by measured cohort (n >= 50)", "", md_table(t6), "")
+  }
   for (tier in c("O1", "O2")) {
     k <- J[onco_tier == tier]
     if (nrow(k)) summary_rows[[length(summary_rows) + 1L]] <-

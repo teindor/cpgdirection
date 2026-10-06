@@ -14,8 +14,15 @@
 #          TargetGene TargetGeneTSS ... Score (or ENCODE-rE2G.Score / E2G.Score)
 #          plus a thresholded indicator column in some releases.
 #   scE2G  Single-cell enhancer-gene maps (Sheth et al. 2026, Nat Genet,
-#          doi:10.1038/s41588-026-02695-8; CC BY 4.0; GRCh38). Same column
-#          layout as rE2G, one file per cell cluster (PBMC subsets, BMMC, islets).
+#          doi:10.1038/s41588-026-02695-8; GRCh38). Predictions are served at
+#          https://data.broadinstitute.org/scE2Gpredictions/<Dataset>/scE2G/
+#          pairs.E2G.scE2G_multiome.res.<CellType>.tsv.gz (PBMC_9_Cell_Types:
+#          cDC, CD14 Mono x2, CD16 Mono, B, CD4 naive, CD4 memory, CD8 CM, NK).
+#          Columns: chr start end name class TargetGene TargetGeneTSS ...
+#          CellType ... E2G.Score E2G.Score.qnorm. Every candidate pair is in
+#          the file; links are called at E2G.Score.qnorm >= 0.177
+#          (--sce2g-min-score). The CellType column names the biosample and
+#          PBMC/BMMC clusters are tissue_class "blood".
 #   HCEA   Human Cell Epigenome Atlas loops (Zhou et al. 2026, Science,
 #          doi:10.1126/science.adx0673; hg38). Cell-type loop calls as BEDPE:
 #          chr1 start1 end1 chr2 start2 end2 [name score ...]. A CpG in one
@@ -68,6 +75,12 @@ loop_dir  <- get_arg("--loops")
 tss_bed   <- get_arg("--tss-hg38")
 bs_map    <- get_arg("--biosample-map")
 min_score <- as.numeric(get_arg("--min-score", "0"))
+# scE2G "pairs" files hold EVERY candidate element-gene pair (650-770 MB gzipped
+# per cell type); the model's calling threshold on E2G.Score.qnorm is 0.177 for
+# scE2G_multiome and 0.174 for scE2G_ATAC (models/*/score_threshold_* in
+# EngreitzLab/scE2G). Rows below it are filtered while streaming, before R sees
+# them.
+sce2g_min <- as.numeric(get_arg("--sce2g-min-score", "0.177"))
 keep_abc  <- "--keep-abc" %in% args
 out_file  <- get_arg("--out", "distal_links.csv.gz")
 
@@ -125,14 +138,26 @@ lookup_bs <- function(f, src) {
 }
 
 # ---- E2G-style files (rE2G and scE2G share the layout) -------------------------
+# scE2G: stream through gzip + awk so only rows at or above the calling
+# threshold reach R (a 700 MB "pairs" file becomes ~50k rows).
+read_sce2g <- function(f) {
+  hdr <- names(fread(cmd = sprintf("gzip -dc %s | head -1", shQuote(f)), header = TRUE))
+  sc <- match("E2G.Score.qnorm", hdr)
+  if (is.na(sc)) stop(basename(f), ": no E2G.Score.qnorm column; have: ", paste(hdr, collapse = ", "))
+  cmd <- sprintf("gzip -dc %s | awk -F'\\t' 'NR==1 || $%d >= %s'", shQuote(f), sc, format(sce2g_min, nsmall = 3))
+  fread(cmd = cmd, sep = "\t", header = TRUE, showProgress = FALSE,
+        select = intersect(c("chr", "start", "end", "class", "TargetGene", "CellType",
+                             "E2G.Score.qnorm"), hdr))
+}
 read_e2g <- function(f, src) {
-  d <- read_gz(f)
+  d <- if (src == "scE2G") read_sce2g(f) else read_gz(f)
   nm <- names(d)
   chr_c <- nm[nm %in% c("#chr", "chr", "chrom")][1]
   st_c  <- nm[nm %in% c("start", "chromStart")][1]
   en_c  <- nm[nm %in% c("end", "chromEnd")][1]
   g_c   <- nm[nm %in% c("TargetGene", "gene", "target_gene")][1]
-  sc_c  <- nm[grepl("^(ENCODE-rE2G\\.Score|E2G\\.Score|Score|score|scE2G\\.Score)$", nm)][1]
+  sc_c  <- if (src == "scE2G") "E2G.Score.qnorm" else
+           nm[grepl("^(ENCODE-rE2G\\.Score|E2G\\.Score|Score|score|scE2G\\.Score)$", nm)][1]
   cl_c  <- nm[nm %in% c("class", "element_class")][1]
   if (anyNA(c(chr_c, st_c, en_c, g_c, sc_c)))
     stop(basename(f), ": cannot find chr/start/end/TargetGene/Score columns; have: ",
@@ -145,6 +170,14 @@ read_e2g <- function(f, src) {
     src <- "ABC"
   }
   bs <- lookup_bs(f, if (src == "ABC") "rE2G" else src)
+  mapped <- !is.null(bsm) && nrow(bsm[file == basename(f) & source == src]) > 0
+  if (src == "scE2G" && "CellType" %in% nm && !mapped) {
+    # the file names its cluster (e.g. PBMC_11_CD14.Mono.1); PBMC/BMMC clusters
+    # are blood-class, everything else stays "other" unless a map says otherwise
+    ct <- as.character(d$CellType[1])
+    bs <- list(biosample = ct,
+               tissue_class = if (grepl("^(PBMC|BMMC)", ct)) "blood" else "other")
+  }
   e <- data.table(chr = sub("^chr", "", as.character(d[[chr_c]])),
                   start = as.integer(d[[st_c]]) + 1L,       # BED 0-based -> 1-based
                   end   = as.integer(d[[en_c]]),

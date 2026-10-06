@@ -112,6 +112,11 @@ With \code{tissue = "all"}, a \code{data.table} of class
       sign is itself the best direction}
     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
       evidence, and whether it concerns a gene other than the one requested}
+    \item{measured_n_cohorts, measured_cohort_agreement}{for a measured
+      call, how many independent cohorts measured the pair and the share
+      agreeing on its sign (2.99.8, eQTM Atlas build). Replicated pairs
+      (2+ cohorts, same sign) read \code{~1.00}; single-cohort pairs read
+      \code{0.96-0.99}, the between-cohort replication rate on shared pairs}
   }
 }
 \description{

@@ -32,6 +32,18 @@ CPGD_ONCO_ACCURACY <- paste0(
   "nasal 0.93 n=1,221, SMR-S1 0.70 n=1,033; near-TSS agreement is largely ",
   "the -1 base rate)")
 
+# The measured rung is no longer "~1.00 by definition". From 2.99.8 the table is
+# built from the eQTM Atlas cohorts plus the packaged Framingham/HELIX blood
+# pairs, and the cross-cohort agreement on shared pairs
+# (tools/build_measured_eqtms.R, 6 Oct 2026: blood 0.99, nasal 1.00, solid
+# 0.92-0.99 between independent cohorts) is the honest figure for a measured
+# sign. A pair replicated in two or more cohorts keeps the ~1.00 reading.
+CPGD_MEASURED_ACCURACY <- c(
+  single     = paste0("0.96-0.99 (measured eQTM, one cohort; sign replicated ",
+                      "between independent cohorts on shared pairs: blood 0.99, ",
+                      "nasal 1.00, solid 0.92-0.99)"),
+  replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+
 # Path of the BUNDLED lookup file, or NA when this (thin) installation holds
 # none and the table comes from the cpgdirectionData ExperimentHub package
 # instead. See R/data_backend.R for the resolution order.

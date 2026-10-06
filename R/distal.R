@@ -18,7 +18,12 @@
 #'     al. 2026, Nature; 1,458 biosamples; per-link logistic score, binarised
 #'     by the authors at 70\% CRISPR recall);
 #'   \item \code{scE2G} -- single-cell multiome enhancer-gene maps (Sheth et
-#'     al. 2026, Nature Genetics; PBMC and bone-marrow cell clusters, islets);
+#'     al. 2026, Nature Genetics). From 2.99.8 the layer carries the nine PBMC
+#'     cell types of the scE2G_multiome release (cDC, CD14 monocytes x2, CD16
+#'     monocytes, B, naive and memory CD4, central-memory CD8, NK), called at
+#'     \code{E2G.Score.qnorm >= 0.177}, as blood-class biosamples named by
+#'     cell type, so a blood link can be read per cell type rather than per
+#'     bulk sample;
 #'   \item \code{HCEA} -- cell-type chromatin loops from the Human Cell
 #'     Epigenome Atlas (Zhou et al. 2026, Science; snm3C-seq, 16 tissues
 #'     including peripheral blood and cortex): the CpG sits in one anchor and

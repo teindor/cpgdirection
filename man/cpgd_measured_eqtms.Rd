@@ -8,17 +8,32 @@ cpgd_measured_eqtms()
 }
 \value{
 A \code{data.table} with \code{cpg_id}, \code{target_gene},
-  \code{tissue}, \code{direction} and \code{tss_dist}.
+  \code{tissue}, \code{direction}, \code{tss_dist}, and (2.99.8)
+  \code{n_cohorts}, \code{cohort_agreement}, \code{cohorts} (pipe-separated
+  cohort names, or \code{packaged_v1}) and \code{source}.
 }
 \description{
-The 25,056 CpG-gene pairs that were directly measured in at least one
-catalogue, rather than predicted: 18,276 CpGs and 4,997 genes.
+The CpG-gene pairs that were directly measured in at least one eQTM
+cohort, rather than predicted. From 2.99.8 the table is built by
+\code{tools/build_measured_eqtms.R} from the eQTM Atlas cohort exports
+(Sriram et al. 2026): EVA-PR nasal epithelium and white blood cells
+(Kim et al. 2020, 2023), GTEx whole blood and seven organs (Oliva et al.
+2023), FUSION skeletal muscle (Taylor et al. 2019), Colonomics colon
+(Diez-Villanueva et al. 2021) and Framingham whole blood (Keshawarz et
+al. 2023), plus the Framingham and HELIX (Ruiz-Arenas et al. 2022) blood
+pairs of the earlier build that the Atlas exports do not cover. Pairs are
+cis (|CpG - TSS| <= 250 kb), significant by the cohort's own rule, with
+the sign taken by cohort majority; sign ties are dropped.
+\code{tissue} is \code{blood}, \code{nasal_epithelium} or
+\code{solid_tissue} (normal muscle, lung, ovary, colon, breast, prostate,
+testis pooled). Tumour-derived pairs are no longer in this table; tumour
+evidence is the Onco-eQTM layer.
 }
 \details{
 These matter for a specific reason. Nearest-gene annotation is wrong often
-enough to be a problem: 23.1\% of measured pairs involve a gene that is
-\emph{not} the nearest measured gene to that CpG, and 20.3\% of these CpGs
-have measured associations with more than one gene. A CpG annotated to gene X
+enough to be a problem: a substantial share of measured pairs involve a
+gene that is \emph{not} the nearest gene to the CpG, and many CpGs have
+measured associations with more than one gene. A CpG annotated to gene X
 on the array may have its measured relationship with gene Y.
 }
 \examples{
