@@ -41,6 +41,15 @@
   PBMC cell types (cDC, CD14 monocytes x2, CD16 monocytes, B, naive and memory
   CD4, central-memory CD8, NK) join the 26 bulk ENCODE-rE2G biosamples, so a
   blood link can be read per cell type.
+  The rebuilt layer holds 10,205,122 rows, 1,289,742 CpG-gene pairs and
+  525,222 CpGs; scE2G contributes 2,168,868 rows (225-263 thousand per cell
+  type; scores 0.177-1.00, median 0.78).
+
+* **The Onco-eQTM rung re-validated against the rebuilt measured layer.** With
+  tumour pairs gone, the solid reference is normal tissue from non-TCGA donors
+  and becomes a fourth independent check: O1 agrees with it on 0.874 of 1,976
+  pairs (baseline 0.672), with blood 0.830 (n = 1,955) and nasal 0.937
+  (n = 1,500) unchanged. `CPGD_ONCO_ACCURACY` now quotes all four references.
 
 # cpgdirection 2.99.7
 

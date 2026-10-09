@@ -28,8 +28,9 @@ stopifnot(!anyDuplicated(CPGD_EVIDENCE))
 
 # Validated once, quoted in two ladders: tools/validate_onco.R, 3 Oct 2026.
 CPGD_ONCO_ACCURACY <- paste0(
-  "0.70-0.93 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.82 n=1,455, ",
-  "nasal 0.93 n=1,221, SMR-S1 0.70 n=1,033; near-TSS agreement is largely ",
+  "0.70-0.94 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.83 n=1,955, ",
+  "nasal 0.94 n=1,500, normal solid tissue 0.87 n=1,976, SMR-S1 0.70 n=1,033; ",
+  "near-TSS agreement is largely ",
   "the -1 base rate)")
 
 # The measured rung is no longer "~1.00 by definition". From 2.99.8 the table is

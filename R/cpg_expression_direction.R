@@ -223,7 +223,7 @@ cpgd_accuracy_table <- function() {
                "onco_consensus (Onco-eQTM O1)", "majority baseline"),
     expected_accuracy = c("~1.00", "0.96-0.99", "0.77-0.85", "0.64-0.85",
                           "0.84-0.87", "0.70-0.84",
-                          "0.62-0.70", "0.55-0.66", "0.70-0.93", "0.55-0.63"),
+                          "0.62-0.70", "0.55-0.66", "0.70-0.94", "0.55-0.63"),
     basis = c("same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
               "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; tools/build_measured_eqtms.R",
               "HELIX locked test 0.766; EVA-PR white blood cell 0.854",
@@ -232,7 +232,7 @@ cpgd_accuracy_table <- function() {
               "grouped CV AUC 0.865; NOT independently validated",
               "grouped CV AUC 0.664; tumour tissue; brain and kidney below baseline",
               "grouped CV AUC 0.664; provisional",
-              "agreement with measured blood 0.82 (n=1,455), nasal 0.93 (n=1,221), SMR S1 0.70 (n=1,033); tools/validate_onco.R",
+              "agreement with measured blood 0.83 (n=1,955), nasal 0.94 (n=1,500), normal solid tissue 0.87 (n=1,976), SMR S1 0.70 (n=1,033); tools/validate_onco.R, 6 Oct 2026",
               "always predicting an inverse association"),
     stringsAsFactors = FALSE)
 }

@@ -1,213 +1,213 @@
 # distal_links (ENCODE-rE2G, blood class) vs peripheral references
 
-Layer: 889,779 blood-class CpG-gene links over 429,647 CpGs (26 biosamples; brain class not used here).
+Layer: 1,038,305 blood-class CpG-gene links over 444,471 CpGs (26 biosamples; brain class not used here).
 Precision = linked genes that are a reference gene for that CpG; recall = reference pairs that are linked;
 both on the CpGs the two sources share. Wilson 95% CI. The manifest annotation is the comparator.
 
-## Reference: blood (16,858 pairs, 11,860 CpGs)
+## Reference: blood (26,545 pairs, 16,796 CpGs)
 
 ### Q1 coverage
 
-- reference CpGs with >= 1 blood-class link: 74.4%
-- reference pairs that are linked: 34.6% (5,839)
+- reference CpGs with >= 1 blood-class link: 61.1%
+- reference pairs that are linked: 28.0% (7,429)
 
 ### Q2 target proposal quality
 
 | proposal | n_cpg | proposals | precision | ref_pairs | recall |
 |---|---|---|---|---|---|
-| rE2G_all |  8818 | 19403 | 0.301 [0.295, 0.307] | 12654 | 0.461 [0.453, 0.470] |
-| rE2G_score_0.2-0.5 |  3974 |  7964 | 0.158 [0.150, 0.166] |  5765 | 0.218 [0.207, 0.229] |
-| rE2G_score_0.5-0.9 |  2825 |  4905 | 0.241 [0.229, 0.253] |  4173 | 0.283 [0.270, 0.297] |
-| rE2G_score_>=0.9 |  5700 |  6534 | 0.521 [0.509, 0.533] |  8176 | 0.416 [0.405, 0.427] |
-| rE2G_biosamples_1-2 |  4268 |  8189 | 0.195 [0.187, 0.204] |  6315 | 0.253 [0.242, 0.264] |
-| rE2G_biosamples_3-9 |  3966 |  6232 | 0.309 [0.297, 0.320] |  5621 | 0.342 [0.330, 0.355] |
-| rE2G_biosamples_>=10 |  3698 |  4982 | 0.465 [0.451, 0.479] |  5184 | 0.447 [0.434, 0.461] |
-| manifest_all | 11215 | 15912 | 0.419 [0.411, 0.426] | 15976 | 0.417 [0.409, 0.425] |
-| manifest_on_linked_cpgs |  8437 | 12157 | 0.430 [0.422, 0.439] | 12136 | 0.431 [0.422, 0.440] |
-| rE2G_on_manifest_cpgs |  8437 | 18211 | 0.307 [0.301, 0.314] | 12136 | 0.461 [0.452, 0.470] |
+| rE2G_all | 10261 | 24688 | 0.301 [0.295, 0.307] | 15604 | 0.476 [0.468, 0.484] |
+| rE2G_score_0.2-0.5 |  5866 | 11048 | 0.164 [0.157, 0.171] |  8973 | 0.201 [0.193, 0.210] |
+| rE2G_score_0.5-0.9 |  3591 |  6070 | 0.246 [0.235, 0.257] |  5627 | 0.265 [0.254, 0.277] |
+| rE2G_score_>=0.9 |  6570 |  7570 | 0.546 [0.534, 0.557] |  9920 | 0.416 [0.407, 0.426] |
+| rE2G_biosamples_1-2 |  5481 |  9858 | 0.183 [0.175, 0.191] |  8444 | 0.214 [0.205, 0.223] |
+| rE2G_biosamples_3-9 |  5104 |  7876 | 0.288 [0.278, 0.298] |  7807 | 0.291 [0.281, 0.301] |
+| rE2G_biosamples_>=10 |  5085 |  6954 | 0.483 [0.471, 0.494] |  7464 | 0.450 [0.438, 0.461] |
+| manifest_all | 12834 | 18105 | 0.452 [0.444, 0.459] | 19294 | 0.424 [0.417, 0.431] |
+| manifest_on_linked_cpgs |  9832 | 14024 | 0.466 [0.458, 0.474] | 14964 | 0.437 [0.429, 0.445] |
+| rE2G_on_manifest_cpgs |  9832 | 23334 | 0.306 [0.300, 0.312] | 14964 | 0.478 [0.470, 0.486] |
 
 ### Q3 distance profile of reference pairs by manifest / link status
 
 | in_manifest | linked | n | median_dist | p90_dist |
 |---|---|---|---|---|
-| FALSE | FALSE | 8628 | 48660 | 172779 |
-| FALSE | TRUE | 1567 | 30360 | 115432 |
-| TRUE | FALSE | 2391 | 14519 | 103982 |
-| TRUE | TRUE | 4272 | 933 | 35285 |
+| FALSE | FALSE | 16196 | 44902 | 172420 |
+| FALSE | TRUE |  2174 | 26781 | 113599 |
+| TRUE | FALSE |  2920 | 19518 | 107678 |
+| TRUE | TRUE |  5255 | 2613 | 50171 |
 
 Pairs linked but NOT in the manifest are the layer's contribution; their distances show whether it reaches beyond the annotation window.
 
-### Q4 sign among linked pairs (reference base rate of -1: 0.577)
+### Q4 sign among linked pairs (reference base rate of -1: 0.565)
 
 By element class (promoter-class elements are near-TSS, i.e. distance information the ladder already uses):
 
 | promoter_class | n | neg_share |
 |---|---|---|
-| FALSE | 3050 | 0.617 [0.600, 0.634] |
-| TRUE | 2789 | 0.790 [0.775, 0.805] |
+| FALSE | 3592 | 0.615 [0.599, 0.630] |
+| TRUE | 3837 | 0.768 [0.755, 0.781] |
 
 By rE2G score:
 
 | score_bin | n | neg_share |
 |---|---|---|
-| 0.2-0.5 | 1256 | 0.541 [0.513, 0.568] |
-| 0.5-0.9 | 1181 | 0.621 [0.593, 0.648] |
-| >=0.9 | 3402 | 0.786 [0.772, 0.799] |
+| 0.2-0.5 | 1807 | 0.553 [0.530, 0.576] |
+| 0.5-0.9 | 1491 | 0.634 [0.609, 0.658] |
+| >=0.9 | 4131 | 0.778 [0.765, 0.790] |
 
 By number of biosamples:
 
 | bs_bin | n | neg_share |
 |---|---|---|
-| 1-2 | 1598 | 0.585 [0.561, 0.609] |
-| 3-9 | 1923 | 0.687 [0.666, 0.708] |
-| >=10 | 2318 | 0.789 [0.772, 0.805] |
+| 1-2 | 1804 | 0.578 [0.555, 0.600] |
+| 3-9 | 2269 | 0.683 [0.664, 0.702] |
+| >=10 | 3356 | 0.764 [0.749, 0.778] |
 
-## Reference: nasal (8,319 pairs, 6,289 CpGs)
+## Reference: nasal (11,045 pairs, 7,682 CpGs)
 
 ### Q1 coverage
 
-- reference CpGs with >= 1 blood-class link: 75.8%
-- reference pairs that are linked: 35.2% (2,932)
+- reference CpGs with >= 1 blood-class link: 67.5%
+- reference pairs that are linked: 29.3% (3,236)
 
 ### Q2 target proposal quality
 
 | proposal | n_cpg | proposals | precision | ref_pairs | recall |
 |---|---|---|---|---|---|
-| rE2G_all | 4769 | 10584 | 0.277 [0.269, 0.286] | 6351 | 0.462 [0.449, 0.474] |
-| rE2G_score_0.2-0.5 | 2162 |  4385 | 0.144 [0.134, 0.155] | 2821 | 0.224 [0.209, 0.240] |
-| rE2G_score_0.5-0.9 | 1622 |  2780 | 0.237 [0.222, 0.254] | 2136 | 0.309 [0.290, 0.329] |
-| rE2G_score_>=0.9 | 3014 |  3419 | 0.479 [0.463, 0.496] | 4046 | 0.405 [0.390, 0.420] |
-| rE2G_biosamples_1-2 | 2362 |  4662 | 0.188 [0.177, 0.200] | 3069 | 0.286 [0.270, 0.302] |
-| rE2G_biosamples_3-9 | 2181 |  3413 | 0.313 [0.298, 0.329] | 2849 | 0.375 [0.357, 0.393] |
-| rE2G_biosamples_>=10 | 1907 |  2509 | 0.393 [0.374, 0.413] | 2583 | 0.382 [0.364, 0.401] |
-| manifest_all | 5934 |  7927 | 0.382 [0.371, 0.392] | 7892 | 0.383 [0.373, 0.394] |
-| manifest_on_linked_cpgs | 4553 |  6125 | 0.384 [0.372, 0.396] | 6085 | 0.387 [0.374, 0.399] |
-| rE2G_on_manifest_cpgs | 4553 | 10001 | 0.279 [0.270, 0.287] | 6085 | 0.458 [0.445, 0.470] |
+| rE2G_all | 5186 | 12659 | 0.256 [0.248, 0.263] | 7377 | 0.439 [0.427, 0.450] |
+| rE2G_score_0.2-0.5 | 2911 |  5703 | 0.147 [0.139, 0.157] | 4241 | 0.198 [0.187, 0.211] |
+| rE2G_score_0.5-0.9 | 1914 |  3253 | 0.220 [0.207, 0.235] | 2756 | 0.260 [0.244, 0.277] |
+| rE2G_score_>=0.9 | 3255 |  3703 | 0.453 [0.437, 0.469] | 4710 | 0.356 [0.343, 0.370] |
+| rE2G_biosamples_1-2 | 2833 |  5309 | 0.177 [0.167, 0.188] | 4068 | 0.231 [0.219, 0.245] |
+| rE2G_biosamples_3-9 | 2655 |  4030 | 0.269 [0.255, 0.283] | 3818 | 0.284 [0.270, 0.298] |
+| rE2G_biosamples_>=10 | 2439 |  3320 | 0.365 [0.349, 0.382] | 3577 | 0.339 [0.324, 0.355] |
+| manifest_all | 6373 |  8594 | 0.359 [0.349, 0.369] | 9155 | 0.337 [0.327, 0.347] |
+| manifest_on_linked_cpgs | 4948 |  6716 | 0.361 [0.350, 0.373] | 7082 | 0.343 [0.332, 0.354] |
+| rE2G_on_manifest_cpgs | 4948 | 12010 | 0.257 [0.249, 0.265] | 7082 | 0.435 [0.424, 0.447] |
 
 ### Q3 distance profile of reference pairs by manifest / link status
 
 | in_manifest | linked | n | median_dist | p90_dist |
 |---|---|---|---|---|
-| FALSE | FALSE | 4456 | 99353 | 212268 |
-| FALSE | TRUE |  838 | 34358 | 138088 |
-| TRUE | FALSE |  931 | 4074 | 76923 |
-| TRUE | TRUE | 2094 | 943 | 27007 |
+| FALSE | FALSE | 6906 | 108453 | 221346 |
+| FALSE | TRUE | 1055 | 32832 | 135769 |
+| TRUE | FALSE |  903 | 4024 | 90534 |
+| TRUE | TRUE | 2181 | 1017 | 29182 |
 
 Pairs linked but NOT in the manifest are the layer's contribution; their distances show whether it reaches beyond the annotation window.
 
-### Q4 sign among linked pairs (reference base rate of -1: 0.615)
+### Q4 sign among linked pairs (reference base rate of -1: 0.606)
 
 By element class (promoter-class elements are near-TSS, i.e. distance information the ladder already uses):
 
 | promoter_class | n | neg_share |
 |---|---|---|
-| FALSE | 1719 | 0.654 [0.631, 0.676] |
-| TRUE | 1213 | 0.891 [0.872, 0.907] |
+| FALSE | 1771 | 0.652 [0.630, 0.674] |
+| TRUE | 1465 | 0.848 [0.828, 0.865] |
 
 By rE2G score:
 
 | score_bin | n | neg_share |
 |---|---|---|
-| 0.2-0.5 |  633 | 0.553 [0.514, 0.591] |
-| 0.5-0.9 |  660 | 0.653 [0.616, 0.688] |
-| >=0.9 | 1639 | 0.869 [0.852, 0.884] |
+| 0.2-0.5 |  841 | 0.561 [0.527, 0.594] |
+| 0.5-0.9 |  717 | 0.653 [0.617, 0.687] |
+| >=0.9 | 1678 | 0.868 [0.851, 0.884] |
 
 By number of biosamples:
 
 | bs_bin | n | neg_share |
 |---|---|---|
-| 1-2 |  877 | 0.709 [0.678, 0.738] |
-| 3-9 | 1068 | 0.734 [0.707, 0.760] |
-| >=10 |  987 | 0.810 [0.784, 0.833] |
+| 1-2 |  941 | 0.708 [0.678, 0.736] |
+| 3-9 | 1083 | 0.726 [0.698, 0.751] |
+| >=10 | 1212 | 0.780 [0.756, 0.802] |
 
-## Reference: solid (1,754 pairs, 1,697 CpGs)
+## Reference: solid (37,462 pairs, 25,891 CpGs)
 
 ### Q1 coverage
 
-- reference CpGs with >= 1 blood-class link: 70.2%
-- reference pairs that are linked: 59.5% (1,044)
+- reference CpGs with >= 1 blood-class link: 52.3%
+- reference pairs that are linked: 25.5% (9,560)
 
 ### Q2 target proposal quality
 
 | proposal | n_cpg | proposals | precision | ref_pairs | recall |
 |---|---|---|---|---|---|
-| rE2G_all | 1192 | 2424 | 0.431 [0.411, 0.451] | 1239 | 0.843 [0.821, 0.862] |
-| rE2G_score_0.2-0.5 |  474 |  935 | 0.171 [0.148, 0.197] |  485 | 0.330 [0.290, 0.373] |
-| rE2G_score_0.5-0.9 |  269 |  558 | 0.260 [0.225, 0.298] |  274 | 0.529 [0.470, 0.587] |
-| rE2G_score_>=0.9 |  793 |  931 | 0.794 [0.767, 0.819] |  830 | 0.890 [0.867, 0.910] |
-| rE2G_biosamples_1-2 |  485 |  935 | 0.232 [0.206, 0.260] |  497 | 0.437 [0.394, 0.481] |
-| rE2G_biosamples_3-9 |  425 |  677 | 0.399 [0.363, 0.436] |  436 | 0.619 [0.573, 0.664] |
-| rE2G_biosamples_>=10 |  604 |  812 | 0.686 [0.653, 0.717] |  636 | 0.876 [0.848, 0.899] |
-| manifest_all | 1696 | 2273 | 0.749 [0.731, 0.766] | 1753 | 0.971 [0.962, 0.978] |
-| manifest_on_linked_cpgs | 1192 | 1670 | 0.718 [0.696, 0.739] | 1239 | 0.968 [0.956, 0.976] |
-| rE2G_on_manifest_cpgs | 1192 | 2424 | 0.431 [0.411, 0.451] | 1239 | 0.843 [0.821, 0.862] |
+| rE2G_all | 13544 | 30175 | 0.317 [0.312, 0.322] | 19867 | 0.481 [0.474, 0.488] |
+| rE2G_score_0.2-0.5 |  7912 | 14058 | 0.179 [0.173, 0.186] | 11619 | 0.217 [0.209, 0.224] |
+| rE2G_score_0.5-0.9 |  4888 |  7970 | 0.295 [0.285, 0.305] |  7667 | 0.307 [0.296, 0.317] |
+| rE2G_score_>=0.9 |  7111 |  8147 | 0.576 [0.565, 0.586] | 10587 | 0.443 [0.434, 0.453] |
+| rE2G_biosamples_1-2 |  7960 | 13776 | 0.230 [0.223, 0.237] | 11736 | 0.270 [0.262, 0.278] |
+| rE2G_biosamples_3-9 |  6612 |  9796 | 0.342 [0.332, 0.351] |  9683 | 0.346 [0.336, 0.355] |
+| rE2G_biosamples_>=10 |  4657 |  6603 | 0.461 [0.449, 0.473] |  6966 | 0.437 [0.425, 0.449] |
+| manifest_all | 21492 | 29409 | 0.494 [0.488, 0.500] | 30449 | 0.477 [0.471, 0.483] |
+| manifest_on_linked_cpgs | 12826 | 18296 | 0.490 [0.483, 0.498] | 18741 | 0.479 [0.472, 0.486] |
+| rE2G_on_manifest_cpgs | 12826 | 28480 | 0.320 [0.315, 0.326] | 18741 | 0.487 [0.479, 0.494] |
 
 ### Q3 distance profile of reference pairs by manifest / link status
 
 | in_manifest | linked | n | median_dist | p90_dist |
 |---|---|---|---|---|
-| FALSE | FALSE |   27 | 11339 | 82934 |
-| FALSE | TRUE |   25 | 742 | 55731 |
-| TRUE | FALSE |  683 | 21189 | 124774 |
-| TRUE | TRUE | 1019 | 777 | 39370 |
+| FALSE | FALSE | 20555 | 48020 | 176280 |
+| FALSE | TRUE |  2380 | 19094 | 86138 |
+| TRUE | FALSE |  7347 | 19279 | 117152 |
+| TRUE | TRUE |  7180 | 2392 | 47186 |
 
 Pairs linked but NOT in the manifest are the layer's contribution; their distances show whether it reaches beyond the annotation window.
 
-### Q4 sign among linked pairs (reference base rate of -1: 0.539)
+### Q4 sign among linked pairs (reference base rate of -1: 0.614)
 
 By element class (promoter-class elements are near-TSS, i.e. distance information the ladder already uses):
 
 | promoter_class | n | neg_share |
 |---|---|---|
-| FALSE | 389 | 0.391 [0.344, 0.440] |
-| TRUE | 655 | 0.724 [0.688, 0.757] |
+| FALSE | 5671 | 0.620 [0.607, 0.632] |
+| TRUE | 3889 | 0.762 [0.749, 0.776] |
 
 By rE2G score:
 
 | score_bin | n | neg_share |
 |---|---|---|
-| 0.2-0.5 | 160 | 0.312 [0.246, 0.388] |
-| 0.5-0.9 | 145 | 0.386 [0.311, 0.467] |
-| >=0.9 | 739 | 0.704 [0.670, 0.735] |
+| 0.2-0.5 | 2519 | 0.618 [0.599, 0.637] |
+| 0.5-0.9 | 2350 | 0.639 [0.619, 0.658] |
+| >=0.9 | 4691 | 0.729 [0.717, 0.742] |
 
 By number of biosamples:
 
 | bs_bin | n | neg_share |
 |---|---|---|
-| 1-2 | 217 | 0.429 [0.365, 0.495] |
-| 3-9 | 270 | 0.522 [0.463, 0.581] |
-| >=10 | 557 | 0.704 [0.665, 0.740] |
+| 1-2 | 3170 | 0.649 [0.632, 0.665] |
+| 3-9 | 3346 | 0.662 [0.646, 0.678] |
+| >=10 | 3044 | 0.726 [0.710, 0.741] |
 
 ## Reference: smr_S1S2 (396,294 pairs, 102,379 CpGs)
 
 ### Q1 coverage
 
-- reference CpGs with >= 1 blood-class link: 58.7%
-- reference pairs that are linked: 9.8% (38,641)
+- reference CpGs with >= 1 blood-class link: 60.1%
+- reference pairs that are linked: 11.3% (44,779)
 
 ### Q2 target proposal quality
 
 | proposal | n_cpg | proposals | precision | ref_pairs | recall |
 |---|---|---|---|---|---|
-| rE2G_all | 60142 | 125198 | 0.309 [0.306, 0.311] | 240222 | 0.161 [0.159, 0.162] |
-| rE2G_score_0.2-0.5 | 28027 |  53525 | 0.225 [0.222, 0.229] | 110862 | 0.109 [0.107, 0.111] |
-| rE2G_score_0.5-0.9 | 17744 |  30900 | 0.270 [0.265, 0.275] |  74066 | 0.113 [0.111, 0.115] |
-| rE2G_score_>=0.9 | 35735 |  40773 | 0.447 [0.442, 0.452] | 143830 | 0.127 [0.125, 0.128] |
-| rE2G_biosamples_1-2 | 29082 |  53106 | 0.226 [0.222, 0.230] | 114164 | 0.105 [0.103, 0.107] |
-| rE2G_biosamples_3-9 | 26468 |  39750 | 0.315 [0.310, 0.319] | 105937 | 0.118 [0.116, 0.120] |
-| rE2G_biosamples_>=10 | 23717 |  32342 | 0.437 [0.431, 0.442] |  98096 | 0.144 [0.142, 0.146] |
+| rE2G_all | 61574 | 141212 | 0.317 [0.315, 0.320] | 246292 | 0.182 [0.180, 0.183] |
+| rE2G_score_0.2-0.5 | 35694 |  65265 | 0.252 [0.249, 0.256] | 145458 | 0.113 [0.112, 0.115] |
+| rE2G_score_0.5-0.9 | 20483 |  34532 | 0.283 [0.279, 0.288] |  86678 | 0.113 [0.111, 0.115] |
+| rE2G_score_>=0.9 | 36137 |  41415 | 0.448 [0.443, 0.452] | 146167 | 0.127 [0.125, 0.129] |
+| rE2G_biosamples_1-2 | 33213 |  57534 | 0.229 [0.226, 0.233] | 131801 | 0.100 [0.099, 0.102] |
+| rE2G_biosamples_3-9 | 30738 |  45891 | 0.321 [0.317, 0.325] | 126239 | 0.117 [0.115, 0.119] |
+| rE2G_biosamples_>=10 | 27353 |  37787 | 0.446 [0.441, 0.451] | 113875 | 0.148 [0.146, 0.150] |
 | manifest_all | 85219 | 112715 | 0.373 [0.370, 0.376] | 333747 | 0.126 [0.125, 0.127] |
-| manifest_on_linked_cpgs | 56608 |  76370 | 0.377 [0.373, 0.380] | 228654 | 0.126 [0.125, 0.127] |
-| rE2G_on_manifest_cpgs | 56608 | 115661 | 0.316 [0.313, 0.318] | 228654 | 0.160 [0.158, 0.161] |
+| manifest_on_linked_cpgs | 57920 |  78046 | 0.378 [0.374, 0.381] | 234381 | 0.126 [0.124, 0.127] |
+| rE2G_on_manifest_cpgs | 57920 | 131375 | 0.324 [0.321, 0.326] | 234381 | 0.182 [0.180, 0.183] |
 
 ### Q3 distance profile of reference pairs by manifest / link status
 
 | in_manifest | linked | n | median_dist | p90_dist |
 |---|---|---|---|---|
-| FALSE | FALSE | 339374 | 174980 | 718660 |
-| FALSE | TRUE |  14849 | 45486 | 164244 |
-| TRUE | FALSE |  18279 | 17887 | 100466 |
-| TRUE | TRUE |  23792 | 12578 | 67009 |
+| FALSE | FALSE | 334361 | 178930 | 724166 |
+| FALSE | TRUE |  19862 | 42296 | 154664 |
+| TRUE | FALSE |  17154 | 17844 | 99771 |
+| TRUE | TRUE |  24917 | 12779 | 68766 |
 
 Pairs linked but NOT in the manifest are the layer's contribution; their distances show whether it reaches beyond the annotation window.
 
@@ -217,24 +217,24 @@ By element class (promoter-class elements are near-TSS, i.e. distance informatio
 
 | promoter_class | n | neg_share |
 |---|---|---|
-| FALSE | 23799 | 0.531 [0.524, 0.537] |
-| TRUE | 14842 | 0.598 [0.590, 0.606] |
+| FALSE | 24552 | 0.531 [0.524, 0.537] |
+| TRUE | 20227 | 0.580 [0.573, 0.587] |
 
 By rE2G score:
 
 | score_bin | n | neg_share |
 |---|---|---|
-| 0.2-0.5 | 12063 | 0.505 [0.497, 0.514] |
-| 0.5-0.9 |  8356 | 0.546 [0.536, 0.557] |
-| >=0.9 | 18222 | 0.595 [0.588, 0.602] |
+| 0.2-0.5 | 16457 | 0.510 [0.502, 0.517] |
+| 0.5-0.9 |  9784 | 0.547 [0.537, 0.557] |
+| >=0.9 | 18538 | 0.595 [0.588, 0.602] |
 
 By number of biosamples:
 
 | bs_bin | n | neg_share |
 |---|---|---|
-| 1-2 | 12003 | 0.516 [0.507, 0.525] |
-| 3-9 | 12517 | 0.557 [0.548, 0.565] |
-| >=10 | 14121 | 0.590 [0.582, 0.598] |
+| 1-2 | 13201 | 0.515 [0.507, 0.524] |
+| 3-9 | 14735 | 0.546 [0.538, 0.554] |
+| >=10 | 16843 | 0.589 [0.582, 0.597] |
 
 ## Reading the result
 
