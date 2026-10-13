@@ -5,13 +5,14 @@
 \title{Build a gene TSS annotation for universal mode}
 \usage{
 cpgd_build_gene_tss(
-  out = "gene_tss_hg19.csv",
+  out = NULL,
   source = c("txdb", "manifest"),
   manifest_file = NULL
 )
 }
 \arguments{
-\item{out}{Path for the resulting CSV. Default \code{"gene_tss_hg19.csv"}.}
+\item{out}{Optional path. When given, the table is also written there as
+CSV. Nothing is written by default.}
 
 \item{source}{\code{"txdb"} uses \code{TxDb.Hsapiens.UCSC.hg19.knownGene}
 with \code{org.Hs.eg.db} for symbols. \code{"manifest"} reads an Illumina
@@ -21,8 +22,8 @@ manifest instead, via \code{manifest_file}.}
 \code{source = "manifest"}.}
 }
 \value{
-Invisibly, the path written. The table has \code{gene}, \code{chr},
-  \code{tss} and \code{strand}.
+A \code{data.table} with \code{gene}, \code{chr}, \code{tss} and
+  \code{strand} (hg19), returned invisibly.
 }
 \description{
 The catalogue-based prediction only covers genes some catalogue measured. To
@@ -31,8 +32,10 @@ which it does not ship — a gene annotation is large, versioned, and better
 taken from Bioconductor than frozen into a package.
 }
 \details{
-Run this once. It writes a small table that
-\code{\link{cpg_direction_universal}} then uses.
+\code{\link{cpg_direction_universal}} calls \code{\link{cpgd_gene_tss}},
+which builds this table once and caches it under
+\code{tools::R_user_dir("cpgdirection", "cache")}; call this function
+directly only to inspect the table or to build one from a manifest.
 
 
 TxDb is the more accurate source: real transcription start sites, strand
@@ -43,6 +46,7 @@ than a TSS, so distances derived from it are cruder.
 \examples{
 if (requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE) &&
     requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
-cpgd_build_gene_tss(out = tempfile(fileext = ".csv"))
+g <- cpgd_build_gene_tss()
+head(g)
 }
 }

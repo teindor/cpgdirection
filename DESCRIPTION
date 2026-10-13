@@ -1,7 +1,7 @@
 Package: cpgdirection
 Type: Package
 Title: Predict the Direction of CpG-Gene Expression Associations
-Version: 2.99.8
+Version: 0.99.0
 Authors@R: c(
  person("Tsachi", "Ein-Dor", email = "teindor@runi.ac.il",
  role = c("aut", "cre", "fnd"),
@@ -17,18 +17,21 @@ Description: Assigns a direction to the association between DNA methylation at a
  direction, a calibrated probability, an evidence tier and an expected
  accuracy, and abstains where the evidence is insufficient. Predictions
  estimate direction conditional on the CpG being an eQTM; they do not
- establish that an effect exists.
+ establish that an effect exists. Code provenance: the design, data assembly,
+ validation and methodological decisions are the author's; the R code was
+ drafted and edited with the assistance of Claude (Anthropic) and was run,
+ tested and checked by the author (Assisted-by: Claude (Anthropic)).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.6.0)
-Imports: data.table (>= 1.14.0), utils, stats,
- TxDb.Hsapiens.UCSC.hg19.knownGene,
- org.Hs.eg.db,
- GenomicFeatures,
- GenomicRanges,
- AnnotationDbi,
+Imports: data.table (>= 1.14.0), utils, stats, tools,
     cpgdirectionData
-Suggests: testthat (>= 3.0.0), gt (>= 0.9.0), knitr, rmarkdown
+Suggests: testthat (>= 3.0.0), gt (>= 0.9.0), knitr, rmarkdown, BiocStyle,
+    TxDb.Hsapiens.UCSC.hg19.knownGene,
+    org.Hs.eg.db,
+    GenomicFeatures,
+    GenomicRanges,
+    AnnotationDbi
 VignetteBuilder: knitr
 biocViews: DNAMethylation, GeneExpression, GeneRegulation, GeneTarget,
  Epigenetics, Annotation

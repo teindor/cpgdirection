@@ -29,7 +29,6 @@ export(cpgd_probe_qc)
 export(cpgd_report)
 export(cpgd_selftest)
 export(cpgd_smr_directions)
-importFrom(TxDb.Hsapiens.UCSC.hg19.knownGene,TxDb.Hsapiens.UCSC.hg19.knownGene)
 importFrom(data.table,
   "%chin%",
   ":=",
@@ -40,4 +39,3 @@ importFrom(data.table,
   fifelse,
   setorderv
 )
-importFrom(org.Hs.eg.db,org.Hs.eg.db)

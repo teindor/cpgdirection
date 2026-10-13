@@ -15,7 +15,7 @@ A \code{data.table} with \code{cpg_id}, \code{target_gene},
 \description{
 The CpG-gene pairs that were directly measured in at least one eQTM
 cohort, rather than predicted. From 2.99.8 the table is built by
-\code{tools/build_measured_eqtms.R} from the eQTM Atlas cohort exports
+\code{inst/scripts/build_measured_eqtms.R} from the eQTM Atlas cohort exports
 (Sriram et al. 2026): EVA-PR nasal epithelium and white blood cells
 (Kim et al. 2020, 2023), GTEx whole blood and seven organs (Oliva et al.
 2023), FUSION skeletal muscle (Taylor et al. 2019), Colonomics colon

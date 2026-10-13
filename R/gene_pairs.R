@@ -116,7 +116,8 @@
 #'   resources -- any of \code{manifest}, \code{lookup} (named list by tissue,
 #'   or one table for \code{tissue}), \code{measured}, \code{smr},
 #'   \code{brain}, \code{cpg_pos}, \code{gene_tss}, \code{distance_curves}.
-#' @param verbose Print the discovery summary. Default \code{TRUE}.
+#' @param verbose Emit the discovery summary with \code{message()}. Default
+#'   \code{TRUE}.
 #'
 #' @return A \code{data.table} of class \code{cpgd_pairs}, one row per
 #'   CpG x gene pair, with (among others):
@@ -594,7 +595,7 @@ cpg_gene_pairs <- function(cpgs,
   data.table::setattr(out, "probe_qc", probe_qc)
   data.table::setattr(out, "qc_excluded_cpgs", qc_excluded)
   data.table::setattr(out, "class", c("cpgd_pairs", class(out)))
-  if (isTRUE(verbose)) print(out)
+  if (isTRUE(verbose)) .cpgd_message_print(out)
   invisible(out)
 }
 

@@ -1,7 +1,62 @@
+# cpgdirection 0.99.0
+
+**Bioconductor submission numbering.** This version continues 2.99.8 (the last
+GitHub-numbered release) and carries the changes requested in the Bioconductor
+review (BiocContributions #174). The number drops to 0.99.0 because that is
+what Bioconductor requires of a new package; it becomes 1.0.0 at the next
+Bioconductor release. The code and data are those of 2.99.8 plus the items
+below.
+
+* **Dependencies.** `TxDb.Hsapiens.UCSC.hg19.knownGene`, `org.Hs.eg.db`,
+  `GenomicFeatures`, `GenomicRanges` and `AnnotationDbi` move from Imports to
+  Suggests: only the distance-only layer uses them, it checks for them with
+  `requireNamespace()` and says what to install. `cpgdirectionData` stays in
+  Imports and is now called directly, without a `requireNamespace()` guard.
+  `tools` is declared for `tools::R_user_dir()`.
+
+* **Nothing is written to the working directory by default.** `cpgd_report()`
+  defaults to `dir = tempdir()`; `html_out = TRUE` writes the report into
+  `tempdir()` and reports the path; `cpgd_build_gene_tss()` defaults to
+  `out = NULL`, returning the table and writing only when a path is given
+  (`cpgd_gene_tss()` keeps its cache under `tools::R_user_dir()`).
+
+* **`message()` instead of `cat()`** outside print methods: `cpgd_selftest()`,
+  `cpgd_direction_balance()`, `cpg_direction_universal()` and the `verbose`
+  summaries of `cpg_expression_direction()`, `cpg_gene_pairs()` and the full
+  ladder now report through `message()`, so `suppressMessages()` silences them
+  and stdout carries only return values.
+
+* **hg38 manifests are refused.** `cpgd_build_gene_tss(source = "manifest")`
+  uses hg19-labelled columns when a re-annotated manifest carries them,
+  refuses a manifest whose columns or `Genome_Build` say hg38 (EPIC v2's own
+  manifest included) with a message naming the alternatives, and otherwise says
+  that the coordinates are taken as hg19. Every layer in the package is hg19.
+
+* **Vignette** rebuilt in the Bioconductor shape (`BiocStyle::html_document`,
+  table of contents): an Introduction placing the package in the ecosystem
+  (versus ELMER and MethReg, which infer methylation-expression relationships
+  from a user's own matched data), an Installation section, the worked
+  examples, and session information.
+
+* **README** describes the current installation path (Bioconductor, or GitHub
+  with the data package) and the ExperimentHub data layers; the local-tarball
+  instructions and the bundled-data description of the old fat build are gone.
+
+* **`inst/scripts/`** documents how each file in `inst/extdata` was made and
+  from which sources (`make-extdata.md`); the measured-table builder moves
+  there from `tools/`.
+
+* **Code provenance** is stated in `DESCRIPTION`, the README and the package
+  help page: the design, data assembly, validation and all methodological
+  decisions are the author's; the R code was drafted and edited with the
+  assistance of Claude (Anthropic) and was run, tested and checked by the
+  author (Assisted-by: Claude (Anthropic)). `PUSH_INSTRUCTIONS.md`, a note
+  from the preparation of the first version, is removed from the repository.
+
 # cpgdirection 2.99.8
 
 * **The measured layer is rebuilt from the eQTM Atlas, with cohort provenance.**
-  `tools/build_measured_eqtms.R` (new) reads the per-cohort exports of the
+  `inst/scripts/build_measured_eqtms.R` (new) reads the per-cohort exports of the
   eQTM Atlas (Sriram et al. 2026; hg19) and keeps cis pairs (|CpG - TSS| <=
   250 kb, the window of the earlier build; decided from coordinates because
   the Atlas labels every FUSION row "trans") with a usable sign that pass each

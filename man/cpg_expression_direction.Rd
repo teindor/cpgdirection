@@ -59,10 +59,12 @@ would otherwise abstain with that tissue's sign, labelled
 \code{targeted_last_resort}, so \code{best_direction} comes back complete.}
 
 \item{html_out}{Optional. \code{TRUE} writes
-\code{cpgdirection_results.html} into the working directory; a string is
-used as the file name. See \code{\link{cpgd_report}}.}
+\code{cpgdirection_results.html} into \code{tempdir()} and reports the
+path; a string is used as the file name (a relative name also lands in
+\code{tempdir()}; give an absolute path to keep the report). See
+\code{\link{cpgd_report}}.}
 
-\item{verbose}{Print a summary. Default \code{TRUE}.}
+\item{verbose}{Emit a summary with \code{message()}. Default \code{TRUE}.}
 }
 \value{
 With \code{tissue = "all"}, a \code{data.table} of class

@@ -33,7 +33,7 @@ tissue plus a consensus.}
 
 \item{max_dist}{Pairs further apart than this are not called. Default 1e6.}
 
-\item{verbose}{Print a summary.}
+\item{verbose}{Emit a summary with \code{message()}.}
 }
 \value{
 A \code{data.table} with the CpG, gene, distance, and a direction and

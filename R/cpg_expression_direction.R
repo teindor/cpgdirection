@@ -29,7 +29,8 @@
 #'   returned with \code{call = "ABSTAIN"}. Defaults to the tier-specific
 #'   thresholds used in the paper (0.30 for tier A, 0.50 for tier B; tier C
 #'   always abstains).
-#' @param verbose Print a short summary. Default \code{TRUE}.
+#' @param verbose Emit a short summary with \code{message()}. Default
+#'   \code{TRUE}.
 #'
 #' @return A \code{data.table} of class \code{cpgd_result}, one row per input
 #'   CpG, with columns:
@@ -197,7 +198,7 @@
   data.table::setattr(out, "n_duplicate", n_dup)
   data.table::setattr(out, "tissue", tissue)
   out[, "tissue" := tissue]
-  if (isTRUE(verbose)) print(out)
+  if (isTRUE(verbose)) .cpgd_message_print(out)
   invisible(out)
 }
 
@@ -225,7 +226,7 @@ cpgd_accuracy_table <- function() {
                           "0.84-0.87", "0.70-0.84",
                           "0.62-0.70", "0.55-0.66", "0.70-0.94", "0.55-0.63"),
     basis = c("same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
-              "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; tools/build_measured_eqtms.R",
+              "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; inst/scripts/build_measured_eqtms.R",
               "HELIX locked test 0.766; EVA-PR white blood cell 0.854",
               "HELIX locked test 0.642; EVA-PR white blood cell 0.854",
               "grouped CV AUC 0.865; NOT independently validated (both cohorts, one study)",

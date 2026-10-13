@@ -5,11 +5,6 @@
 ^cpgdirection\.Rproj$
 ^\.gitignore$
 ^LICENSE\.md$
-^PUSH_INSTRUCTIONS\.md$
-# cpgd_report() writes to getwd(), and getwd() is the package root whenever you
-# have been running devtools. Report output is not package content; ignore it
-# here so a stray file cannot turn into an R CMD check NOTE at submission time.
-#
 # Anchored to the top level with [^/]*, NOT .*, because .* crosses directory
 # separators and would also match vignettes/*.html and inst/doc/*.html -- which
 # would silently ship a package with no rendered vignette.
@@ -20,3 +15,4 @@
 ^cpgdirection_.*\.tar\.gz$
 ^\.zenodo\.json$
 ^CITATION\.cff$
+^tools/out$

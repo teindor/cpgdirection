@@ -74,9 +74,9 @@
     p <- system.file("extdata", paste0(base, ext), package = "cpgdirection")
     if (nzchar(p) && file.exists(p)) return(.cpgd_read_data_file(p))
   }
-  # 3. the Hub-backed data package (thin build)
-  if (base %in% .CPGD_HUB_RESOURCES &&
-      requireNamespace("cpgdirectionData", quietly = TRUE)) {
+  # 3. the cpgdirectionData ExperimentHub package. It is an Import, so it is
+  #    called directly; a failure to retrieve is reported, not masked.
+  if (base %in% .CPGD_HUB_RESOURCES) {
     out <- tryCatch(cpgdirectionData::cpgdData(base),
                     error = function(e) {
                       if (isTRUE(required)) {
@@ -90,12 +90,10 @@
     return(NULL)
   }
   if (!isTRUE(required)) return(NULL)
-  stop("The data layer '", base, "' is not available. This installation ",
-       "bundles no copy, and the cpgdirectionData package is not installed. ",
-       "Either reinstall the full package ",
-       "(BiocManager::install(\"teindor/cpgdirection\")), install ",
-       "cpgdirectionData, or point options(cpgdirection.data_dir=) at a ",
-       "directory holding the data files.", call. = FALSE)
+  stop("The data layer '", base, "' is not available: no bundled copy, and ",
+       "it is not one of the resources served by cpgdirectionData. Point ",
+       "options(cpgdirection.data_dir=) at a directory holding the data ",
+       "files, or reinstall the package.", call. = FALSE)
 }
 
 # TRUE when the resource can be obtained from any tier; used by tests

@@ -12,7 +12,8 @@
 #' @param regenerate Optional path. Writes a fresh reference file from the
 #'   installed package instead of testing against the shipped one. Use after a
 #'   deliberate change of behaviour, never to make a failure go away.
-#' @return Invisibly, \code{TRUE} on success. Prints a report either way.
+#' @return Invisibly, \code{TRUE} on success. The report is emitted with
+#'   \code{message()}, so \code{suppressMessages()} silences it.
 #' @examplesIf cpgd_has_data("lookup_blood_hg19")
 #' cpgd_selftest()
 #' @export
@@ -20,7 +21,7 @@ cpgd_selftest <- function(regenerate = NULL) {
 
   ref_path <- system.file("extdata", "selftest_reference.csv", package = "cpgdirection")
   if (!nzchar(ref_path) || !file.exists(ref_path)) {
-    cat("reference file not found; cannot verify\n"); return(invisible(FALSE))
+    message("reference file not found; cannot verify"); return(invisible(FALSE))
   }
   # An empty CSV field in a character column comes back as "" from fread, not
   # NA, while the package returns NA_character_. Without this the two are
@@ -28,11 +29,11 @@ cpgd_selftest <- function(regenerate = NULL) {
   ref <- data.table::fread(ref_path, showProgress = FALSE,
                            na.strings = c("NA", ""))
 
-  cat("cpgdirection self-test\n")
-  cat(sprintf("  lookup table: %s\n", basename(.cpgd_lookup_path("blood"))))
+  message("cpgdirection self-test")
+  message(sprintf("  lookup table: %s", basename(.cpgd_lookup_path("blood"))))
   info <- tryCatch(cpgd_lookup_info("blood"), error = function(e) NULL)
   if (!is.null(info)) {
-    cat(sprintf("  %s pairs, %s CpGs, build %s\n",
+    message(sprintf("  %s pairs, %s CpGs, build %s",
                 format(info$pairs, big.mark = ","),
                 format(info$cpgs, big.mark = ","), info$genome_build))
   }
@@ -43,7 +44,7 @@ cpgd_selftest <- function(regenerate = NULL) {
     cols <- c("input", "cpg_id", "target_gene", "tss_dist", "status",
               "direction", "probability_plus1", "confidence", "evidence_tier")
     data.table::fwrite(got[, intersect(cols, names(got)), with = FALSE], regenerate)
-    cat(sprintf("\n  wrote a new reference to %s\n", regenerate))
+    message(sprintf("  wrote a new reference to %s", regenerate))
     return(invisible(TRUE))
   }
 
@@ -79,31 +80,31 @@ cpgd_selftest <- function(regenerate = NULL) {
   ok_t <- agree(m$evidence_tier_ref, m$evidence_tier_got)
   ok_d <- agree(m$direction_ref, m$direction_got)
 
-  cat(sprintf("\n  compared %d CpGs\n", nrow(m)))
-  cat(sprintf("    gene assignment     %6.1f%%\n", 100 * ok_g))
-  cat(sprintf("    probability         %6.1f%%   <- the model's output\n", 100 * ok_p))
-  cat(sprintf("    confidence          %6.1f%%\n", 100 * ok_c))
-  cat(sprintf("    evidence tier       %6.1f%%\n", 100 * ok_t))
-  cat(sprintf("    direction           %6.1f%%   (informational)\n", 100 * ok_d))
+  message(sprintf("  compared %d CpGs", nrow(m)))
+  message(sprintf("    gene assignment     %6.1f%%", 100 * ok_g))
+  message(sprintf("    probability         %6.1f%%   <- the model's output", 100 * ok_p))
+  message(sprintf("    confidence          %6.1f%%", 100 * ok_c))
+  message(sprintf("    evidence tier       %6.1f%%", 100 * ok_t))
+  message(sprintf("    direction           %6.1f%%   (informational)", 100 * ok_d))
 
   pass <- isTRUE(ok_g > 0.99) && isTRUE(ok_p > 0.99) && isTRUE(ok_t > 0.99)
-  cat(if (pass) "\n  SELF-TEST PASSED\n" else
-      "\n  SELF-TEST FAILED - do not use these results.\n")
+  message(if (pass) "  SELF-TEST PASSED" else
+          "  SELF-TEST FAILED - do not use these results.")
 
   if (pass && ok_d < 0.99) {
-    cat(sprintf(
-      "\n  Note: direction agrees on %.0f%% while the probability agrees on 100%%.\n",
+    message(sprintf(
+      "  Note: direction agrees on %.0f%% while the probability agrees on 100%%.\n",
       100 * ok_d),
       "  The reference records direction as missing for rows it abstained on;\n",
       "  this version keeps the value and signals the abstention in `call`.\n",
       "  The model is unchanged. Regenerate with cpgd_selftest(regenerate=...)\n",
-      "  if you want the reference to match current reporting.\n", sep = "")
+      "  if you want the reference to match current reporting.")
   }
 
-  cat("\n  tissues available:\n")
+  message("  tissues available:")
   for (t in CPGD_TISSUES) {
     i <- tryCatch(cpgd_lookup_info(t), error = function(e) NULL)
-    if (!is.null(i)) cat(sprintf("    %-18s %s pairs, %s CpGs\n", t,
+    if (!is.null(i)) message(sprintf("    %-18s %s pairs, %s CpGs", t,
         format(i$pairs, big.mark = ","), format(i$cpgs, big.mark = ",")))
   }
   invisible(pass)

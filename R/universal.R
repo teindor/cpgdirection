@@ -5,18 +5,21 @@
 #' which it does not ship — a gene annotation is large, versioned, and better
 #' taken from Bioconductor than frozen into a package.
 #'
-#' Run this once. It writes a small table that
-#' \code{\link{cpg_direction_universal}} then uses.
+#' \code{\link{cpg_direction_universal}} calls \code{\link{cpgd_gene_tss}},
+#' which builds this table once and caches it under
+#' \code{tools::R_user_dir("cpgdirection", "cache")}; call this function
+#' directly only to inspect the table or to build one from a manifest.
 #'
-#' @param out Path for the resulting CSV. Default \code{"gene_tss_hg19.csv"}.
+#' @param out Optional path. When given, the table is also written there as
+#'   CSV. Nothing is written by default.
 #' @param source \code{"txdb"} uses \code{TxDb.Hsapiens.UCSC.hg19.knownGene}
 #'   with \code{org.Hs.eg.db} for symbols. \code{"manifest"} reads an Illumina
 #'   manifest instead, via \code{manifest_file}.
 #' @param manifest_file Path to an Illumina EPIC manifest CSV, used when
 #'   \code{source = "manifest"}.
 #'
-#' @return Invisibly, the path written. The table has \code{gene}, \code{chr},
-#'   \code{tss} and \code{strand}.
+#' @return A \code{data.table} with \code{gene}, \code{chr}, \code{tss} and
+#'   \code{strand} (hg19), returned invisibly.
 #'
 #' @details
 #' TxDb is the more accurate source: real transcription start sites, strand
@@ -27,17 +30,18 @@
 #' @examples
 #' if (requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE) &&
 #'     requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
-#' cpgd_build_gene_tss(out = tempfile(fileext = ".csv"))
+#' g <- cpgd_build_gene_tss()
+#' head(g)
 #' }
 #' @export
-cpgd_build_gene_tss <- function(out = "gene_tss_hg19.csv",
+cpgd_build_gene_tss <- function(out = NULL,
                                 source = c("txdb", "manifest"),
                                 manifest_file = NULL) {
   source <- match.arg(source)
 
   if (source == "txdb") {
     need <- c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
-              "GenomicFeatures", "AnnotationDbi")
+              "GenomicFeatures", "GenomicRanges", "AnnotationDbi")
     miss <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
     if (length(miss)) {
       stop("Install these first:\n  BiocManager::install(c(",
@@ -64,8 +68,30 @@ cpgd_build_gene_tss <- function(out = "gene_tss_hg19.csv",
     m <- .cpgd_fread(manifest_file)
     nm <- names(m)
     gcol <- nm[grepl("RefGene_Name|UCSC_RefGene_Name", nm)][1]
-    ccol <- nm[grepl("^CHR$|^chr$|CHR_hg38|Chromosome", nm)][1]
-    pcol <- nm[grepl("MAPINFO|^pos$|Start_hg38", nm)][1]
+    # Every layer in this package is hg19, so the manifest must be too. An
+    # hg19-labelled column pair is used when present (re-annotated manifests
+    # carry both builds); otherwise an hg38 manifest -- EPIC v2 ships CHR and
+    # MAPINFO in hg38 and says so in Genome_Build, Exeter's re-annotation
+    # carries CHR_hg38/Start_hg38 -- is refused rather than silently mixed in.
+    ccol <- nm[grepl("^CHR_hg19$", nm, ignore.case = TRUE)][1]
+    pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg19$", nm, ignore.case = TRUE)][1]
+    if (is.na(ccol) || is.na(pcol)) {
+      build <- if ("Genome_Build" %in% nm)
+        unique(stats::na.omit(as.character(m[["Genome_Build"]]))) else character(0)
+      if (any(grepl("hg38", nm, ignore.case = TRUE)) || any(grepl("38", build))) {
+        stop("This manifest is hg38 (",
+             if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
+             else "it carries hg38 coordinate columns and no hg19 ones",
+             ") while every cpgdirection layer is hg19. Use source = \"txdb\", ",
+             "or an hg19 manifest (450K, EPIC v1, or a re-annotated EPIC v2 ",
+             "manifest with CHR_hg19/MAPINFO_hg19 columns).", call. = FALSE)
+      }
+      ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
+      pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
+      message("Manifest coordinates taken as hg19 (",
+              if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
+              else "no Genome_Build column", ").")
+    }
     if (any(is.na(c(gcol, ccol, pcol))))
       stop("Could not find gene, chromosome and position columns in the manifest.",
            call. = FALSE)
@@ -80,9 +106,11 @@ cpgd_build_gene_tss <- function(out = "gene_tss_hg19.csv",
     message("Manifest-derived positions approximate a gene region, not a TSS. ",
             "TxDb is more accurate.")
   }
-  data.table::fwrite(d, out)
-  message(sprintf("wrote %s (%d genes)", out, nrow(d)))
-  invisible(out)
+  if (!is.null(out)) {
+    data.table::fwrite(d, out)
+    message(sprintf("wrote %s (%d genes)", out, nrow(d)))
+  }
+  invisible(d)
 }
 
 
@@ -111,7 +139,7 @@ cpgd_build_gene_tss <- function(out = "gene_tss_hg19.csv",
 #' @param tissue Which tissue's curve to use, or \code{"all"} for one column per
 #'   tissue plus a consensus.
 #' @param max_dist Pairs further apart than this are not called. Default 1e6.
-#' @param verbose Print a summary.
+#' @param verbose Emit a summary with \code{message()}.
 #'
 #' @return A \code{data.table} with the CpG, gene, distance, and a direction and
 #'   probability per tissue.
@@ -226,11 +254,12 @@ cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
             "expected_accuracy")
   d <- d[, intersect(keep, names(d)), with = FALSE]
   if (isTRUE(verbose)) {
-    cat(sprintf("\nuniversal mode: %d CpG-gene pairs resolved from distance\n", nrow(d)))
-    cat("  tier U - distance only, no neighbourhood or gene evidence.\n")
-    cat("  AUC 0.616 within cohort, against 0.793 for the full blood model.\n")
-    cat("  A prior conditioned on distance, not a statement about your CpG.\n\n")
-    print(utils::head(as.data.frame(d), 10))
+    message(sprintf("universal mode: %d CpG-gene pairs resolved from distance", nrow(d)))
+    message("  tier U - distance only, no neighbourhood or gene evidence.\n",
+            "  AUC 0.616 within cohort, against 0.793 for the full blood model.\n",
+            "  A prior conditioned on distance, not a statement about your CpG.")
+    message(paste(utils::capture.output(print(utils::head(as.data.frame(d), 10))),
+                  collapse = "\n"))
   }
   invisible(d)
 }
@@ -287,9 +316,7 @@ cpgd_gene_tss <- function(refresh = FALSE) {
   }
   message("Building the gene TSS annotation from TxDb (once per machine)...")
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  tmp <- tempfile(fileext = ".csv")
-  cpgd_build_gene_tss(out = tmp, source = "txdb")
-  G <- data.table::fread(tmp, showProgress = FALSE)
+  G <- cpgd_build_gene_tss(source = "txdb")
   data.table::fwrite(G, f)
   message(sprintf("cached %d genes at %s", nrow(G), f))
   .cpgd_env$gene_tss <- G

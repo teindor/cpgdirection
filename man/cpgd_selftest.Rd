@@ -12,7 +12,8 @@ installed package instead of testing against the shipped one. Use after a
 deliberate change of behaviour, never to make a failure go away.}
 }
 \value{
-Invisibly, \code{TRUE} on success. Prints a report either way.
+Invisibly, \code{TRUE} on success. The report is emitted with
+  \code{message()}, so \code{suppressMessages()} silences it.
 }
 \description{
 Scores 40 CpGs whose expected output was computed when the package was built

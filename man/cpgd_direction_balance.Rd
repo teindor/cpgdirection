@@ -13,7 +13,8 @@ cpgd_direction_balance(x = NULL, tissue = "blood")
 \code{"blood"}.}
 }
 \value{
-Invisibly, a list of the figures printed.
+Invisibly, a list of the figures reported. The report itself is
+  emitted with \code{message()}.
 }
 \description{
 A sanity check for a result that looks suspiciously one-sided. Inverse

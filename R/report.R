@@ -6,9 +6,11 @@
 #' step for want of an optional package.
 #'
 #' @param x A result from \code{\link{cpg_expression_direction}}.
-#' @param file File name. A relative name is written inside \code{dir}.
-#' @param dir Directory to write into. Defaults to the working directory, so
-#'   \code{setwd()} controls where results land.
+#' @param file File name. A relative name is written inside \code{dir}; an
+#'   absolute path is used as given.
+#' @param dir Directory to write into. Defaults to \code{tempdir()}, so
+#'   nothing lands in the working directory unless you ask for it; give a
+#'   directory (or an absolute \code{file}) to keep the report.
 #' @param title Table title.
 #' @param subtitle Table subtitle. \code{NULL} generates one from the data.
 #' @param compact Show the interpretive columns only. \code{FALSE} writes every
@@ -23,7 +25,7 @@
 #' @export
 cpgd_report <- function(x,
                         file = "cpgdirection_results.html",
-                        dir = getwd(),
+                        dir = tempdir(),
                         title = "CpG to expression direction",
                         subtitle = NULL,
                         compact = TRUE,
@@ -139,7 +141,7 @@ cpgd_report <- function(x,
   for (nm in intersect(c("dist_universal", "tss_dist"), names(df)))
     g <- gt::fmt_number(g, columns = nm, decimals = 0, use_seps = TRUE)
 
-  g <- gt::sub_missing(g, missing_text = "\u2014")
+  g <- gt::sub_missing(g, missing_text = intToUtf8(8212L))
   g <- gt::opt_row_striping(g)
   g <- gt::tab_options(g, table.font.size = gt::px(12),
                        heading.title.font.size = gt::px(18),
@@ -149,8 +151,8 @@ cpgd_report <- function(x,
     if (length(rw))
       g <- gt::tab_style(g, gt::cell_text(style = "italic", color = "#777777"),
                          gt::cells_body(columns = "direction_uncertain", rows = rw))
-    g <- gt::tab_source_note(g, gt::md(
-      "*Uncertain rows.* `best_direction_filled` and `best_direction_flipped` bracket the rows whose sign is nearly free to flip. They are a **sensitivity analysis, not a menu** \u2014 run the analysis under both and report whether the conclusion survives. Picking the column that fits better is selecting on the outcome."))
+    g <- gt::tab_source_note(g, gt::md(paste0(
+      "*Uncertain rows.* `best_direction_filled` and `best_direction_flipped` bracket the rows whose sign is nearly free to flip. They are a **sensitivity analysis, not a menu** ", intToUtf8(8212L), " run the analysis under both and report whether the conclusion survives. Picking the column that fits better is selecting on the outcome.")))
   }
   g <- gt::tab_source_note(g, gt::md(
     "*Direction, not existence.* Every accuracy figure is conditional on the CpG being an eQTM; the catalogues behind the models contain only significant associations. Read `best_evidence` alongside `best_direction`: `measured` is worth 0.96-1.00 (replicated between cohorts), `distance_only` ~0.62."))
@@ -163,7 +165,7 @@ cpgd_report <- function(x,
 
 .cpgd_report_plain <- function(d, path, title, subtitle) {
   esc <- function(v) {
-    v <- ifelse(is.na(v), "\u2014", as.character(v))
+    v <- ifelse(is.na(v), intToUtf8(8212L), as.character(v))
     v <- gsub("&", "&amp;", v, fixed = TRUE)
     v <- gsub("<", "&lt;",  v, fixed = TRUE)
     gsub(">", "&gt;", v, fixed = TRUE)
@@ -207,7 +209,8 @@ cpgd_report <- function(x,
 #' @param x Optional result from \code{\link{cpg_expression_direction}}.
 #' @param tissue Which tissue's base rate to test against. Default
 #'   \code{"blood"}.
-#' @return Invisibly, a list of the figures printed.
+#' @return Invisibly, a list of the figures reported. The report itself is
+#'   emitted with \code{message()}.
 #'
 #' @section Why distance-only calls are excluded:
 #' The pooled distance curve falls below 0.5 out to roughly 19 kb and rises
@@ -231,16 +234,16 @@ cpgd_direction_balance <- function(x = NULL, tissue = "blood") {
   meas_pos <- if (is.null(M)) NA_real_ else
     mean(suppressWarnings(as.numeric(M$direction[M$tissue == tissue])) > 0, na.rm = TRUE)
 
-  cat(sprintf("\ncpgdirection: balance of directions in %s\n", tissue))
-  cat(sprintf("  predicted in the shipped table : %.1f%% +1\n", 100 * base_pos))
+  message(sprintf("cpgdirection: balance of directions in %s", tissue))
+  message(sprintf("  predicted in the shipped table : %.1f%% +1", 100 * base_pos))
   if (!is.na(meas_pos))
-    cat(sprintf("  measured (ground truth)        : %.1f%% +1\n", 100 * meas_pos))
+    message(sprintf("  measured (ground truth)        : %.1f%% +1", 100 * meas_pos))
   if (!is.na(meas_pos) && meas_pos - base_pos > 0.05) {
-    cat(sprintf(
-      "\n  The model predicts +1 less often than it truly occurs (%.1f%% vs %.1f%%).\n",
+    message(sprintf(
+      "  The model predicts +1 less often than it truly occurs (%.1f%% vs %.1f%%).\n",
       100 * base_pos, 100 * meas_pos),
       "  It shrinks towards the majority class, so a +1 is conservative and a\n",
-      "  -1 carries less weight than its count suggests.\n", sep = "")
+      "  -1 carries less weight than its count suggests.")
   }
 
   res <- list(tissue = tissue, predicted_frac_pos = base_pos,
@@ -249,7 +252,7 @@ cpgd_direction_balance <- function(x = NULL, tissue = "blood") {
   if (!is.null(x) && is.data.frame(x)) {
     d <- data.table::as.data.table(x)
     dircol <- if ("best_direction" %in% names(d)) "best_direction" else "direction"
-    if (!dircol %in% names(d)) { cat("\n  (no direction column in `x`)\n"); return(invisible(res)) }
+    if (!dircol %in% names(d)) { message("  (no direction column in `x`)"); return(invisible(res)) }
     if ("best_evidence" %in% names(d)) {
       keep <- d$best_evidence %in% c("measured", "catalogue_consensus", "catalogue_single")
       excl <- sum(d$best_evidence == "distance_only", na.rm = TRUE)
@@ -258,29 +261,28 @@ cpgd_direction_balance <- function(x = NULL, tissue = "blood") {
     }
     v <- suppressWarnings(as.numeric(d[[dircol]][keep]))
     v <- v[!is.na(v)]
-    cat(sprintf("\n  your run: %d catalogue-derived calls", length(v)))
-    if (excl > 0) cat(sprintf(" (%d distance-only calls excluded)", excl))
-    cat("\n")
+    message(sprintf("  your run: %d catalogue-derived calls", length(v)),
+            if (excl > 0) sprintf(" (%d distance-only calls excluded)", excl) else "")
     if (length(v)) {
       npos <- sum(v > 0)
-      cat(sprintf("    +1 %d    -1 %d    (%.1f%% +1)\n", npos, length(v) - npos,
-                  100 * npos / length(v)))
+      message(sprintf("    +1 %d    -1 %d    (%.1f%% +1)", npos, length(v) - npos,
+                      100 * npos / length(v)))
       bt <- stats::binom.test(npos, length(v), p = base_pos)
-      cat(sprintf("    exact binomial vs the %.1f%% base rate: p = %.3g\n",
-                  100 * base_pos, bt$p.value))
-      cat(if (bt$p.value < 0.05)
-            "    -> more one-sided than the base rate explains; look at the panel.\n"
-          else
-            "    -> consistent with the base rate; no anomaly to explain.\n")
+      message(sprintf("    exact binomial vs the %.1f%% base rate: p = %.3g",
+                      100 * base_pos, bt$p.value))
+      message(if (bt$p.value < 0.05)
+                "    -> more one-sided than the base rate explains; look at the panel."
+              else
+                "    -> consistent with the base rate; no anomaly to explain.")
       res$n_calls <- length(v); res$n_pos <- npos; res$p_value <- bt$p.value
     }
     if (excl > 0) {
-      cat(sprintf(
-        "\n  The %d distance-only calls are excluded on purpose, and for a stronger\n", excl),
+      message(sprintf(
+        "  The %d distance-only calls are excluded on purpose, and for a stronger\n", excl),
         "  reason than sampling. The blood distance curve peaks at 0.449 and never\n",
         "  reaches 0.5 at any distance, while a distance call requires all three\n",
         "  tissue curves to agree. distance_only therefore CANNOT return +1 for any\n",
-        "  CpG, ever. Testing those calls against a base rate would be circular.\n", sep = "")
+        "  CpG, ever. Testing those calls against a base rate would be circular.")
     }
   }
   invisible(res)

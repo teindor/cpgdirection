@@ -7,7 +7,7 @@
 cpgd_report(
   x,
   file = "cpgdirection_results.html",
-  dir = getwd(),
+  dir = tempdir(),
   title = "CpG to expression direction",
   subtitle = NULL,
   compact = TRUE,
@@ -17,10 +17,12 @@ cpgd_report(
 \arguments{
 \item{x}{A result from \code{\link{cpg_expression_direction}}.}
 
-\item{file}{File name. A relative name is written inside \code{dir}.}
+\item{file}{File name. A relative name is written inside \code{dir}; an
+absolute path is used as given.}
 
-\item{dir}{Directory to write into. Defaults to the working directory, so
-\code{setwd()} controls where results land.}
+\item{dir}{Directory to write into. Defaults to \code{tempdir()}, so
+nothing lands in the working directory unless you ask for it; give a
+directory (or an absolute \code{file}) to keep the report.}
 
 \item{title}{Table title.}
 

@@ -1,39 +1,126 @@
 ---
-title: "Assigning a direction to CpG sites"
-output: rmarkdown::html_vignette
+title: "cpgdirection: assigning a direction to CpG sites"
+author:
+  - name: Tsachi Ein-Dor
+    affiliation: Reichman University
+    email: teindor@runi.ac.il
+package: cpgdirection
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+abstract: >
+  An epigenome-wide study delivers CpG sites, rarely matched expression. For
+  most sites the sign of the methylation-expression relationship is unknown,
+  and it is not fixed: methylation is not uniformly repressive. cpgdirection
+  assigns that sign per CpG-gene pair from measured eQTM catalogues, Mendelian
+  randomisation, tissue-specific genomic-context models and a distance prior,
+  reports which layer the answer rests on and what it is worth, and abstains
+  where the evidence is insufficient.
 vignette: >
-  %\VignetteIndexEntry{Assigning a direction to CpG sites}
+  %\VignetteIndexEntry{cpgdirection: assigning a direction to CpG sites}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-# The demonstration chunks need the package's data layers. They are present
-# in the GitHub (fat) build, in local-data mode, and once the cpgdirectionData
-# resources are available from ExperimentHub; on a machine without them the
-# code is shown but not evaluated.
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = TRUE)
+# The worked examples need the package's data layers, which the
+# cpgdirectionData ExperimentHub package serves (or a local copy named by
+# options(cpgdirection.data_dir = )). Where they cannot be reached the code is
+# shown but not evaluated, so the vignette builds everywhere.
 has_data <- cpgdirection::cpgd_has_data("lookup_blood_hg19") &&
   cpgdirection::cpgd_has_data("smr_directions") &&
   cpgdirection::cpgd_has_data("epicv2_probe_gene_annotation")
 knitr::opts_chunk$set(eval = has_data)
 ```
 
-*The code below is evaluated only when the package's data layers are
-available -- bundled, via `options(cpgdirection.data_dir = )`, or through
-the cpgdirectionData package. The text and code are complete either way.*
+# Introduction
 
-## The problem
+A differentially methylated CpG is only half of a finding. Whether higher
+methylation at that site goes with higher or lower expression of the gene it
+regulates is usually not measured in the same study, and the textbook answer
+(methylation represses) is wrong often enough to matter: across measured
+expression quantitative trait methylation (eQTM) catalogues between a third and
+a half of cis associations are positive, depending on the tissue, and the
+fraction also depends on distance to the transcription start site. Pooling signed effects without the sign
+therefore averages real effects to zero.
 
-An epigenome-wide study gives you CpG sites. It rarely gives you matched RNA, so
-for most sites you do not know whether higher methylation goes with **higher**
-or **lower** expression of the nearby gene. That sign is not fixed: methylation
-is not uniformly repressive, and pooled estimates across studies can average to
-zero simply because opposing signs cancel.
+`cpgdirection` answers the sign question for a CpG, or a CpG-gene pair, that
+you supply. It does not need your expression data. Each call walks an evidence
+ladder and reports the strongest rung available:
 
-This package assigns the sign, and tells you how much to trust it.
+1. a directly **measured** eQTM for that pair (eQTM Atlas cohorts in blood,
+   nasal epithelium and solid tissues, with cross-cohort replication);
+2. a **summary-data Mendelian randomisation** direction (GoDMC mQTL x eQTLGen
+   cis-eQTL in blood, with HEIDI), tiered by instrument support;
+3. the **catalogue models**: gradient-boosted models of genomic context and
+   local catalogue structure, fitted and calibrated separately in blood, nasal
+   epithelium and solid tissue, reported as a consensus when the tissues agree;
+4. the cross-tumour **Onco-eQTM consensus**, reported beside the peripheral
+   evidence;
+5. a **distance prior**, the empirical probability of a positive association at
+   that CpG-TSS distance, used only when all three tissue curves agree in sign.
 
-## One call
+Every row carries the direction, the rung it came from (`best_evidence`), a
+calibrated probability and the validated expected accuracy of that rung. Where
+no rung applies the package says `NA`, deliberately.
+
+## Where it sits in the Bioconductor ecosystem
+
+The package is downstream of any EWAS: it takes CpG identifiers (EPIC v2, EPIC
+v1 or 450K; array suffixes are stripped) and returns signed CpG-gene
+relationships. It differs from the packages that infer methylation-expression
+relationships *within* a user's own cohort. `r BiocStyle::Biocpkg("ELMER")`
+identifies enhancer-gene pairs and the transcription factors behind them from
+matched methylation and expression profiles of the samples at hand;
+`r BiocStyle::Biocpkg("MethReg")` models how methylation modulates
+transcription-factor regulation of a target, again from matched data. Those
+tools need paired expression and answer *which* relationships exist in the
+cohort. `cpgdirection` needs no expression data and answers a narrower
+question about relationships already established elsewhere: *in which
+direction*, and *how sure can one be*. It is a natural companion to
+`r BiocStyle::Biocpkg("missMethyl")`, `r BiocStyle::Biocpkg("minfi")` or
+`r BiocStyle::Biocpkg("limma")` results, and is the engine behind directional
+methylation set analysis in the `dmsa` package.
+
+The data layers are large (ten resources, about 120 MB) and are served by the
+companion ExperimentHub package `cpgdirectionData`; the small tables
+(measured eQTMs, distance curves, probe QC, the brain-bridge deliverable) ship
+inside this package. All coordinates are hg19.
+
+# Installation
+
+From Bioconductor, once accepted:
+
+```{r install, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("cpgdirection")
+```
+
+The development version, with the data package it depends on:
+
+```{r install-github, eval = FALSE}
+BiocManager::install(c("teindor/cpgdirectionData", "teindor/cpgdirection"))
+```
+
+The distance-only layer builds a gene TSS table from
+`TxDb.Hsapiens.UCSC.hg19.knownGene` and `org.Hs.eg.db` on first use and caches
+it under `tools::R_user_dir("cpgdirection", "cache")`. Those annotation
+packages are Suggests; install them if you want that layer:
+
+```{r install-annotation, eval = FALSE}
+BiocManager::install(c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
+                       "GenomicFeatures", "GenomicRanges", "AnnotationDbi"))
+```
+
+Verify an installation with `cpgd_selftest()`, which scores forty CpGs against
+a shipped reference.
+
+# One call
 
 ```{r one-call}
 library(cpgdirection)
@@ -44,38 +131,44 @@ res[, c("cpg_id", "best_direction", "best_evidence"), with = FALSE]
 
 `my_cpgs` can be a character vector, a file path or a data frame column.
 Identifiers carrying array suffixes or analysis prefixes are reduced to their
-canonical form automatically, so `Zcg00335286_TC21_MC2R` is understood, and the
-gene embedded in the name is used as the target. (`universal = FALSE` skips the
-distance-only fallback layer here, which needs the Bioconductor gene
-annotation packages on first use.)
+canonical form, so `Zcg00335286_TC21_MC2R` is understood, and a gene embedded
+in the name is used as the target. (`universal = FALSE` skips the distance-only
+fallback, which needs the annotation packages above on first use.)
 
-## The two columns that matter
+# Reading a result
+
+Two columns matter first.
 
 | column | meaning |
 |---|---|
 | `best_direction` | `+1`, `-1`, or `NA` where the evidence does not support a call |
-| `best_evidence` | which layer supplied it |
+| `best_evidence` | which rung of the ladder supplied it |
 
-**Always read them together.** A direction worth 0.96 and a direction worth 0.62
-are both a `+1`. `best_expected_accuracy` carries the validated figure.
+**Always read them together.** A direction worth 0.98 and a direction worth
+0.62 are both a `+1`; `best_expected_accuracy` carries the validated figure
+for the rung.
 
-| `best_evidence` | accuracy | what it means |
+| `best_evidence` | expected accuracy | what it means |
 |---|---|---|
-| `measured` | ~1.00 | a catalogue measured this exact pair |
+| `measured` | 0.96-1.00 | an eQTM cohort measured this pair; ~1.00 when two or more cohorts agree |
 | `smr_high` | 0.96 | Mendelian randomisation, several instruments agreeing |
-| `catalogue_consensus` | 0.77–0.87 | genomic-context models, tissues agreeing |
+| `catalogue_consensus` | 0.77-0.87 | genomic-context models, tissues agreeing |
 | `smr_moderate` | 0.85 | Mendelian randomisation, one instrument |
-| `catalogue_single` | 0.55–0.87 | one tissue only |
+| `catalogue_single` | 0.55-0.87 | one tissue only |
+| `onco_consensus` | 0.70-0.94 | five or more tumour types agreeing; tumour evidence, reported as such |
 | `smr_weak` | 0.70 | instruments disagree; a warning, not evidence |
-| `distance_only` | 0.60–0.65 | distance to the TSS, nothing else |
-| `no_evidence` | — | nothing available; a correct answer, not a failure |
+| `distance_only` | 0.60-0.65 | distance to the TSS, nothing else |
+| `no_evidence` | --- | nothing available; a correct answer, not a failure |
 
-## Every target gene, one row per pair
+`cpgd_accuracy_table()` prints the validation behind each figure and the date
+it was last checked.
+
+# Every target gene, one row per pair
 
 A CpG is not obliged to regulate one gene. `cpg_gene_pairs()` discovers every
-supported target automatically -- bare identifiers suffice -- and resolves
+supported target automatically (bare identifiers suffice) and resolves
 direction separately for every CpG x gene pair, excluding probes flagged as
-unreliable (cross-hybridizing or degenerately mapped) by default:
+unreliable (cross-hybridising or degenerately mapped) by default:
 
 ```{r gene-pairs}
 p <- cpg_gene_pairs(c("cg26261055", "cg06495038"), verbose = FALSE)
@@ -85,9 +178,11 @@ p[, c("cpg_id", "target_gene", "mapping_primary", "best_direction",
 
 `mapping_sources` records how each gene entered the candidate set (manifest
 annotation, catalogue, measured eQTM, SMR); `best_evidence` records what the
-direction rests on. They are different facts and are kept apart.
+direction rests on. They are different facts and are kept apart. Measured rows
+also carry `measured_n_cohorts` and `measured_cohort_agreement`, so a sign seen
+in one cohort can be told from one replicated in several.
 
-## Abstention is deliberate
+# Abstention is deliberate
 
 Where the evidence is insufficient the package declines rather than guessing.
 That is why accuracy is high on the sites it does call. If you need a complete
@@ -101,23 +196,35 @@ Declare that tissue on biological grounds **before** looking at the answers.
 Choosing the tissue that gives the result you wanted is selecting on the
 outcome.
 
-## Checking a result that looks one-sided
+# Checking a result that looks one-sided
 
 ```{r direction-balance}
 cpgd_direction_balance(res)
 ```
 
 Inverse associations are the majority everywhere, so a mostly-`-1` result is
-expected. This tests whether yours is more one-sided than the base rate explains.
+expected. This tests whether yours is more one-sided than the base rate
+explains, and says why distance-only calls are left out of that test.
 
-## The limitation that governs everything
+# Writing a report
+
+`cpgd_report()` renders a result as an HTML table. Nothing is written to the
+working directory unless you ask: the default directory is `tempdir()`, and
+the path is reported.
+
+```{r report, eval = FALSE}
+cpgd_report(res, "my_panel.html", dir = tempdir())
+```
+
+# The limitation that governs everything
 
 Every accuracy figure is **conditional on the CpG being an eQTM at all**. The
 catalogues behind the models contain only significant associations, so nothing
 here tells you whether a CpG affects expression. Feed it a site with no real
 effect and you will get a confident direction for something that is not there.
+The package gives direction, not existence.
 
-## Session info
+# Session info
 
 ```{r session-info, eval = TRUE}
 sessionInfo()

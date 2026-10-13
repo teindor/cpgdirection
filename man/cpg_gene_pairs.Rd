@@ -108,7 +108,8 @@ resources -- any of \code{manifest}, \code{lookup} (named list by tissue,
 or one table for \code{tissue}), \code{measured}, \code{smr},
 \code{brain}, \code{cpg_pos}, \code{gene_tss}, \code{distance_curves}.}
 
-\item{verbose}{Print the discovery summary. Default \code{TRUE}.}
+\item{verbose}{Emit the discovery summary with \code{message()}. Default
+\code{TRUE}.}
 }
 \value{
 A \code{data.table} of class \code{cpgd_pairs}, one row per

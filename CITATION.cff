@@ -8,7 +8,7 @@ authors:
     email: teindor@runi.ac.il
     affiliation: "Reichman University"
     orcid: "https://orcid.org/0000-0002-3078-7591"
-version: 2.3.0
+version: 0.99.0
 license: MIT
 repository-code: "https://github.com/teindor/cpgdirection"
 abstract: >-

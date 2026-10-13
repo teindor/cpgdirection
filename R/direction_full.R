@@ -56,9 +56,11 @@
 #'   would otherwise abstain with that tissue's sign, labelled
 #'   \code{targeted_last_resort}, so \code{best_direction} comes back complete.
 #' @param html_out Optional. \code{TRUE} writes
-#'   \code{cpgdirection_results.html} into the working directory; a string is
-#'   used as the file name. See \code{\link{cpgd_report}}.
-#' @param verbose Print a summary. Default \code{TRUE}.
+#'   \code{cpgdirection_results.html} into \code{tempdir()} and reports the
+#'   path; a string is used as the file name (a relative name also lands in
+#'   \code{tempdir()}; give an absolute path to keep the report). See
+#'   \code{\link{cpgd_report}}.
+#' @param verbose Emit a summary with \code{message()}. Default \code{TRUE}.
 #'
 #' @return With \code{tissue = "all"}, a \code{data.table} of class
 #'   \code{cpgd_full}, one row per unique CpG:
@@ -819,15 +821,15 @@ cpg_expression_direction <- function(cpgs,
                       if (is.null(target_tissue)) NULL else
                         match.arg(target_tissue, CPGD_TISSUES))
   data.table::setattr(out, "class", c("cpgd_full", class(out)))
-  if (isTRUE(verbose)) print(out)
+  if (isTRUE(verbose)) .cpgd_message_print(out)
   if (!is.null(html_out)) .cpgd_maybe_report(out, html_out)
   invisible(out)
 }
 
 
-# html_out = TRUE writes a default name into getwd(); a string is used as the
-# file name. Reporting must never take down a completed analysis, so failures
-# here warn rather than stop.
+# html_out = TRUE writes a default name into tempdir() (cpgd_report's default
+# directory); a string is used as the file name. Reporting must never take down
+# a completed analysis, so failures here warn rather than stop.
 .cpgd_maybe_report <- function(res, html_out) {
   f <- if (isTRUE(html_out)) "cpgdirection_results.html" else as.character(html_out)[1]
   tryCatch(cpgd_report(res, file = f),

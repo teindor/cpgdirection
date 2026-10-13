@@ -10,43 +10,37 @@ measured eQTM record.
 
 ## Install
 
-```r
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install("teindor/cpgdirection")
-```
-
-That resolves the Bioconductor dependencies and installs the package in one
-step. Use `BiocManager::install()` rather than `remotes::install_github()`:
-two of the imports are annotation packages that CRAN-only installers will not
-find.
-
-Budget **~400 MB and several minutes** for `TxDb.Hsapiens.UCSC.hg19.knownGene`
-and `org.Hs.eg.db` the first time. They are needed only by
-`cpg_direction_universal()`; the catalogue, SMR and multi-tissue functions have
-no Bioconductor requirement.
-
-<details>
-<summary>Installing from a local tarball instead</summary>
-
-`install.packages()` on a tarball does **not** resolve dependencies, so the
-order matters:
+From Bioconductor, once the package is accepted (it is under review at
+[BiocContributions #174](https://github.com/Bioconductor/BiocContributions/issues/174)):
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install(c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
-                       "GenomicFeatures", "GenomicRanges", "AnnotationDbi"))
-install.packages("data.table")
-
-install.packages("cpgdirection_2.2.5.tar.gz", repos = NULL, type = "source")
+BiocManager::install("cpgdirection")
 ```
-</details>
+
+The development version from GitHub, together with the data package it depends
+on:
+
+```r
+BiocManager::install(c("teindor/cpgdirectionData", "teindor/cpgdirection"))
+```
+
+The ten large data layers (catalogue lookups, SMR directions, probe positions,
+brain directions, saliva-bridge scores, the EPIC v2 probe-gene annotation,
+distal links, Onco-eQTM consensus; about 120 MB) are served by the companion
+ExperimentHub package **cpgdirectionData** and fetched on first use, then
+cached by ExperimentHub. The small tables ship inside this package. An offline
+or pinned copy of the layers can be named with
+`options(cpgdirection.data_dir = "<dir>")`; see `?cpgd_has_data`.
+
+`cpg_direction_universal()` (the distance-only layer) builds a gene TSS table
+from `TxDb.Hsapiens.UCSC.hg19.knownGene` and `org.Hs.eg.db` on first use and
+caches it under `tools::R_user_dir("cpgdirection", "cache")`. Those annotation
+packages are Suggests, so install them only if you want that layer
+(`BiocManager::install(c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
+"GenomicFeatures", "GenomicRanges", "AnnotationDbi"))`, about 400 MB).
 
 Verify the installation with `cpgd_selftest()`.
-
-Everything ships inside the package (~60 MB installed): the three per-tissue
-prediction tables, the SMR causal-direction table with HEIDI results, the
-measured-eQTM table, and 930,178 EPIC v2 hg19 probe positions. No Python, no
-compilation, no network access at run time.
 
 ## Use
 
@@ -70,7 +64,7 @@ the distance fallback. Read two columns first.
 
 | value | worth | meaning |
 |---|---|---|
-| `measured` | ~1.00 | a catalogue measured this CpG against this gene |
+| `measured` | 0.96–1.00 | an eQTM cohort measured this CpG against this gene; ~1.00 when 2+ cohorts agree |
 | `catalogue_consensus` | 0.64–0.87 | tissues that called it agreed |
 | `catalogue_single` | 0.55–0.87 | one tissue only, no corroboration |
 | `distance_only` | 0.60–0.65 | distance to the TSS, nothing else |
@@ -196,7 +190,7 @@ prints the validation figures behind `expected_accuracy`.
 
 | status | expected accuracy | basis |
 |---|---|---|
-| `DIRECT_eQTM` | ~1.00 | read from a catalogue, not predicted |
+| `DIRECT_eQTM` | 0.96–1.00 | read from a measured catalogue, not predicted; ~1.00 when replicated |
 | tier A | 0.77–0.85 | locked test 0.766; independent cohort 0.854 |
 | tier B | 0.64–0.85 | locked test 0.642; independent cohort 0.854 |
 | baseline | 0.58–0.63 | always guessing −1 |
@@ -255,6 +249,15 @@ healthy brain.
 The same CpG can return different answers in different tissues. That is the
 finding, not a bug: catalogues differ in which CpGs they contain, and base
 rates differ from 0.334 to 0.508 across tissues.
+
+## Code provenance
+
+The design, data assembly, validation and all methodological decisions are the
+author's. The R code was drafted and edited with the assistance of Claude
+(Anthropic) across the development series and was run, tested and checked by
+the author; no code was copied from other software projects. Stated here and
+in `DESCRIPTION` under Bioconductor's AI and third-party code policy.
+Assisted-by: Claude (Anthropic).
 
 ## Citation
 

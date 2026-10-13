@@ -17,5 +17,6 @@
     "eQTM",
     "epigenetics",
     "annotation"
-  ]
+  ],
+  "notes": "Version 0.99.0 is the Bioconductor submission numbering (the package becomes 1.0.0 at the next Bioconductor release). It continues 2.99.8, the last GitHub-numbered version, with the changes requested in the Bioconductor review (BiocContributions #174); the code and data are otherwise those of 2.99.8. The ten large data layers are served by the companion ExperimentHub package cpgdirectionData (concept DOI 10.5281/zenodo.22225163)."
 }

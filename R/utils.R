@@ -36,7 +36,7 @@ CPGD_ONCO_ACCURACY <- paste0(
 # The measured rung is no longer "~1.00 by definition". From 2.99.8 the table is
 # built from the eQTM Atlas cohorts plus the packaged Framingham/HELIX blood
 # pairs, and the cross-cohort agreement on shared pairs
-# (tools/build_measured_eqtms.R, 6 Oct 2026: blood 0.99, nasal 1.00, solid
+# (inst/scripts/build_measured_eqtms.R, 6 Oct 2026: blood 0.99, nasal 1.00, solid
 # 0.92-0.99 between independent cohorts) is the honest figure for a measured
 # sign. A pair replicated in two or more cohorts keeps the ~1.00 reading.
 CPGD_MEASURED_ACCURACY <- c(
@@ -44,6 +44,14 @@ CPGD_MEASURED_ACCURACY <- c(
                       "between independent cohorts on shared pairs: blood 0.99, ",
                       "nasal 1.00, solid 0.92-0.99)"),
   replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+
+# Verbose summaries go through message() so that they can be silenced with
+# suppressMessages() and never mix with a function's return value on stdout;
+# the print methods (which cat()) are reused by capturing their output.
+.cpgd_message_print <- function(x) {
+  message(paste(utils::capture.output(print(x)), collapse = "\n"))
+  invisible(x)
+}
 
 # Path of the BUNDLED lookup file, or NA when this (thin) installation holds
 # none and the table comes from the cpgdirectionData ExperimentHub package

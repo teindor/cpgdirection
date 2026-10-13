@@ -21,9 +21,12 @@
 #      ties dropped.
 #
 # Usage (from the cpgdirection package root)
-#   Rscript tools/build_measured_eqtms.R --atlas-dir ~/Downloads/eqtm_atlas --out tools/out
+#   Rscript inst/scripts/build_measured_eqtms.R --atlas-dir ~/Downloads/eqtm_atlas --out tools/out
 #
-# Nothing in the package is changed; packaging is a separate decision.
+# The merged table tools/out/measured_eqtms_v2.csv.gz is what ships as
+# inst/extdata/measured_eqtms.csv.gz (copied by hand, see
+# inst/scripts/make-extdata.md). Nothing in the package is changed by running
+# this script; packaging is a separate decision.
 
 suppressPackageStartupMessages(library(data.table))
 args <- commandArgs(trailingOnly = TRUE)
