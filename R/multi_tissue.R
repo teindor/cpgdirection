@@ -218,8 +218,9 @@ cpgd_measured_eqtms <- function() {
 #'   replicated \tab eQTLGen S1/S2, FinnGen PBMC same sign \tab S1 0.986 (n=1,795), S2 0.971 (n=3,387) \cr
 #'   high / moderate \tab eQTLGen S1 / S2, no FinnGen PBMC pair \tab 0.954 (n=827) / 0.889 (n=2,191) \cr
 #'   moderate \tab FinnGen PBMC only, SMR p < 5e-8 at the top cis-mQTL \tab 0.904 (n=1,798; Wilson 0.89-0.92) \cr
-#'   weak \tab eQTLGen S3; or S1/S2 with FinnGen PBMC OPPOSITE sign (eQTLGen sign kept) \tab 0.70 (n=227); discordant S1 0.92 (n=111), S2 0.59 (n=302) \cr
-#'   reported \tab FinnGen PBMC pairs below that threshold, and every cell-type-only pair \tab 0.74 (n=519) -- below the ladder \cr
+#'   moderate \tab eQTLGen S3 whose majority sign FinnGen PBMC reproduces \tab 0.855 (n=214; Wilson 0.80-0.90) \cr
+#'   weak \tab eQTLGen S3 without a PBMC pair; or S1 with FinnGen PBMC OPPOSITE sign (eQTLGen sign kept) \tab 0.70 (n=227); discordant S1 0.92 (n=111) \cr
+#'   reported \tab FinnGen PBMC pairs below that threshold; every cell-type-only pair; eQTLGen S2/S3 pairs FinnGen PBMC contradicts (evidence conflicts, no sign called) \tab 0.74 (n=519); discordant S2 0.59 (n=302), S3 0.38 (n=68) \cr
 #' }
 #' Two facts drove the design. Concordant pairs are more accurate than either
 #' study alone, because replication on an independent outcome is the one check

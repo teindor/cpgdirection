@@ -612,7 +612,8 @@ cpg_expression_direction <- function(cpgs,
   best[i] <- out$consensus_direction[i];           src[i] <- "catalogue_consensus"
 
   # S2 (84.9%) sits alongside the catalogue models, below their consensus.
-  # FinnGen-only pairs with SMR p < 5e-8 at the top cis-mQTL (PBMC) enter here too.
+  # FinnGen-only pairs with SMR p < 5e-8 at the top cis-mQTL (PBMC) enter here too,
+  # as do eQTLGen S3 pairs whose majority sign FinnGen PBMC reproduces (0.855).
   i <- which(is.na(src) & smr_ok & rung == "moderate")
   best[i] <- out$smr_direction[i];                 src[i] <- "smr_moderate"
 
@@ -628,10 +629,11 @@ cpg_expression_direction <- function(cpgs,
   best[i] <- out$onco_direction[i];                src[i] <- "onco_consensus"
 
   # S3 (70.4%) is weaker than a single-tissue catalogue call: its instruments
-  # disagree, which is a warning rather than extra evidence. S1/S2 pairs whose
-  # sign the FinnGen PBMC outcome contradicts land here as well, with the
-  # eQTLGen sign kept (S2 0.59 on n=302; S1 0.92 on n=111, too few to earn a
-  # rung of their own). Rows at rung "reported" never reach best_direction.
+  # disagree, which is a warning rather than extra evidence. S1 pairs whose
+  # sign the FinnGen PBMC outcome contradicts land here as well with the
+  # eQTLGen sign kept (0.92 on n=111, too few to earn a rung of their own);
+  # discordant S2/S3 are "reported" -- the evidence conflicts and no sign is
+  # called. Rows at rung "reported" never reach best_direction.
   i <- which(is.na(src) & smr_ok & rung == "weak")
   best[i] <- out$smr_direction[i];                 src[i] <- "smr_weak"
 
@@ -714,6 +716,7 @@ cpg_expression_direction <- function(cpgs,
   bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
   bacc[which(src == "smr_moderate" & !(out$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
   bacc[which(src == "smr_moderate" &   out$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
+  bacc[which(src == "smr_moderate" &   out$smr_outcome %in% "eQTLGen" & out$smr_tier %in% "S3")] <- CPGD_SMR_ACCURACY[["moderate_s3_replicated"]]
   bacc[which(src == "smr_weak" &   out$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
   bacc[which(src == "smr_weak" & !(out$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
   bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
@@ -1312,6 +1315,7 @@ print.cpgd_full <- function(x, ...) {
   bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
   bacc[which(src == "smr_moderate" & !(P$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
   bacc[which(src == "smr_moderate" &   P$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
+  bacc[which(src == "smr_moderate" &   P$smr_outcome %in% "eQTLGen" & P$smr_tier %in% "S3")] <- CPGD_SMR_ACCURACY[["moderate_s3_replicated"]]
   bacc[which(src == "smr_weak" &   P$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
   bacc[which(src == "smr_weak" & !(P$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
   bacc[which(src == "catalogue_consensus" & worst_tier == "A")] <- "0.77-0.87 (tier A, tissues agree)"

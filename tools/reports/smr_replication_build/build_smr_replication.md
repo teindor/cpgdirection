@@ -1,6 +1,6 @@
 # SMR layer with outcome-study replication -- build report (v2)
 
-Built 2026-11-03 15:25 from 413,982 eQTLGen pairs, 547,603 FinnGen SMR-tested pairs (p < 5e-08) and 463,048 FinnGen instrument-vote pairs; union 246,608 FinnGen pairs.
+Built 2026-11-03 19:24 from 413,982 eQTLGen pairs, 547,603 FinnGen SMR-tested pairs (p < 5e-08) and 463,048 FinnGen instrument-vote pairs; union 246,608 FinnGen pairs.
 Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 rows.
 
 ## sign(b_SMR) vs instrument vote, pairs both cover
@@ -26,12 +26,12 @@ Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 row
 | FinnGen | finngen_only | instrument_vote | reported |  23118 |
 | FinnGen | finngen_only | smr_top_snp | moderate |  38786 |
 | FinnGen | finngen_only | smr_top_snp | reported |  18254 |
+| eQTLGen | concordant | both | moderate |   1184 |
 | eQTLGen | concordant | both | replicated |  43854 |
-| eQTLGen | concordant | both | weak |   1184 |
+| eQTLGen | concordant | instrument_vote | moderate |   1341 |
 | eQTLGen | concordant | instrument_vote | replicated |  13609 |
-| eQTLGen | concordant | instrument_vote | weak |   1341 |
+| eQTLGen | concordant | smr_top_snp | moderate |    573 |
 | eQTLGen | concordant | smr_top_snp | replicated |  11073 |
-| eQTLGen | concordant | smr_top_snp | weak |    573 |
 | eQTLGen | concordant_celltype | both | high |    522 |
 | eQTLGen | concordant_celltype | both | moderate |  10069 |
 | eQTLGen | concordant_celltype | both | weak |    267 |
@@ -41,9 +41,12 @@ Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 row
 | eQTLGen | concordant_celltype | smr_top_snp | high |    586 |
 | eQTLGen | concordant_celltype | smr_top_snp | moderate |   3191 |
 | eQTLGen | concordant_celltype | smr_top_snp | weak |    207 |
-| eQTLGen | discordant | both | weak |   5873 |
-| eQTLGen | discordant | instrument_vote | weak |   2746 |
-| eQTLGen | discordant | smr_top_snp | weak |   3232 |
+| eQTLGen | discordant | both | reported |   5508 |
+| eQTLGen | discordant | both | weak |    365 |
+| eQTLGen | discordant | instrument_vote | reported |   2468 |
+| eQTLGen | discordant | instrument_vote | weak |    278 |
+| eQTLGen | discordant | smr_top_snp | reported |   2891 |
+| eQTLGen | discordant | smr_top_snp | weak |    341 |
 | eQTLGen | discordant_celltype | both | high |    160 |
 | eQTLGen | discordant_celltype | both | moderate |   3028 |
 | eQTLGen | discordant_celltype | both | weak |    125 |
@@ -61,11 +64,11 @@ Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 row
 
 | smr_rung | rows | cpgs |
 |---|---|---|
-| moderate | 375385 | 108988 |
+| moderate | 378483 | 109274 |
 | replicated |  68536 |  41759 |
-| reported |  57106 |  35811 |
-| weak |  28201 |  16923 |
+| reported |  67973 |  40944 |
 | high |  20088 |  10802 |
+| weak |  14236 |   8239 |
 
 ## Validation against measured blood eQTMs (Wilson 95% CI)
 
@@ -74,10 +77,10 @@ Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 row
 | smr_rung | n | agree |
 |---|---|---|
 | high | 1094 | 0.957 [0.943, 0.968] |
-| moderate | 4617 | 0.894 [0.885, 0.902] |
+| moderate | 4831 | 0.892 [0.883, 0.901] |
 | replicated | 5182 | 0.976 [0.972, 0.980] |
-| reported |  519 | 0.744 [0.704, 0.779] |
-| weak |  999 | 0.704 [0.675, 0.731] |
+| reported |  889 | 0.665 [0.633, 0.695] |
+| weak |  415 | 0.759 [0.716, 0.798] |
 
 ### By rung x replication x tier
 
@@ -86,19 +89,19 @@ Output: `tools/reports/smr_replication_build/smr_directions.csv.gz`, 549,316 row
 | high | concordant_celltype | S1 |  208 | 0.976 [0.945, 0.990] | 0.630 |
 | high | discordant_celltype | S1 |   59 | 0.932 [0.838, 0.973] | 0.661 |
 | high | eqtlgen_only | S1 |  827 | 0.954 [0.938, 0.966] | 0.586 |
+| moderate | concordant | S3 |  214 | 0.855 [0.802, 0.896] | 0.547 |
 | moderate | concordant_celltype | S2 |  486 | 0.905 [0.876, 0.928] | 0.626 |
 | moderate | discordant_celltype | S2 |  142 | 0.803 [0.730, 0.860] | 0.683 |
 | moderate | eqtlgen_only | S2 | 2191 | 0.889 [0.875, 0.901] | 0.616 |
 | moderate | finngen_only | S2 | 1798 | 0.904 [0.890, 0.917] | 0.582 |
 | replicated | concordant | S1 | 1795 | 0.986 [0.979, 0.990] | 0.605 |
 | replicated | concordant | S2 | 3387 | 0.971 [0.965, 0.976] | 0.597 |
+| reported | discordant | S2 |  302 | 0.593 [0.536, 0.647] | 0.566 |
+| reported | discordant | S3 |   68 | 0.382 [0.276, 0.501] | 0.647 |
 | reported | finngen_only | S1 |    2 | 0.500 [0.095, 0.905] | 0.500 |
 | reported | finngen_only | S2 |  517 | 0.745 [0.705, 0.780] | 0.621 |
-| weak | concordant | S3 |  214 | 0.855 [0.802, 0.896] | 0.547 |
 | weak | concordant_celltype | S3 |   48 | 0.750 [0.612, 0.851] | 0.500 |
 | weak | discordant | S1 |  111 | 0.919 [0.853, 0.957] | 0.604 |
-| weak | discordant | S2 |  302 | 0.593 [0.536, 0.647] | 0.566 |
-| weak | discordant | S3 |   68 | 0.382 [0.276, 0.501] | 0.647 |
 | weak | discordant_celltype | S3 |   29 | 0.655 [0.473, 0.801] | 0.552 |
 | weak | eqtlgen_only | S3 |  227 | 0.696 [0.633, 0.752] | 0.621 |
 

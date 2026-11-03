@@ -17,10 +17,16 @@
     `smr_high`: eQTLGen S1/S2 pairs whose sign FinnGen PBMC reproduces --
     S1 0.986 (n = 1,795), S2 0.971 (n = 3,387). 68,536 pairs over 41,759 CpGs
     move from the 0.85 rung to a 0.97 rung.
-  - eQTLGen S1/S2 pairs whose sign FinnGen PBMC **contradicts** drop to
-    `smr_weak` with the eQTLGen sign kept (S2 0.59, n = 302; S1 0.92, n = 111;
-    S3 0.38, n = 68 -- the larger study is usually right for S1, close to chance
-    for S2).
+  - eQTLGen pairs whose sign FinnGen PBMC **contradicts**: S1 drop to `smr_weak`
+    with the eQTLGen sign kept (0.92, n = 111 -- the larger study is usually
+    right, but n is below the 200-pair bar for a rung); S2 and S3 become
+    `reported` with no sign called (0.59, n = 302 and 0.38, n = 68, neither
+    beating its majority-class baseline). Conflicting evidence abstains rather
+    than guesses, as ACMG/AMP treats conflicting criteria.
+  - eQTLGen S3 pairs (instruments disagree) whose majority sign FinnGen PBMC
+    **reproduces** rise from `smr_weak` to `smr_moderate` (0.855, n = 214;
+    Wilson 0.80-0.90), with their own accuracy string. Unreplicated S3 stays
+    `smr_weak` (0.70, n = 227).
   - Pairs the eQTLGen layer lacks enter from FinnGen PBMC at
     `smr_moderate` when the SMR test at the pair's top cis-mQTL reaches
     p < 5e-8 (sign = sign(b_SMR); 0.904, n = 1,798, Wilson 0.89-0.92 -- above

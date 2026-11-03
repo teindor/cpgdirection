@@ -19,7 +19,9 @@ test_that("the replication columns are well-formed", {
   # the rung rules, as the builder states them
   expect_true(all(S$smr_tier[S$smr_rung == "replicated"] %in% c("S1", "S2")))
   expect_true(all(S$replication[S$smr_rung == "replicated"] == "concordant"))
-  expect_true(all(S$smr_rung[S$replication == "discordant" & S$smr_tier %in% c("S1", "S2")] == "weak"))
+  expect_true(all(S$smr_rung[S$replication == "discordant" & S$smr_tier == "S1"] == "weak"))
+  expect_true(all(S$smr_rung[S$replication == "discordant" & S$smr_tier %in% c("S2", "S3")] == "reported"))
+  expect_true(all(S$smr_rung[S$replication == "concordant" & S$smr_tier == "S3"] == "moderate"))
   fo <- S[S$replication == "finngen_only", ]
   expect_true(all(fo$outcome != "eQTLGen"))
   # cell-type-only rows are reported, never admitted
@@ -86,7 +88,7 @@ test_that("FinnGen PBMC-only admitted rows reach smr_moderate with the FinnGen a
 
 test_that("discordant rows carry the eQTLGen sign at the weak rung with the discordant accuracy string", {
   S <- .smr_rep_table(); skip_if(is.null(S), "SMR table without replication columns")
-  d <- S[S$replication == "discordant" & S$smr_tier %in% c("S1", "S2"), ][1:50, ]
+  d <- S[S$replication == "discordant" & S$smr_tier == "S1", ][1:50, ]
   d <- d[!is.na(d$cpg_id), ]
   skip_if(!nrow(d), "no discordant rows")
   p <- cpg_gene_pairs(d$cpg_id, genes = d$target_gene, gene_mode = "pairwise",

@@ -30,8 +30,10 @@
 #
 # Rung rules (all validated against the measured blood eQTMs, 2-3 Nov 2026):
 #   eQTLGen S1/S2, FinnGen PBMC sign agrees        -> replicated  (S1 0.993 n=299; S2 0.958 n=3,060)
-#   eQTLGen S1/S2, FinnGen PBMC sign disagrees     -> weak, eQTLGen sign kept (0.767 n=223)
-#   eQTLGen S3                                     -> weak
+#   eQTLGen S3, FinnGen PBMC reproduces majority   -> moderate (0.855 n=214; ruling 1, 3 Nov 2026)
+#   eQTLGen S1, FinnGen PBMC sign disagrees        -> weak, eQTLGen sign kept (0.92 n=111, below the 200 bar)
+#   eQTLGen S2/S3, FinnGen PBMC sign disagrees     -> reported: evidence conflicts (0.59 n=302; 0.38 n=68; ruling 2)
+#   eQTLGen S3 without a FinnGen PBMC pair         -> weak
 #   eQTLGen row without a FinnGen PBMC pair        -> high / moderate / weak by tier
 #   FinnGen PBMC-only with top-mQTL SMR p < 5e-8   -> moderate (0.899 n=782 SMR-tested; 0.889 n=675 instrument pairs)
 #   FinnGen PBMC-only without SMR p < 5e-8         -> reported
@@ -170,7 +172,9 @@ E[, replication := fcase(
   default = "discordant_celltype")]
 E[, smr_rung := fcase(
   replication == "concordant" & smr_tier %in% c("S1", "S2"), "replicated",
-  replication == "discordant" & smr_tier %in% c("S1", "S2"), "weak",
+  replication == "concordant" & smr_tier == "S3", "moderate",
+  replication == "discordant" & smr_tier == "S1", "weak",
+  replication == "discordant" & smr_tier %in% c("S2", "S3"), "reported",
   smr_tier == "S1", "high",
   smr_tier == "S2", "moderate",
   default = "weak")]

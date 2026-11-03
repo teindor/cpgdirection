@@ -61,8 +61,9 @@ CPGD_SMR_ACCURACY <- c(
   high          = "0.94-0.97 (SMR tier S1, concordant instruments, no FinnGen PBMC pair; validated n=1,094)",
   moderate      = "0.88-0.90 (SMR tier S2, single instrument, no FinnGen PBMC pair; validated n=2,191)",
   moderate_finngen = "0.89-0.92 (SMR p<5e-8 at the top cis-mQTL, FinnGen PBMC outcome only; validated n=1,798)",
+  moderate_s3_replicated = "0.80-0.90 (SMR tier S3: instruments disagree, majority sign reproduced by FinnGen PBMC; validated n=214)",
   weak          = "0.63-0.75 (SMR tier S3, instruments disagree; validated n=227)",
-  weak_discordant = "0.54-0.65 (SMR tier S1/S2/S3, eQTLGen and FinnGen PBMC disagree, eQTLGen sign kept; S2 0.59 n=302, S1 0.92 n=111, S3 0.38 n=68)")
+  weak_discordant = "0.85-0.96 (SMR tier S1, FinnGen PBMC disagrees, eQTLGen sign kept; validated n=111, held at weak below the 200-pair bar; discordant S2/S3 are reported, not called)")
 
 # Effective SMR rung for a table row. Tables built before the replication
 # rebuild carry no smr_rung column; they map tier -> rung as the ladder always
