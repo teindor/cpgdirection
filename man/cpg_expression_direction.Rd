@@ -73,7 +73,8 @@ With \code{tissue = "all"}, a \code{data.table} of class
     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
       evidence available}
     \item{best_evidence}{which source it came from — \code{measured},
-      \code{smr_high}, \code{catalogue_consensus}, \code{smr_moderate},
+      \code{smr_replicated}, \code{smr_high}, \code{catalogue_consensus},
+      \code{smr_moderate},
       \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
       \code{distance_only}, \code{distance_tissue_conflict},
       \code{distance_uninformative}, \code{tissue_conflict} or
@@ -96,10 +97,17 @@ With \code{tissue = "all"}, a \code{data.table} of class
       edge case}
     \item{smr_heidi_status, smr_p_heidi}{the HEIDI heterogeneity test:
       \code{"pass"}, \code{"fail"} or \code{"not_tested"} (fewer than three
-      instruments survived LD pruning). Reported, never acted on: on these
-      data HEIDI did not separate concordant from discordant directions, and
-      filtering on it would discard the best-instrumented pairs first. See
+      instruments survived LD pruning). Reported, never acted on, for the
+      eQTLGen and the FinnGen rows alike: against eQTLGen HEIDI did not
+      separate concordant from discordant directions, and FinnGen-only pairs
+      are admitted on the SMR test at the top cis-mQTL instead. See
       \code{?cpgd_smr_directions}}
+    \item{smr_rung, smr_replication, smr_outcome}{how the SMR row enters the
+      ladder: \code{smr_rung} is \code{replicated} (same sign in eQTLGen and
+      FinnGen PBMC), \code{high}, \code{moderate}, \code{weak} or
+      \code{reported} (never supplies \code{best_direction});
+      \code{smr_replication} says why; \code{smr_outcome} names the
+      outcome study behind the sign}
     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
       gene. Distinguishes "no instrument exists" from "the instrument points
       at a different gene", which are different facts with different remedies}

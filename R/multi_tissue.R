@@ -198,11 +198,53 @@ cpgd_measured_eqtms <- function() {
 #' The columns are shipped so you can condition on them if you wish. Do so with
 #' the above in view.
 #'
+#' @section Replication across outcome studies (1.1.0):
+#' The same GoDMC instruments were run against a second, independent outcome
+#' study: the FinnGen immune-multiome single-nucleus cis-eQTLs (PBMC and eight
+#' L1 cell types), SMR 1.03 per chromosome with the dense GoDMC cis mQTL set
+#' as exposure (\code{tools/build_smr_replication.R}; validation in
+#' \code{tools/reports/validate_celltype_smr.md} and
+#' \code{tools/reports/build_smr_replication.md}). Each row now carries
+#' \code{outcome}, \code{replication}, the FinnGen side
+#' (\code{finngen_direction}, \code{finngen_tier}, \code{finngen_p_SMR},
+#' \code{finngen_heidi_status}, \code{finngen_contexts},
+#' \code{finngen_evidence}: \code{"smr_top_snp"} when the sign is the SMR
+#' estimate at the top cis-mQTL, \code{"instrument_vote"} when it is the vote
+#' of the pair's genome-wide-significant mQTL instruments, \code{"both"} when
+#' the two exist and agree in source) and \code{smr_rung}, which is what the
+#' ladder acts on:
+#' \tabular{lll}{
+#'   rung \tab rule \tab validated against measured blood \cr
+#'   replicated \tab eQTLGen S1/S2, FinnGen PBMC same sign \tab S1 0.986 (n=1,795), S2 0.971 (n=3,387) \cr
+#'   high / moderate \tab eQTLGen S1 / S2, no FinnGen PBMC pair \tab 0.954 (n=827) / 0.889 (n=2,191) \cr
+#'   moderate \tab FinnGen PBMC only, SMR p < 5e-8 at the top cis-mQTL \tab 0.904 (n=1,798; Wilson 0.89-0.92) \cr
+#'   weak \tab eQTLGen S3; or S1/S2 with FinnGen PBMC OPPOSITE sign (eQTLGen sign kept) \tab 0.70 (n=227); discordant S1 0.92 (n=111), S2 0.59 (n=302) \cr
+#'   reported \tab FinnGen PBMC pairs below that threshold, and every cell-type-only pair \tab 0.74 (n=519) -- below the ladder \cr
+#' }
+#' Two facts drove the design. Concordant pairs are more accurate than either
+#' study alone, because replication on an independent outcome is the one check
+#' that catches a wrong-signed Wald ratio; and where the studies disagree the
+#' larger study is right 77-92\% of the time, so its sign is kept but
+#' demoted. The instruments are shared, so the two outcomes have correlated
+#' errors and the agreement is less independent than it looks; the rung is
+#' licensed by the validation against measured eQTMs, not by the agreement
+#' itself. HEIDI conditions nothing, here as elsewhere in the package: against
+#' eQTLGen it rejects the best-instrumented pairs (pass 0.808 vs fail 0.873
+#' against measured), and against FinnGen its apparent separation rested on
+#' 110 pairs; the top-cis-mQTL SMR threshold reaches 0.90 on 1,798 and needs no
+#' heterogeneity filter (HEIDI-passing admitted pairs run 0.95-0.97 on n=150,
+#' which is noted, and below the 200-pair bar for a rung of its own). Cell-type contexts agree with PBMC on 99\% of shared pairs and PBMC is right
+#' 81-94\% of the time when they differ, so a cell type never overrides PBMC;
+#' they add coverage (\code{finngen_contexts}), not sign.
+#'
 #' @return A \code{data.table} with \code{cpg_id}, \code{target_gene},
 #'   \code{direction}, \code{smr_tier}, \code{p_SMR}, \code{n_instruments},
 #'   \code{instrument_agreement}, \code{cpg_gene_dist},
-#'   \code{top_instrument}, and from 2.2.5 \code{p_HEIDI}, \code{nsnp_HEIDI}
-#'   and \code{heidi_status} (\code{"pass"}, \code{"fail"}, \code{"not_tested"}).
+#'   \code{top_instrument}, from 2.2.5 \code{p_HEIDI}, \code{nsnp_HEIDI}
+#'   and \code{heidi_status} (\code{"pass"}, \code{"fail"}, \code{"not_tested"}),
+#'   and from 1.1.0 \code{outcome}, \code{replication}, \code{finngen_direction},
+#'   \code{finngen_tier}, \code{finngen_p_SMR}, \code{finngen_heidi_status},
+#'   \code{finngen_contexts}, \code{finngen_evidence} and \code{smr_rung}.
 #' @examplesIf cpgd_has_data("smr_directions")
 #' s <- cpgd_smr_directions()
 #' s[s$cpg_id == "cg18998365", ]

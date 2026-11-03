@@ -68,7 +68,8 @@
 #'     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
 #'       evidence available}
 #'     \item{best_evidence}{which source it came from — \code{measured},
-#'       \code{smr_high}, \code{catalogue_consensus}, \code{smr_moderate},
+#'       \code{smr_replicated}, \code{smr_high}, \code{catalogue_consensus},
+#'       \code{smr_moderate},
 #'       \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
 #'       \code{distance_only}, \code{distance_tissue_conflict},
 #'       \code{distance_uninformative}, \code{tissue_conflict} or
@@ -91,10 +92,17 @@
 #'       edge case}
 #'     \item{smr_heidi_status, smr_p_heidi}{the HEIDI heterogeneity test:
 #'       \code{"pass"}, \code{"fail"} or \code{"not_tested"} (fewer than three
-#'       instruments survived LD pruning). Reported, never acted on: on these
-#'       data HEIDI did not separate concordant from discordant directions, and
-#'       filtering on it would discard the best-instrumented pairs first. See
+#'       instruments survived LD pruning). Reported, never acted on, for the
+#'       eQTLGen and the FinnGen rows alike: against eQTLGen HEIDI did not
+#'       separate concordant from discordant directions, and FinnGen-only pairs
+#'       are admitted on the SMR test at the top cis-mQTL instead. See
 #'       \code{?cpgd_smr_directions}}
+#'     \item{smr_rung, smr_replication, smr_outcome}{how the SMR row enters the
+#'       ladder: \code{smr_rung} is \code{replicated} (same sign in eQTLGen and
+#'       FinnGen PBMC), \code{high}, \code{moderate}, \code{weak} or
+#'       \code{reported} (never supplies \code{best_direction});
+#'       \code{smr_replication} says why; \code{smr_outcome} names the
+#'       outcome study behind the sign}
 #'     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
 #'       gene. Distinguishes "no instrument exists" from "the instrument points
 #'       at a different gene", which are different facts with different remedies}
@@ -355,7 +363,8 @@ cpg_expression_direction <- function(cpgs,
   # exactly the range where the distance curves go flat.
   scols <- c("smr_direction", "smr_tier", "smr_p", "smr_n_instruments",
              "smr_gene_dist", "smr_gene", "smr_gene_match", "smr_in_table",
-             "smr_heidi_status", "smr_p_heidi")
+             "smr_heidi_status", "smr_p_heidi",
+             "smr_rung", "smr_replication", "smr_outcome")
   S <- tryCatch(cpgd_smr_directions(), error = function(e) NULL)
   if (!is.null(S) && nrow(S)) {
     # heidi_status is absent from tables built before 2.2.5, so read it
@@ -370,7 +379,10 @@ cpg_expression_direction <- function(cpgs,
       d = as.numeric(S$direction), tier = as.character(S$smr_tier),
       p = as.numeric(S$p_SMR), ni = as.integer(S$n_instruments),
       gd = suppressWarnings(as.numeric(S$cpg_gene_dist)),
-      hstat = hs, pheidi = ph)
+      hstat = hs, pheidi = ph,
+      rung = .cpgd_smr_rung(S),
+      rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
+      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"))
     # one row per pair: strongest tier, then smallest p
     data.table::setorderv(SS, c("cpg_id", "g", "tier", "p"))
     SS <- SS[, .SD[1L], by = c("cpg_id", "g")]
@@ -397,6 +409,7 @@ cpg_expression_direction <- function(cpgs,
     d <- rep(NA_real_, n); ti <- rep(NA_character_, n); pp <- rep(NA_real_, n)
     ni <- rep(NA_integer_, n); gd <- rep(NA_real_, n); gg <- rep(NA_character_, n)
     hh <- rep(NA_character_, n); hp <- rep(NA_real_, n)
+    rg <- rep(NA_character_, n); rp <- rep(NA_character_, n); oc <- rep(NA_character_, n)
     for (k in seq_along(cand)) {
       key <- cand[[k]]
       if (k > 2L) key[asked] <- NA_character_
@@ -410,6 +423,7 @@ cpg_expression_direction <- function(cpgs,
       pp[take] <- hit$p[take];    ni[take] <- hit$ni[take]
       gd[take] <- hit$gd[take];   gg[take] <- key[take]
       hh[take] <- hit$hstat[take]; hp[take] <- hit$pheidi[take]
+      rg[take] <- hit$rung[take];  rp[take] <- hit$rep[take]; oc[take] <- hit$outc[take]
     }
     matched <- !is.na(d)
 
@@ -435,6 +449,7 @@ cpg_expression_direction <- function(cpgs,
     pp[fill] <- hb$p[fill];    ni[fill] <- hb$ni[fill]
     gd[fill] <- hb$gd[fill];   gg[fill] <- hb$g[fill]
     hh[fill] <- hb$hstat[fill]; hp[fill] <- hb$pheidi[fill]
+    rg[fill] <- hb$rung[fill];  rp[fill] <- hb$rep[fill]; oc[fill] <- hb$outc[fill]
 
     out[, "smr_direction"     := d]
     out[, "smr_tier"          := ti]
@@ -450,10 +465,16 @@ cpg_expression_direction <- function(cpgs,
     # user who wants to must do so deliberately.
     out[, "smr_heidi_status"  := hh]
     out[, "smr_p_heidi"       := hp]
+    # How the row enters the ladder (replicated / high / moderate / weak /
+    # reported), why, and which outcome study the sign comes from.
+    out[, "smr_rung"          := rg]
+    out[, "smr_replication"   := rp]
+    out[, "smr_outcome"       := oc]
   } else {
     out[, (scols) := list(NA_real_, NA_character_, NA_real_, NA_integer_,
                           NA_real_, NA_character_, FALSE, FALSE,
-                          NA_character_, NA_real_)]
+                          NA_character_, NA_real_,
+                          NA_character_, NA_character_, NA_character_)]
   }
 
   # ---- layer 1c: tumour consensus (Onco-eQTM) -----------------------------
@@ -573,10 +594,17 @@ cpg_expression_direction <- function(cpgs,
   # in the smr_* columns, but it answers a question about a different pair and
   # must not be promoted into a column that answers this one.
   smr_ok <- out$smr_gene_match %in% TRUE & !is.na(out$smr_direction)
+  rung <- out$smr_rung
+
+  # Replicated (the same sign from eQTLGen and FinnGen PBMC on the GoDMC
+  # instruments: S1 0.986, S2 0.971 against measured blood, 3 Nov 2026 build) is
+  # beaten only by a measured eQTM.
+  i <- which(is.na(src) & smr_ok & rung == "replicated")
+  best[i] <- out$smr_direction[i];                 src[i] <- "smr_replicated"
 
   # S1 (95.9%) outranks every predicted layer; it is beaten only by a measured
   # eQTM. Slotted by validated accuracy, not by which layer is newest.
-  i <- which(is.na(src) & smr_ok & out$smr_tier == "S1")
+  i <- which(is.na(src) & smr_ok & rung == "high")
   best[i] <- out$smr_direction[i];                 src[i] <- "smr_high"
 
   i <- which(is.na(src) & !is.na(out$consensus_direction) &
@@ -584,7 +612,8 @@ cpg_expression_direction <- function(cpgs,
   best[i] <- out$consensus_direction[i];           src[i] <- "catalogue_consensus"
 
   # S2 (84.9%) sits alongside the catalogue models, below their consensus.
-  i <- which(is.na(src) & smr_ok & out$smr_tier == "S2")
+  # FinnGen-only pairs with SMR p < 5e-8 at the top cis-mQTL (PBMC) enter here too.
+  i <- which(is.na(src) & smr_ok & rung == "moderate")
   best[i] <- out$smr_direction[i];                 src[i] <- "smr_moderate"
 
   i <- which(is.na(src) & out$n_tissues_calling == 1L & !is.na(out$.single))
@@ -599,8 +628,11 @@ cpg_expression_direction <- function(cpgs,
   best[i] <- out$onco_direction[i];                src[i] <- "onco_consensus"
 
   # S3 (70.4%) is weaker than a single-tissue catalogue call: its instruments
-  # disagree, which is a warning rather than extra evidence.
-  i <- which(is.na(src) & smr_ok & out$smr_tier == "S3")
+  # disagree, which is a warning rather than extra evidence. S1/S2 pairs whose
+  # sign the FinnGen PBMC outcome contradicts land here as well, with the
+  # eQTLGen sign kept (S2 0.59 on n=302; S1 0.92 on n=111, too few to earn a
+  # rung of their own). Rows at rung "reported" never reach best_direction.
+  i <- which(is.na(src) & smr_ok & rung == "weak")
   best[i] <- out$smr_direction[i];                 src[i] <- "smr_weak"
 
   # Tissues pointing opposite ways is a finding, not a gap. Falling through to
@@ -677,9 +709,13 @@ cpg_expression_direction <- function(cpgs,
   i <- which(src == "measured")
   bacc[i] <- ifelse((out$measured_n_cohorts[i] >= 2L & out$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
                     CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
-  bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
-  bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
-  bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
+  bacc[which(src == "smr_replicated" & out$smr_tier == "S1")] <- CPGD_SMR_ACCURACY[["replicated_S1"]]
+  bacc[which(src == "smr_replicated" & out$smr_tier != "S1")] <- CPGD_SMR_ACCURACY[["replicated_S2"]]
+  bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
+  bacc[which(src == "smr_moderate" & !(out$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
+  bacc[which(src == "smr_moderate" &   out$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
+  bacc[which(src == "smr_weak" &   out$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
+  bacc[which(src == "smr_weak" & !(out$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
   bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
   bacc[which(src == "catalogue_consensus" & wt == "A")] <- "0.77-0.87 (tier A, tissues agree)"
   bacc[which(src == "catalogue_consensus" & wt == "B")] <- "0.64-0.84 (tier B, tissues agree)"
@@ -701,7 +737,7 @@ cpg_expression_direction <- function(cpgs,
                       "distance_tissue_conflict", "distance_targeted",
                       "targeted_last_resort"))] <- "U"
   wt[which(src == "measured")] <- "M"
-  i <- which(src %in% c("smr_high", "smr_moderate", "smr_weak"))
+  i <- which(src %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"))
   wt[i] <- out$smr_tier[i]
 
   # ---- the two alternative codings ---------------------------------------
@@ -783,7 +819,13 @@ cpg_expression_direction <- function(cpgs,
         " at tier ", get("smr_tier"),
         " but a stronger layer supplied the opposite sign - inspect before using")]
   out[get("best_evidence") %in% c("smr_high", "smr_moderate", "smr_weak"), "note" :=
-        "causal direction from SMR (blood); consistent with methylation affecting expression AND with linkage - HEIDI not run"]
+        "causal direction from SMR (blood); consistent with methylation affecting expression AND with linkage - see smr_heidi_status and smr_replication"]
+  out[get("best_evidence") == "smr_replicated", "note" :=
+        "causal direction from SMR (blood), same sign from two independent outcome studies (eQTLGen and FinnGen PBMC) on the GoDMC instruments"]
+  out[get("best_evidence") == "smr_weak" & get("smr_replication") %in% "discordant", "note" :=
+        "SMR (blood): eQTLGen and FinnGen PBMC give OPPOSITE signs for this pair; the eQTLGen sign is kept at the weak rung - inspect before using"]
+  out[get("best_evidence") == "smr_moderate" & !(get("smr_outcome") %in% c(NA, "eQTLGen")), "note" :=
+        "causal direction from SMR (blood), FinnGen PBMC outcome only (pair absent from eQTLGen; SMR p<5e-8 at the top cis-mQTL), see ?cpgd_smr_directions"]
   out[get("best_evidence") == "catalogue_single", "note" :=
         "only one tissue called; no cross-tissue corroboration"]
   out[get("best_evidence") == "onco_consensus", "note" :=
@@ -803,6 +845,7 @@ cpg_expression_direction <- function(cpgs,
            "smr_direction", "smr_gene", "smr_gene_match", "smr_tier", "smr_p",
            "smr_n_instruments", "smr_gene_dist", "smr_agreement", "smr_in_table",
            "smr_heidi_status", "smr_p_heidi",
+           "smr_rung", "smr_replication", "smr_outcome",
            "onco_direction", "onco_tier", "onco_n_cancers", "onco_median_r",
            "onco_gene", "onco_gene_match", "onco_agreement",
            "consensus_direction", "n_tissues_calling", "tissue_agreement",
@@ -872,7 +915,7 @@ print.cpgd_full <- function(x, ...) {
   }
   if ("smr_direction" %in% names(x)) {
     ns  <- sum(!is.na(x$smr_direction))
-    nsu <- sum(x$best_evidence %in% c("smr_high", "smr_moderate", "smr_weak"))
+    nsu <- sum(x$best_evidence %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"))
     nd  <- sum(x$smr_agreement %in% FALSE)
     cat("\n  Mendelian randomisation layer:\n")
     if (ns == 0) {
@@ -1051,7 +1094,10 @@ print.cpgd_full <- function(x, ...) {
       .gkey  = gsub("_", "-", toupper(S$target_gene)),
       d = as.numeric(S$direction), tier = as.character(S$smr_tier),
       p = as.numeric(S$p_SMR), ni = as.integer(S$n_instruments),
-      ia = ia, hstat = hs, pheidi = ph)
+      ia = ia, hstat = hs, pheidi = ph,
+      rung = .cpgd_smr_rung(S),
+      rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
+      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"))
     # one row per pair: strongest tier, then smallest p -- same rule as the
     # CpG-level ladder uses
     data.table::setorderv(SS, c("cpg_id", ".gkey", "tier", "p"))
@@ -1065,11 +1111,16 @@ print.cpgd_full <- function(x, ...) {
     P[, "instrument_agreement" := hit$ia]
     P[, "p_HEIDI"              := hit$pheidi]
     P[, "heidi_status"         := hit$hstat]
+    P[, "smr_rung"             := hit$rung]
+    P[, "smr_replication"      := hit$rep]
+    P[, "smr_outcome"          := hit$outc]
   } else {
     P[, c("smr_direction", "smr_tier", "p_SMR", "n_instruments",
-          "instrument_agreement", "p_HEIDI", "heidi_status") :=
+          "instrument_agreement", "p_HEIDI", "heidi_status",
+          "smr_rung", "smr_replication", "smr_outcome") :=
         list(NA_real_, NA_character_, NA_real_, NA_integer_, NA_real_,
-             NA_real_, NA_character_)]
+             NA_real_, NA_character_,
+             NA_character_, NA_character_, NA_character_)]
   }
 
   # ---- tumour consensus (Onco-eQTM), this pair only ----------------------
@@ -1187,13 +1238,17 @@ print.cpgd_full <- function(x, ...) {
   best[i] <- P$measured_direction[i];  src[i] <- "measured"
 
   smr_ok <- !is.na(P$smr_direction)
-  i <- which(is.na(src) & smr_ok & P$smr_tier == "S1")
+  rung <- P$smr_rung
+  i <- which(is.na(src) & smr_ok & rung == "replicated")
+  best[i] <- P$smr_direction[i];       src[i] <- "smr_replicated"
+
+  i <- which(is.na(src) & smr_ok & rung == "high")
   best[i] <- P$smr_direction[i];       src[i] <- "smr_high"
 
   i <- which(is.na(src) & !is.na(cons))
   best[i] <- cons[i];                  src[i] <- "catalogue_consensus"
 
-  i <- which(is.na(src) & smr_ok & P$smr_tier == "S2")
+  i <- which(is.na(src) & smr_ok & rung == "moderate")
   best[i] <- P$smr_direction[i];       src[i] <- "smr_moderate"
 
   i <- which(is.na(src) & n_call == 1L & !is.na(single))
@@ -1206,7 +1261,7 @@ print.cpgd_full <- function(x, ...) {
   i <- which(is.na(src) & onco_ok)
   best[i] <- P$onco_direction[i];      src[i] <- "onco_consensus"
 
-  i <- which(is.na(src) & smr_ok & P$smr_tier == "S3")
+  i <- which(is.na(src) & smr_ok & rung == "weak")
   best[i] <- P$smr_direction[i];       src[i] <- "smr_weak"
 
   i <- which(is.na(src) & n_call >= 2L & !is.na(agree) & agree < 1)
@@ -1242,7 +1297,7 @@ print.cpgd_full <- function(x, ...) {
 
   tier <- worst_tier
   tier[which(src == "measured")] <- "M"
-  i <- which(src %in% c("smr_high", "smr_moderate", "smr_weak"))
+  i <- which(src %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"))
   tier[i] <- P$smr_tier[i]
   tier[which(src == "onco_consensus")] <- "O1"
   tier[which(src %in% c("distance_only", "distance_uninformative",
@@ -1252,9 +1307,13 @@ print.cpgd_full <- function(x, ...) {
   i <- which(src == "measured")
   bacc[i] <- ifelse((P$measured_n_cohorts[i] >= 2L & P$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
                     CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
-  bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
-  bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
-  bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
+  bacc[which(src == "smr_replicated" & P$smr_tier == "S1")] <- CPGD_SMR_ACCURACY[["replicated_S1"]]
+  bacc[which(src == "smr_replicated" & P$smr_tier != "S1")] <- CPGD_SMR_ACCURACY[["replicated_S2"]]
+  bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
+  bacc[which(src == "smr_moderate" & !(P$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
+  bacc[which(src == "smr_moderate" &   P$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
+  bacc[which(src == "smr_weak" &   P$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
+  bacc[which(src == "smr_weak" & !(P$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
   bacc[which(src == "catalogue_consensus" & worst_tier == "A")] <- "0.77-0.87 (tier A, tissues agree)"
   bacc[which(src == "catalogue_consensus" & worst_tier == "B")] <- "0.64-0.84 (tier B, tissues agree)"
   bacc[which(src == "catalogue_single"    & worst_tier == "A")] <- "0.62-0.87 (tier A, one tissue only)"

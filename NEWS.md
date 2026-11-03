@@ -1,3 +1,66 @@
+# cpgdirection 1.1.0 (in development -- lands after Bioconductor accepts 0.99.x)
+
+* **The SMR rung is rebuilt with outcome-study replication.** The GoDMC
+  instruments were run against a second, independent outcome study -- the
+  FinnGen immune-multiome single-nucleus cis-eQTLs (PBMC and eight L1 cell
+  types; `tools/finngen_smr_celltype.R`, `tools/godmc_dense_besd.R`), SMR
+  1.03 per chromosome with the dense GoDMC cis mQTL set as exposure -- and
+  `smr_directions` now carries, per pair, `outcome`, `replication`, the
+  FinnGen side (`finngen_direction`, `finngen_tier`, `finngen_p_SMR`,
+  `finngen_heidi_status`, `finngen_contexts`, `finngen_evidence`) and
+  `smr_rung`, which both ladders act on (`tools/build_smr_replication.R`).
+  Validation against the measured blood eQTMs
+  (`tools/validate_celltype_smr.R`, `tools/reports/validate_celltype_smr.md`,
+  `tools/reports/build_smr_replication.md`, 2-3 Nov 2026):
+
+  - New evidence level **`smr_replicated`**, between `measured` and
+    `smr_high`: eQTLGen S1/S2 pairs whose sign FinnGen PBMC reproduces --
+    S1 0.986 (n = 1,795), S2 0.971 (n = 3,387). 68,536 pairs over 41,759 CpGs
+    move from the 0.85 rung to a 0.97 rung.
+  - eQTLGen S1/S2 pairs whose sign FinnGen PBMC **contradicts** drop to
+    `smr_weak` with the eQTLGen sign kept (S2 0.59, n = 302; S1 0.92, n = 111;
+    S3 0.38, n = 68 -- the larger study is usually right for S1, close to chance
+    for S2).
+  - Pairs the eQTLGen layer lacks enter from FinnGen PBMC at
+    `smr_moderate` when the SMR test at the pair's top cis-mQTL reaches
+    p < 5e-8 (sign = sign(b_SMR); 0.904, n = 1,798, Wilson 0.89-0.92 -- above
+    the rung's historical 0.84-0.86). That is 78,228 PBMC-only pairs admitted
+    (39,442 with both an SMR test and an instrument vote, 38,786 SMR-tested
+    only). `finngen_evidence` records
+    whether a row's sign is the SMR estimate at the top cis-mQTL
+    (`smr_top_snp`), the vote of the pair's instruments
+    (`instrument_vote`), or both.
+  - FinnGen PBMC pairs below that threshold and every cell-type-only pair
+    (0.744, n = 519) are `reported`: visible in the `smr_*` columns, never
+    `best_direction`. The table has 549,316 rows: 413,982 eQTLGen + 135,334
+    FinnGen-only (rungs: moderate 375,385, replicated 68,536, reported 57,106,
+    weak 28,201, high 20,088).
+  - HEIDI conditions nothing. Its v1 role as a gate on the FinnGen-only
+    admission is withdrawn: that separation rested on 110 pairs, and the
+    top-cis-mQTL SMR threshold reaches 0.90 on 1,798 without it (HEIDI-passing
+    admitted pairs: 0.95-0.97 on n = 150, noted, below the rung bar). HEIDI status
+    on FinnGen rows is still shipped, recomputed at the table's contract
+    (pass = p >= 0.05).
+  - Cell types agree with PBMC on 99% of shared pairs and PBMC is right
+    81-94% of the time when they differ; a cell type therefore never
+    overrides PBMC and contributes coverage only (`finngen_contexts`).
+    `blood_other` is pooled into the union.
+  - `CPGD_SMR_ACCURACY` (R/utils.R) holds the rung strings;
+    `.cpgd_smr_rung()` maps tier -> rung for tables built before this
+    version, so a stale cached resource keeps the old behaviour.
+  - New Hub version of `smr_directions` in cpgdirectionData (row count from
+    the v2 build report).
+
+* **Undermining record** (Undermind workspace "cpgdirection monthly horizon
+  scan", 2 Nov 2026): no MR/SMR guideline treats cross-outcome concordance as
+  a formal tier, but false-sign work on TWAS (Gerlach et al. 2025) and the
+  MR+colocalisation review (Zuber et al. 2022) support demoting
+  non-replicating signs rather than discarding them; Wallace et al. 2025
+  explain why HEIDI-type heterogeneity tests reject true colocalisations
+  more often as sample size grows, which is why the package never conditions
+  on HEIDI; ClinGen practice (Pejaver et al. 2022, Brnich et al. 2019)
+  supports stating each rung's validated n and lower confidence bound, which
+  the accuracy strings do.
 # cpgdirection 0.99.0
 
 **Bioconductor submission numbering.** This version continues 2.99.8 (the last

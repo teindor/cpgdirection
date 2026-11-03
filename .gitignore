@@ -24,3 +24,4 @@ Thumbs.db
 *.pem
 *.key
 tools/out/
+tools/reports/smr_replication_build/smr_directions.csv.gz

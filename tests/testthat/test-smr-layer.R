@@ -49,7 +49,7 @@ test_that("only gene-matched SMR rows may supply best_direction", {
   skip_if(is.null(S) || !nrow(S), "SMR table unavailable")
 
   r <- cpg_expression_direction(utils::head(unique(S$cpg_id), 300), verbose = FALSE)
-  smr_won <- r$best_evidence %in% c("smr_high", "smr_moderate", "smr_weak")
+  smr_won <- r$best_evidence %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak")
   # Every row where SMR won must be a gene match. The converse need not hold:
   # a matched row can still be outranked by a measured eQTM.
   expect_true(all(r$smr_gene_match[smr_won] %in% TRUE))
@@ -67,7 +67,7 @@ test_that("a supplied gene is never silently replaced by another", {
   # a non-match and must not become best_direction.
   r <- cpg_expression_direction(cpg, genes = "ZZZ_NOT_A_GENE", verbose = FALSE)
   expect_false(r$smr_gene_match[1])
-  expect_false(r$best_evidence[1] %in% c("smr_high", "smr_moderate", "smr_weak"))
+  expect_false(r$best_evidence[1] %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"))
   expect_true(is.na(r$smr_agreement[1]))
 })
 
@@ -90,12 +90,15 @@ test_that("HEIDI columns are shipped and surfaced", {
   expect_true(all(c("smr_heidi_status", "smr_p_heidi") %in% names(r)))
 })
 
-test_that("nothing in the package conditions on HEIDI", {
+test_that("the eQTLGen tiers do not condition on HEIDI", {
   S <- tryCatch(cpgd_smr_directions(), error = function(e) NULL)
   skip_if(is.null(S) || !nrow(S), "SMR table unavailable")
 
   # Tiers must be independent of HEIDI status: if a future edit quietly starts
-  # filtering, S1 would stop appearing among HEIDI-failing pairs.
+  # filtering, S1 would stop appearing among HEIDI-failing pairs. The FinnGen
+  # rows are checked the same way in test-smr-replication.R: HEIDI conditions
+  # nothing anywhere in the package.
+  if ("outcome" %in% names(S)) S <- S[S$outcome == "eQTLGen", ]
   expect_true(nrow(S[S$smr_tier == "S1" & S$heidi_status == "fail", ]) > 0)
   expect_true(nrow(S[S$smr_tier == "S1" & S$heidi_status == "pass", ]) > 0)
 })

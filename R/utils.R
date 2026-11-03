@@ -10,6 +10,7 @@ CPGD_TISSUES <- c("blood", "nasal_epithelium", "solid_tissue")
 # A constant cannot drift from itself.
 CPGD_EVIDENCE <- c(
   "measured",
+  "smr_replicated",
   "smr_high",
   "catalogue_consensus",
   "smr_moderate",
@@ -44,6 +45,37 @@ CPGD_MEASURED_ACCURACY <- c(
                       "between independent cohorts on shared pairs: blood 0.99, ",
                       "nasal 1.00, solid 0.92-0.99)"),
   replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+
+# SMR rung accuracies against the measured blood eQTMs. "replicated" means the
+# same sign from two independent outcome studies on the GoDMC instruments
+# (eQTLGen bulk whole blood and FinnGen immune-multiome PBMC); "discordant"
+# means the two disagree and the eQTLGen (larger-study) sign is kept at the
+# weak rung. FinnGen-only pairs (absent from eQTLGen) enter the moderate rung
+# when the SMR test at the top cis-mQTL reaches p < 5e-8 against the PBMC
+# outcome; HEIDI conditions nothing. Validation against measured blood eQTMs:
+# tools/validate_celltype_smr.R, tools/build_smr_replication.R (v2), 2-3 Nov
+# 2026.
+CPGD_SMR_ACCURACY <- c(
+  replicated_S1 = "0.98-0.99 (SMR tier S1, same sign in eQTLGen and FinnGen PBMC; validated n=1,795)",
+  replicated_S2 = "0.96-0.98 (SMR tier S2, same sign in eQTLGen and FinnGen PBMC; validated n=3,387)",
+  high          = "0.94-0.97 (SMR tier S1, concordant instruments, no FinnGen PBMC pair; validated n=1,094)",
+  moderate      = "0.88-0.90 (SMR tier S2, single instrument, no FinnGen PBMC pair; validated n=2,191)",
+  moderate_finngen = "0.89-0.92 (SMR p<5e-8 at the top cis-mQTL, FinnGen PBMC outcome only; validated n=1,798)",
+  weak          = "0.63-0.75 (SMR tier S3, instruments disagree; validated n=227)",
+  weak_discordant = "0.54-0.65 (SMR tier S1/S2/S3, eQTLGen and FinnGen PBMC disagree, eQTLGen sign kept; S2 0.59 n=302, S1 0.92 n=111, S3 0.38 n=68)")
+
+# Effective SMR rung for a table row. Tables built before the replication
+# rebuild carry no smr_rung column; they map tier -> rung as the ladder always
+# did, so a stale cached table degrades to the old behaviour, never to an error.
+.cpgd_smr_rung <- function(S) {
+  if ("smr_rung" %in% names(S)) return(as.character(S$smr_rung))
+  tier <- as.character(S$smr_tier)
+  data.table::fcase(tier == "S1", "high", tier == "S2", "moderate",
+                    tier == "S3", "weak", default = NA_character_)
+}
+.cpgd_smr_col <- function(S, col, default) {
+  if (col %in% names(S)) as.character(S[[col]]) else rep(default, nrow(S))
+}
 
 # Verbose summaries go through message() so that they can be silenced with
 # suppressMessages() and never mix with a function's return value on stdout;
