@@ -98,7 +98,7 @@ if (do_full) {
   Fz <- Fz[abs(tss_dist) <= window]
   setkey(Fz, CpG, target_gene)
   keep <- unique(S[, .(CpG = cpg_id, target_gene)])
-  T <- Fz[keep, nomatch = 0L]
+  T <- Fz[keep, nomatch = 0L, allow.cartesian = TRUE]
   setorder(T, CpG, target_gene, p.value)
   T <- T[, .(helix_log2FC = log2FC[1], helix_se = SE[1], helix_p = p.value[1], helix_sig = any(sigPair == TRUE), n_tc = .N, tss_dist = tss_dist[1]), by = .(cpg_id = CpG, target_gene)]
   T <- merge(T, S[, .(cpg_id, target_gene, smr_direction = direction, smr_rung, smr_tier)], by = c("cpg_id", "target_gene"))
