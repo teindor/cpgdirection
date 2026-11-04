@@ -14,7 +14,7 @@ test_that("the measured table carries cohort provenance and no tumour class", {
   expect_true(all(M$n_cohorts >= 1L))
   expect_true(all(M$cohort_agreement > 0.5 & M$cohort_agreement <= 1))
   expect_true(any(M$n_cohorts >= 2L))
-  expect_true(all(M$source %in% c("eqtm_atlas", "packaged_v1")))
+  expect_true(all(M$source %in% c("eqtm_atlas", "packaged_v1", "helix_dryad_2022", "wang2021_S2")))
 })
 
 test_that("a measured pair reports its cohort count and a replication-based accuracy", {
