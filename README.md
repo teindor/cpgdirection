@@ -244,7 +244,7 @@ yardstick because the tissue's own has fewer than 30 pairs.
 |---|---|---|---|
 | `DIRECT_eQTM` | 0.89 | 0.89 (pooled) | 0.92 |
 | tier A | 0.75 | 0.69 (pooled) | 0.71 |
-| tier B | 0.89 (pooled, n = 27) | 0.83 (pooled) | unquantified (no validation pair) |
+| tier B | 0.89 (pooled, n = 27) | 0.83 (pooled) | 0.5, neutral (no validation pair) |
 | baseline: always guessing −1 | 0.58–0.63 | | |
 
 A `DIRECT_eQTM` row is one study's measured sign; `cpg_expression_direction()`

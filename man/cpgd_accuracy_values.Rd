@@ -40,7 +40,8 @@ appears in \code{best_expected_accuracy}, \code{expected_accuracy} or
 A source with fewer than 30 yardstick pairs in a tissue carries its
 cross-tissue figure (every yardstick pooled, whatever its n; the interval
 shows it) instead of its own. A source no yardstick scores at all is quoted
-as "unquantified" and has no number. Child
+as "unquantified" and carries the neutral weight 0.5 (lower and median
+alike): a sign, but no evidence it beats chance. Child
 blood carries the HELIX figure where HELIX scores the source on 100 or more
 pairs, the adult (MESA) figure otherwise. Choose the value with the
 \code{accuracy} argument of the direction functions, or for a whole session
@@ -73,9 +74,8 @@ it acts on the gene, not that it does). For an engine that weights by sign
 certainty: \eqn{P(d = +1)} is \code{best_accuracy} where
 \code{best_direction} is \code{+1} and \code{1 - best_accuracy} where it is
 \code{-1}, and the expected-sign multiplier \eqn{2P(d = +1) - 1} is
-\code{best_direction * (2 * best_accuracy - 1)}. Rows with no number (an
-abstention, a declared target tissue's last-resort sign, or a call from a
-source no yardstick scores) are \code{NA}.
+\code{best_direction * (2 * best_accuracy - 1)}. Every row with a
+direction has a number; only an abstention is \code{NA}.
 }
 
 \examples{

@@ -128,9 +128,10 @@ CPGD_RUNG_DESC <- c(
 # The quoted text for a figure.
 .cpgd_rung_text <- function(source, f) {
   if (is.null(f)) {
-    # a known source that no yardstick scores: said so, and no number
+    # a known source that no yardstick scores: said so, with the neutral
+    # weight 0.5 (a sign, but no evidence it beats chance)
     if (source %in% names(CPGD_RUNG_DESC))
-      return(sprintf("unquantified (%s: no independent validation pair)",
+      return(sprintf("unquantified (%s: no independent validation pair; neutral weight 0.5)",
                      CPGD_RUNG_DESC[[source]]))
     return(NA_character_)
   }

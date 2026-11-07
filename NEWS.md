@@ -42,6 +42,11 @@
     the distance curves (0.66) and of the solid-tissue model (point 0.39)
     leave the blood ladder. Directions change where these sources disagree
     on a pair.
+  - Every direction has a weight, in every output; only an abstention has
+    none. A declared target tissue's last-resort sign is its distance curve's
+    sign and carries that curve's validated figure (`best_rung` =
+    `distance_curve_<tissue>`); a source no yardstick scores (the
+    solid-tissue model's tier-B predictions) carries the neutral 0.5.
   - One catalogue call rule in every result: the pair resolver now applies
     the single-tissue rule (tier A at confidence 0.30, tier B at 0.50,
     DIRECT_eQTM rows alike; before, DIRECT rows always called in pairs), and

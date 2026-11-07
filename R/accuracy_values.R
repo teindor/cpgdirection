@@ -32,9 +32,9 @@
   for (s in names(CPGD_RUNG_DESC)) for (j in seq_len(nrow(combos))) {
     f <- .cpgd_rung_figure1(s, combos$target[j], combos$age[j])
     if (is.null(f)) {
-      rows[[length(rows) + 1L]] <- r(.cpgd_rung_text(s, NULL), s, "any", NA_real_, NA_real_,
-        NA_real_, "0", "none",
-        "No yardstick pair: no number is given, so a weighting engine drops it")
+      rows[[length(rows) + 1L]] <- r(.cpgd_rung_text(s, NULL), s, "any", 0.5, 0.5,
+        NA_real_, "0", "none (no validation pair)",
+        "No yardstick pair: the neutral weight 0.5, a sign with no evidence it beats chance")
       next
     }
     rows[[length(rows) + 1L]] <- r(
@@ -45,9 +45,6 @@
       else sprintf("%s; only %s pair(s) in %s, so the figure pools every yardstick",
                    CPGD_RUNG_DESC[[s]], f$n_here, f$population))
   }
-  rows[[length(rows) + 1L]] <- r(CPGD_LAST_RESORT_ACCURACY, "targeted_last_resort",
-    "declared tissue", NA_real_, NA_real_, NA_real_, NA_character_, "none",
-    "A stated prior, not a measurement: no number is given, so a weighting engine drops it")
   # ---- the brain-target ladder (cpg_brain_bridge), adult cortex ----------
   rows <- c(rows, list(
     r(CPGD_BRAIN_TARGET_ACCURACY[["measured_brain_replicated"]], "measured_brain_replicated",
@@ -109,7 +106,8 @@
 #' A source with fewer than 30 yardstick pairs in a tissue carries its
 #' cross-tissue figure (every yardstick pooled, whatever its n; the interval
 #' shows it) instead of its own. A source no yardstick scores at all is quoted
-#' as "unquantified" and has no number. Child
+#' as "unquantified" and carries the neutral weight 0.5 (lower and median
+#' alike): a sign, but no evidence it beats chance. Child
 #' blood carries the HELIX figure where HELIX scores the source on 100 or more
 #' pairs, the adult (MESA) figure otherwise. Choose the value with the
 #' \code{accuracy} argument of the direction functions, or for a whole session
@@ -138,9 +136,8 @@
 #' certainty: \eqn{P(d = +1)} is \code{best_accuracy} where
 #' \code{best_direction} is \code{+1} and \code{1 - best_accuracy} where it is
 #' \code{-1}, and the expected-sign multiplier \eqn{2P(d = +1) - 1} is
-#' \code{best_direction * (2 * best_accuracy - 1)}. Rows with no number (an
-#' abstention, a declared target tissue's last-resort sign, or a call from a
-#' source no yardstick scores) are \code{NA}.
+#' \code{best_direction * (2 * best_accuracy - 1)}. Every row with a
+#' direction has a number; only an abstention is \code{NA}.
 #'
 #' @return A data.frame: \code{rung} (the source, as in \code{best_rung}),
 #'   \code{population}, \code{median}, \code{lower}, \code{upper},

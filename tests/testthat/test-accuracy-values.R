@@ -31,11 +31,10 @@ acc_pairs <- function(...) cpg_gene_pairs(c("cg20000001", "cg20000002", "cg20000
 num <- function(...) cpgdirection:::.cpgd_accuracy_number(...)
 order_in <- function(t) cpgdirection:::.cpgd_rung_order(t)
 R <- CPGD_RUNG_ACCURACY
-# every quoted string carries a number (only a declared target's last-resort
-# sign has none, by design), and nothing without a string has one
+# every quoted string carries a number, and nothing without a string has one
 expect_mapped <- function(str, val, info = NULL) {
   str <- as.character(str)
-  quoted <- !is.na(str) & !grepl("^unquantified", str)
+  quoted <- !is.na(str)
   expect_false(any(quoted & is.na(val)), info = info)
   expect_true(all(is.na(val[!quoted])), info = info)
 }
@@ -71,8 +70,10 @@ test_that("cpgd_accuracy_values(): one row per quoted string, probabilities, low
   expect_true(all(V$lower[q] >= 0 & V$lower[q] <= V$median[q] & V$median[q] <= 1))
   u <- q & !is.na(V$upper)
   expect_true(all(V$median[u] <= V$upper[u]))
-  expect_true(all(grepl("^unquantified", V$label[!q])))
-  expect_true("targeted_last_resort" %in% V$rung[!q])
+  # every label has a number; a source no yardstick scores has the neutral 0.5
+  expect_true(all(q))
+  uq <- grepl("^unquantified", V$label)
+  expect_true(all(V$median[uq] == 0.5 & V$lower[uq] == 0.5))
   expect_true(all(nzchar(V$basis) & nzchar(V$interval)))
   # every ladder label and every brain label is in it
   for (t in CPGD_TISSUES) for (a in c("adult", "child")) {
@@ -252,6 +253,31 @@ test_that("without genes, a CpG-level consensus or conflict never spans two gene
   expect_true(all(pred[cbind(i, match(s1, c("blood", "nasal", "solid")))]))
 })
 
+test_that("every direction has a weight, in every output; only an abstention has none", {
+  skip_if_not(cpgd_has_data("lookup_blood_hg19") && cpgd_has_data("cpg_positions_hg19"),
+              "lookup tables unavailable")
+  set.seed(20261107)
+  ids <- sample(cpgd_cpg_positions()$cpg_id, 300)
+  q <- function(x) as.data.frame(suppressWarnings(suppressMessages(x)))
+  both <- function(d, dir, w, info) {
+    expect_identical(is.na(d[[dir]]), is.na(d[[w]]), info = info)
+  }
+  for (a in c("lower", "median")) {
+    both(q(cpg_expression_direction(ids, verbose = FALSE, accuracy = a)),
+         "best_direction", "best_accuracy", paste("ced", a))
+    for (t in CPGD_TISSUES) {
+      # a declared target fills every row it can; the last resort carries its curve's figure
+      f <- q(cpg_expression_direction(ids, target_tissue = t, verbose = FALSE, accuracy = a))
+      both(f, "best_direction", "best_accuracy", paste("target", t, a))
+      lr <- f$best_evidence %in% "targeted_last_resort"
+      expect_true(all(startsWith(f$best_rung[lr], "distance_curve_")), info = t)
+      # the single-tissue result: every call has a number (solid tier B: 0.5)
+      g <- q(cpg_expression_direction(ids, tissue = t, verbose = FALSE, accuracy = a))
+      expect_identical(!g$call %in% "ABSTAIN", !is.na(g$accuracy), info = paste("single", t, a))
+    }
+  }
+})
+
 test_that("min_tissues = 1 never turns a lone model's call into a consensus", {
   skip_if_not(cpgd_has_data("lookup_blood_hg19") && cpgd_has_data("cpg_positions_hg19"),
               "lookup tables unavailable")
@@ -291,7 +317,10 @@ test_that("strings map to numbers; lower floors at 0.5; 'any' takes the smaller"
   ly <- cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "any")
   expect_equal(num(ly), min(num(cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "adult")),
                             num(lk)))
-  expect_identical(num(c(NA, "not a quoted string", CPGD_LAST_RESORT_ACCURACY)), rep(NA_real_, 3))
+  expect_identical(num(c(NA, "not a quoted string")), rep(NA_real_, 2))
+  uq <- cpgdirection:::.cpgd_rung_label("catalogue_model_solid_B", "solid_tissue", "adult")
+  expect_match(uq, "^unquantified .*neutral weight 0.5")
+  expect_identical(c(num(uq), num(uq, "median")), c(0.5, 0.5))
   expect_identical(num(character(0)), numeric(0))
 })
 

@@ -27,12 +27,6 @@ CPGD_EVIDENCE <- c(
   "no_evidence")
 stopifnot(!anyDuplicated(CPGD_EVIDENCE))
 
-# The text a declared target tissue's last-resort sign carries: a stated
-# prior, not a measurement, so no number goes with it. Every other accuracy
-# text is built from the per-tissue validation (R/rung_accuracy.R).
-CPGD_LAST_RESORT_ACCURACY <-
-  "unquantified (last resort: the target tissue's sign where nothing better exists)"
-
 # Share of HELIX-tested pairs with nominal p < 0.05, by rung (5% expected under
 # the null). The complement is "not detected at n = 823", not "absent".
 CPGD_SMR_DETECTION_CHILD <- c(replicated = 0.40, high = 0.40, moderate = 0.20,

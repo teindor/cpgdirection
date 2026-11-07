@@ -205,7 +205,9 @@ head(w[, c("cpg_id", "target_gene", "best_evidence", "best_accuracy", "weight")]
 `cpgd_accuracy_values()` lists every number with its validation n, interval
 and source. A source with fewer than 30 validation pairs in the tissue
 carries its cross-tissue figure, whose interval shows how small the sample
-is; one no yardstick scores is quoted as "unquantified" and has no number.
+is; one no yardstick scores is quoted as "unquantified" and carries the
+neutral weight 0.5. Every row with a direction has a number; only an
+abstention has none.
 With `age_group = "any"` the number is the smaller of the adult and the child
 figure.
 

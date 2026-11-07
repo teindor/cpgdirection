@@ -62,8 +62,10 @@ disagree, it also resolves using this tissue instead of abstaining. Declare it o
 biological grounds \strong{before} looking at the votes; the resulting rows
 are worth that tissue's accuracy, not the consensus figure, and are still
 flagged in \code{direction_uncertain}. Setting it also fills any row that
-would otherwise abstain with that tissue's sign, labelled
-\code{targeted_last_resort}, so \code{best_direction} comes back complete.}
+would otherwise abstain with that tissue's distance-curve sign, labelled
+\code{targeted_last_resort} in \code{best_evidence} and carrying that
+curve's validated figure (\code{best_rung} = \code{distance_curve_<tissue>}),
+so \code{best_direction} comes back complete.}
 
 \item{html_out}{Optional. \code{TRUE} writes
 \code{cpgdirection_results.html} into \code{tempdir()} and reports the
@@ -243,8 +245,10 @@ other many-to-many consumer must use the pair API.
   sign certainty can use \eqn{P(d = +1)} = \code{best_accuracy} where
   \code{best_direction} is \code{+1} and \code{1 - best_accuracy} where
   it is \code{-1}, i.e. the multiplier
-  \code{best_direction * (2 * best_accuracy - 1)}. It is \code{NA} where
-  the call abstains or carries no figure. With \code{age_group = "any"} it
+  \code{best_direction * (2 * best_accuracy - 1)}. Every row with a
+  direction has one; it is \code{NA} only where the call abstains. A
+  source no yardstick scores carries the neutral 0.5. With
+  \code{age_group = "any"} it
   is the smaller of the adult and the child figure. Every value and its
   source: \code{\link{cpgd_accuracy_values}}.
 }
