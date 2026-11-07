@@ -11,7 +11,8 @@ cpg_direction_universal(
   cpg_pos = NULL,
   tissue = "all",
   max_dist = 1e+06,
-  verbose = TRUE
+  verbose = TRUE,
+  accuracy = getOption("cpgdirection.accuracy", "lower")
 )
 }
 \arguments{
@@ -34,10 +35,16 @@ tissue plus a consensus.}
 \item{max_dist}{Pairs further apart than this are not called. Default 1e6.}
 
 \item{verbose}{Emit a summary with \code{message()}.}
+
+\item{accuracy}{\code{"lower"} (default) or \code{"median"}: which single
+number the \code{accuracy} column carries for \code{expected_accuracy};
+see \code{\link{cpgd_accuracy_values}}. Defaults to
+\code{getOption("cpgdirection.accuracy", "lower")}.}
 }
 \value{
 A \code{data.table} with the CpG, gene, distance, and a direction and
-  probability per tissue.
+  probability per tissue, \code{expected_accuracy} and the same figure as
+  one number, \code{accuracy}.
 }
 \description{
 Catalogue-based prediction only covers genes some catalogue measured, which

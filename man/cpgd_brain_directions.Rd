@@ -20,13 +20,44 @@ independent Gibbs brain catalogue.
 }
 \section{What the tiers are worth in brain}{
 
-Validated against measured brain eQTMs (GSE15745; a cohort verified absent
-from both SMR arms), tier T1 holds 92-96\% across every significance rung of
-the validation catalogue; tier T2 falls to 67-77\%. Accuracies are best
-supported within ~100 kb (the validating array is promoter-weighted) and are
-conditional on an association existing. Agreement between independently
-derived blood and brain directions is only ~65\%, so do NOT substitute a
-peripheral eQTM direction for these.
+Against measured brain eQTMs:
+\tabular{llll}{
+  reference \tab overlap with the SMR arms \tab T1 \tab T2 \cr
+  GSE15745 (Gibbs 2010, 27K) \tab none (verified absent from both) \tab 0.92-0.96 \tab 0.67-0.77 \cr
+  ROSMAP aged DLPFC (450K) \tab in both arms: in-sample \tab 0.995 (n=1,521) \tab 0.939 (n=2,904) \cr
+  Jaffe DLPFC 25-78 y (450K) \tab methylation donors in the exposure arm \tab 0.969 (n=65) \tab 0.918 (n=61) \cr
+  independent adult cortex, overlap removed \tab none (estimated) \tab 0.964 [0.926, 0.998] \tab 0.943 [0.899, 0.984] \cr
+}
+Brain-mMeta meta-analyses the ROSMAP, Hannon et al. and Jaffe et al.
+(GSE74193) cortex mQTLs and BrainMeta v2 includes ROSMAP, so the 450K
+figures are not independent validations: the ROSMAP figures are in-sample
+on both arms and the Jaffe figures share donors with the exposure arm. The
+last row removes the same-person overlap without comparing any two
+donor-sharing datasets (\code{tools/validate_brain_overlap.R}, 4 Nov 2026):
+each tier's agreement with donor-independent comparators, as a ratio to
+ROSMAP's own agreement with them on the same pairs, scaled by ROSMAP's sign
+accuracy; cluster bootstrap by CpG. It is the agreement expected against
+an adult cortex cohort that shares no donor with either arm, and the
+figure \code{\link{cpg_brain_bridge}} quotes. The in-sample inflation is
+T1 0.995 to 0.964; T2 shows none (0.939 to 0.943). Restricting to pairs within 100 kb changes nothing (T1
+0.974, T2 0.794 against the Wang et al. 2021 brain pairs, the same as at
+any distance), so the earlier distance caveat is dropped. Every figure is
+conditional on an association existing.
+
+Blood evidence transports to adult cortex less well than this layer:
+measured blood eQTMs agree with measured cortex 0.84 (n = 1,654) and the
+blood SMR rungs 0.67-0.77 (\code{tools/validate_ladder_transport.R}), so a
+peripheral direction is never substituted for a brain one;
+\code{\link{cpg_brain_bridge}} uses blood only as a labelled fallback.
+}
+
+\section{Age}{
+
+Validated in postnatal cortex from 1 year to old age: with age regressed
+out, cis eQTM signs in 1-25-year cortex (Jaffe, n = 94) match adult ROSMAP
+cortex at 0.975 and Jaffe adults over 25 at 0.980. Fetal and infant
+(< 1 year) cortex is untested. The earlier 0.73 "developmental" figure was
+age confounding, not biology.
 }
 
 \examples{

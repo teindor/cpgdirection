@@ -17,7 +17,10 @@ cpg_gene_pairs(
   direction_policy = c("best", "all_evidence"),
   universal = TRUE,
   sources = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  age_group = c("adult", "child", "any"),
+  require_detected = FALSE,
+  accuracy = getOption("cpgdirection.accuracy", "lower")
 )
 }
 \arguments{
@@ -33,10 +36,11 @@ first and then restricted to genes in this set (any length). With
 \code{gene_mode = "pairwise"} it must be the same length as \code{cpgs}
 and \code{cpgs[i]} x \code{genes[i]} are evaluated as explicit pairs.}
 
-\item{tissue}{Tissue context for the catalogue mapping layer and the
-\code{lookup_*} audit columns. Direction resolution consults all three
-packaged catalogues for consensus, exactly as
-\code{cpg_expression_direction()} does.}
+\item{tissue}{The tissue the question is about: it sets the order of the
+evidence ladder (sources ranked by their accuracy in that tissue; see
+\code{\link{cpg_expression_direction}}), the figures each call carries,
+the catalogue mapping layer and the \code{lookup_*} audit columns.
+Direction resolution still consults all three packaged catalogues.}
 
 \item{gene_mode}{\code{"filter"} (default) or \code{"pairwise"}; see
 \code{genes}. The mode is never inferred from vector lengths -- state
@@ -110,6 +114,27 @@ or one table for \code{tissue}), \code{measured}, \code{smr},
 
 \item{verbose}{Emit the discovery summary with \code{message()}. Default
 \code{TRUE}.}
+
+\item{age_group}{\code{"adult"} (default), \code{"child"} or \code{"any"}:
+which population the blood figures in \code{best_expected_accuracy}
+refer to (every source HELIX scores on 100+ pairs, not only SMR), as in
+\code{\link{cpg_expression_direction}}. \code{"child"} and
+\code{"any"} add \code{smr_child_blood_helix}. Directions, rungs and the
+pair set never change; \code{"adult"} equals the default.}
+
+\item{require_detected}{With \code{age_group = "child"} only: SMR pairs
+whose \code{child_blood_helix} is not \code{"sig"} or \code{"nominal"}
+are removed before discovery and resolution, so they neither propose a
+target nor supply a direction; measured, catalogue, manifest and
+distance evidence are untouched. A message reports how many pairs were
+dropped. Ignored, with a warning, for any other \code{age_group}.}
+
+\item{accuracy}{\code{"lower"} (default) or \code{"median"}: which single
+number \code{best_accuracy} carries, the lower bound of the source's 95\%
+interval in the tissue (never below 0.5) or its point estimate, as in
+\code{\link{cpg_expression_direction}}. Defaults to
+\code{getOption("cpgdirection.accuracy", "lower")}. See
+\code{\link{cpgd_accuracy_values}}.}
 }
 \value{
 A \code{data.table} of class \code{cpgd_pairs}, one row per
@@ -130,9 +155,19 @@ A \code{data.table} of class \code{cpgd_pairs}, one row per
       probability_plus1}{the pair's direction record, resolved by the same
       evidence ladder as \code{cpg_expression_direction()}, strictly within
       \code{cpg_id + target_gene}}
+    \item{best_expected_accuracy, best_accuracy}{what the direction is
+      worth, in words and as one number: the probability the sign is right
+      given coupling, by default the conservative end of its validation.
+      A weighting engine (e.g. DMSA's expected-sign estimator) can use
+      \code{best_direction * (2 * best_accuracy - 1)}; \code{NA} where the
+      pair abstains. \code{attr(result, "accuracy")} records the choice}
     \item{usable, abstain_reason}{pair-specific: one gene of a CpG can be
       usable while another abstains}
     \item{n_targets_for_cpg, is_coeffect}{co-effect accounting}
+    \item{smr_child_blood_helix}{with \code{age_group = "child"} or
+      \code{"any"}: HELIX child-blood detection of the pair's SMR row
+      (\code{sig}, \code{nominal}, \code{null}, \code{untested}; \code{NA}
+      where the pair has no SMR row)}
   }
 }
 \description{

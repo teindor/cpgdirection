@@ -1,5 +1,186 @@
 # cpgdirection 1.1.0 (in development -- lands after Bioconductor accepts 0.99.x)
 
+* **The evidence ladder is ranked by accuracy, per tissue.** Every source
+  is now scored in each target tissue against a measured yardstick that is
+  independent of it (`tools/validate_rung_accuracy.R`, report in
+  `tools/reports/validate_rung_accuracy.md`): adult blood against MESA
+  monocytes and T cells (Wang et al. 2021; not a catalogue training cohort,
+  not an SMR arm), child blood against HELIX pairs outside the blood
+  catalogue's training set, nasal epithelium against EVA-PR, solid tissue
+  against FUSION and GTEx, each held out in turn. The table
+  (`CPGD_RUNG_ACCURACY`, generated into `R/rung_accuracy_table.R`) orders the
+  ladder in the call's tissue (`target_tissue`, `cpg_gene_pairs(tissue = )`,
+  blood otherwise) and gives every call its figure. Sources are ranked by
+  the lower bound of their 95% interval in the tissue -- the number a call
+  returns by default -- and by nothing else.
+  - Sources are finer than before: measured signs by the tissue they were
+    measured in, and replicated only where 2+ independent donor groups agree
+    (the strata of EVA-PR, MESA's two cell types and GTEx's tissues are one
+    study each; nasal epithelium has one, so no nasal sign is replicated);
+    SMR by stratum (a new stratum for eQTLGen pairs whose FinnGen cell-type
+    arm disagrees, 0.71 in adult blood against 0.80 for the rest of
+    moderate); catalogue single calls by which tissue's model made them. The
+    new column `best_rung` names the source that answered; `best_evidence`
+    keeps the coarse label.
+  - Catalogue sources are scored on their predictions only: a DIRECT_eQTM
+    row is a training cohort's measured sign, which the measured rungs
+    already carry. Distance is scored only against yardsticks its curves were
+    not fitted on (MESA and the solid folds). Measured data are the shipped
+    ones (no liver), and a solid pair measured in both FUSION and GTEx counts
+    once.
+  - The order is the lower bound alone: no tier, stratum or parent
+    placement, so a small sample sits where its interval puts it. A source
+    whose point estimate in a tissue is below 0.5, or that no yardstick
+    scores at all, never answers there. Catalogue conflicts still abstain
+    rather than be settled by a source ranked at or below the distance
+    curves. Age never changes the order.
+  - What changes in adult blood (lower bounds): replicated SMR S1 (0.89)
+    now outranks a single measured blood study (0.87), which edges SMR high
+    (0.86); the tumour consensus (0.82) and SMR replicated S2 (0.82) move
+    above SMR moderate (0.77) and the catalogue consensus (0.76, now formed
+    from predicted calls); single calls of the nasal model (0.59) fall below
+    the distance curves (0.66) and of the solid-tissue model (point 0.39)
+    leave the blood ladder. Directions change where these sources disagree
+    on a pair.
+  - One catalogue call rule in every result: the pair resolver now applies
+    the single-tissue rule (tier A at confidence 0.30, tier B at 0.50,
+    DIRECT_eQTM rows alike; before, DIRECT rows always called in pairs), and
+    a lone model's call is a single call even with `min_tissues = 1`. In
+    both ladders a calling DIRECT_eQTM row is a measured sign of its tissue
+    (it answers through the measured rung where the measured layer has no
+    sign), a consensus or conflict is between predicted calls on the same
+    gene, and models naming different genes are single calls about their own
+    genes.
+  - The accuracy text of every call is rebuilt from the same table, e.g.
+    `0.93 [0.89, 0.95] in adult blood: SMR tier S1, same sign in eQTLGen and
+    FinnGen PBMC (vs MESA, n=244)`. The per-rung string constants of 1.0
+    (`CPGD_SMR_ACCURACY`, `CPGD_MEASURED_ACCURACY`, `CPGD_CATALOGUE_ACCURACY`,
+    ...) are gone. Sources with fewer than 30 pairs in a tissue quote their
+    cross-tissue figure; child blood quotes HELIX where HELIX scores the
+    source on 100+ pairs.
+  - The brain bridge's blood-SMR fallback is ordered by its accuracy in
+    cortex: replicated > high > weak > moderate.
+* **One accuracy number per call, for engines that weight by it.** Every
+  accuracy text has a numeric twin: `best_accuracy` in
+  `cpg_expression_direction()` and `cpg_gene_pairs()`, `accuracy` in the
+  single-tissue result and in `cpg_direction_universal()`, and
+  `requested_gene_accuracy` in `cpg_brain_bridge()`: the probability that the
+  called sign is right, given coupling. New argument
+  `accuracy = c("lower", "median")` on the five direction functions:
+  - `"lower"` (default): the lower bound of the Wilson 95% interval of the
+    source's agreement with the tissue's yardstick (the cluster-bootstrap
+    interval for brain T1/T2). The number a call returns is never below 0.5,
+    so a small sample cannot turn into a weight that reverses the sign;
+    `cpgd_accuracy_values()$lower` shows the bound as computed.
+  - `"median"`: the point estimate.
+  - The default comes from `getOption("cpgdirection.accuracy", "lower")`, so
+    `options(cpgdirection.accuracy = "median")` switches every call in a
+    session, including those DMSA makes. With `age_group = "any"` the number
+    is the smaller of the adult and child figures. `attr(result, "accuracy")`
+    records the choice.
+  - `cpgd_accuracy_values()` (new, exported) lists every quoted text with its
+    number, n and source; the numbers are looked up by the exact text.
+  - For a weighting engine: P(d = +1) = `best_accuracy` where `best_direction`
+    is +1 and `1 - best_accuracy` where it is -1; the expected-sign multiplier
+    is `best_direction * (2 * best_accuracy - 1)`.
+* **Brain T1/T2 accuracy with the same-person overlap removed**
+  (`tools/validate_brain_overlap.R`, 4 Nov 2026). Expected agreement against
+  an adult cortex cohort sharing no donor with either SMR arm: T1 0.964
+  [0.926, 0.998] (in-sample ROSMAP 0.995), T2 0.943 [0.899, 0.984] (in-sample
+  0.939: no inflation), estimated without comparing any two donor-sharing
+  datasets. `CPGD_BRAIN_ACCURACY` and `requested_gene_best_accuracy` quote
+  these figures; the ladder order is unchanged.
+* **New argument `age_group = c("adult", "child", "any")`** on
+  `cpgd_smr_directions()`, `cpg_expression_direction()`,
+  `cpg_direction_all_tissues()`, `cpg_gene_pairs()` and `cpg_brain_bridge()`
+  (spec approved 4 Nov 2026). Age moves no direction and no rung -- child
+  blood (HELIX, 6-11 y) scores the SMR rungs higher than adult blood (S1
+  0.96 vs 0.93, S2 0.96 vs 0.85, high 0.97 vs 0.91, moderate 0.90 vs 0.80,
+  weak 0.64 vs 0.58) and 1-25-year cortex
+  matches adult cortex at 0.975 -- so the argument changes only which
+  validation figures are quoted, which age-specific columns are returned,
+  and an optional filter. `"adult"` gives the same output as the default.
+  - `"child"`: blood figures in `best_expected_accuracy` quote child blood
+    for every source HELIX scores on 100+ pairs outside the catalogue's
+    training set -- measured, SMR, tumour and the nasal model's single
+    calls (SMR S1 0.963, n = 887; high 0.966, n = 770; S2 0.960, n = 2,188;
+    moderate 0.902, n = 2,304; weak 0.635, n = 192) -- and the adult (MESA)
+    figure for the rest; the outputs gain `child_blood_helix` /
+    `smr_child_blood_helix` (`sig`, `nominal`, `null`, `untested`), and the
+    print methods name the population the figures describe. `"any"` quotes
+    adult and child side by side.
+  - `require_detected = FALSE` (new, child only): when `TRUE`, SMR pairs whose
+    `child_blood_helix` is not `sig`/`nominal` are removed before discovery
+    and resolution; measured, catalogue, manifest and distance evidence are
+    never filtered, and a message reports how many SMR pairs were dropped.
+    With any other `age_group` it warns and is ignored.
+  - The documentation now says what the HELIX tested-but-null run showed:
+    an SMR accuracy is conditional on the pair being coupled in the tissue,
+    and most SMR pairs show no detectable coupling in child blood at n = 823
+    (detected at p < 0.05: replicated 0.40, high 0.40, moderate 0.20, weak
+    0.28, reported 0.21). `null` means not detected, not absent, and never
+    changes a rung.
+  - Coverage limits are stated: blood in children 6-11 and adults; cortex
+    1-25 y and adults; no adolescent blood, no fetal or infant cortex, no
+    age data for nasal epithelium or solid tissue. Project Alpha users
+    should set `age_group = "child"`.
+  - Requires the cpgdirectionData version of `smr_directions` that carries
+    `child_blood_helix` (241,044 of 549,316 pairs tested); against an older
+    resource the column comes back `NA` with a warning and `require_detected`
+    is ignored rather than emptying the SMR layer.
+
+* **Measured brain cortex as the top rung of the brain bridge.** New exported
+  accessor `cpgd_brain_measured()` reads `brain_measured_eqtms` (one row per
+  pair per cohort: ROSMAP aged DLPFC, 8,815 pairs, Wang et al. 2021 S2;
+  Jaffe DLPFC age-adjusted, 383 pairs, lead 18b) and collapses it with one
+  vote per cohort, majority sign, ties dropped (9,012 pairs; 174 measured in
+  both cohorts, which agree on 174 of 180 shared pairs). `cpg_brain_bridge()`
+  gains `measured_brain_genes`, `measured_brain_directions`,
+  `measured_brain_n_cohorts` and `measured_brain_cohorts`, a print line for
+  them, and -- where the input names a gene -- `requested_gene_best_direction`,
+  `requested_gene_best_evidence` and `requested_gene_best_accuracy` from the
+  brain-target ladder: measured brain > brain T1 > brain T2 > measured blood
+  > blood SMR (ruling 3 transport result, 4 Nov 2026). Blood evidence is a
+  labelled fallback (0.84 measured, 0.67-0.77 SMR against adult cortex) and
+  never ranks above brain SMR. `requested_gene_direction` and
+  `requested_gene_tier` keep their meaning (brain SMR layer only).
+* **Brain T1/T2 accuracy, now with the 450K references and their overlap
+  stated.** T1 0.995 (n = 1,521) and T2 0.939 (n = 2,904) against ROSMAP
+  cortex are in-sample -- ROSMAP is in both SMR arms (Brain-mMeta mQTLs and
+  BrainMeta v2 eQTLs) -- and the Jaffe DLPFC figures (T1 0.969, T2 0.918) are
+  ROSMAP-free but share their 450K donors with the Brain-mMeta exposure arm.
+  GSE15745 (0.92-0.96 / 0.67-0.77) stays the one reference free of both arms
+  (`CPGD_BRAIN_ACCURACY`). The distance caveat is dropped (figures unchanged
+  within 100 kb).
+* **Age caveat of the brain bridge revised** (lead 18b): with age regressed
+  out, 1-25-year cortex eQTM signs match adult ROSMAP cortex at 0.975 and Jaffe
+  adults at 0.980; the earlier 0.73 developmental figure was age confounding.
+  Brain directions are validated in postnatal cortex from 1 year to old age;
+  fetal and infant (< 1 y) cortex is untested. The wording follows
+  `age_group` and is returned in `attr(result, "brain_caveat")`.
+* **SMR documentation.** `replicated` and `high` were described as
+  equivalent (they differ by 0.00-0.03 in all five references; since the
+  ranked ladder above, the per-tissue validation orders them); the
+  child-blood column and the cross-tissue transport table
+  (`tools/validate_ladder_transport.R`) are in `?cpgd_smr_directions`.
+* **Documentation of the November data build.** `?cpgd_measured_eqtms` names
+  the HELIX Dryad (`HELIX_2022_Dryad_adj`, signed, cell-adjusted) and MESA
+  (`MESA_monocytes`, `MESA_Tcells`) blood cohorts and the new `source`
+  values; `?cpgd_probe_qc` documents the informational T2T-CHM13 / pangenome
+  columns (Dong et al. 2025) and why `qc_exclude` is unchanged;
+  `inst/scripts/make-extdata.md` covers the build and the new
+  `brain_measured_eqtms.csv.gz`.
+* Internal: SMR accuracy strings are filled by one helper for both ladders
+  (`.cpgd_fill_smr_accuracy()`), and internal callers read the full SMR table
+  through `.cpgd_smr_table()`; the exported `cpgd_smr_directions()` is the
+  age-aware view and returns a copy, so editing its result never reaches the
+  cached table (likewise `cpgd_brain_measured()`). With `require_detected`,
+  `smr_in_table` is still judged on the unfiltered table and the print method
+  says the pairs were removed rather than that no instrument exists. A column
+  subset of a `cpgd_bridge` result now prints as a plain table instead of
+  failing.
+* New tests: `test-age-group.R`, `test-brain-measured.R`.
+
 * **The SMR rung is rebuilt with outcome-study replication.** The GoDMC
   instruments were run against a second, independent outcome study -- the
   FinnGen immune-multiome single-nucleus cis-eQTLs (PBMC and eight L1 cell

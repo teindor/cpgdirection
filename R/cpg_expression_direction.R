@@ -49,6 +49,7 @@
 #'     \item{confidence}{0-1; distance of the probability from 0.5, doubled}
 #'     \item{evidence_tier}{\code{A}, \code{B} or \code{C}; see Details}
 #'     \item{expected_accuracy}{what a direction at this tier is worth}
+#'     \item{accuracy}{the same figure as one number (see cpgd_accuracy_values())}
 #'     \item{call}{\code{+1}, \code{-1} or \code{ABSTAIN} after thresholds}
 #'     \item{note}{caveat in plain language, where one applies}
 #'   }
@@ -79,7 +80,8 @@
                              tissue = c("blood", "nasal_epithelium", "solid_tissue"),
                              min_confidence = NULL,
                              allow_nearest_gene = FALSE,
-                             verbose = TRUE) {
+                             verbose = TRUE,
+                             accuracy = "lower") {
 
   tissue <- match.arg(tissue, CPGD_TISSUES)
 
@@ -157,15 +159,22 @@
         get("direction") == -1, "higher methylation -> LOWER expression",
         default = NA_character_)]
 
-  acc <- switch(tissue,
-    blood            = c(A = "0.77-0.85", B = "0.64-0.85"),
-    nasal_epithelium = c(A = "0.84-0.87", B = "0.70-0.84"),
-    solid_tissue     = c(A = "0.62-0.70", B = "0.55-0.66"))
-  out[, "expected_accuracy" := fcase(
-        get("status") == "DIRECT_eQTM", CPGD_MEASURED_ACCURACY[["single"]],
-        get("status") == "PREDICTED" & get("evidence_tier") == "A", acc[["A"]],
-        get("status") == "PREDICTED" & get("evidence_tier") == "B", acc[["B"]],
-        default = NA_character_)]
+  # what a call is worth in this tissue: a DIRECT_eQTM row is a measured sign
+  # (one cohort), a PREDICTED row this tissue's catalogue model at its tier,
+  # both scored against an independent yardstick (R/rung_accuracy.R)
+  s_t <- c(blood = "blood", nasal_epithelium = "nasal", solid_tissue = "solid")[[tissue]]
+  # (an abstaining row carries no figure)
+  rk <- data.table::fcase(
+        out$call %in% "ABSTAIN", NA_character_,
+        out$status == "DIRECT_eQTM", paste0("measured_", s_t, "_single"),
+        out$status == "PREDICTED" & out$evidence_tier %in% c("A", "B"),
+          paste0("catalogue_model_", s_t, "_", out$evidence_tier),
+        default = NA_character_)
+  data.table::set(out, j = "expected_accuracy", value = .cpgd_rung_label(rk, tissue, "adult"))
+  # the same figure as one number (cpgd_accuracy_values()); set(), not `:=`,
+  # so neither name can resolve to a column
+  data.table::set(out, j = "accuracy",
+                  value = .cpgd_accuracy_number(out$expected_accuracy, accuracy))
 
   out[, "note" := ""]
   out[get("status") == "NO_EXPRESSION_ANCHOR", "note" :=
@@ -183,7 +192,7 @@
 
   keep <- c("input", "cpg_id", "tissue", "requested_gene", "target_gene", "gene_source", "tss_dist", "status",
             "direction", "direction_label", "probability_plus1", "confidence",
-            "evidence_tier", "expected_accuracy", "call", "note")
+            "evidence_tier", "expected_accuracy", "accuracy", "call", "note")
   unmapped <- setdiff(q$cpg_id, out$cpg_id)
   out <- out[, intersect(keep, names(out)), with = FALSE]
   if (length(unmapped)) {
@@ -197,16 +206,22 @@
   data.table::setattr(out, "n_submitted", n_in)
   data.table::setattr(out, "n_duplicate", n_dup)
   data.table::setattr(out, "tissue", tissue)
+  data.table::setattr(out, "accuracy", accuracy)
   out[, "tissue" := tissue]
   if (isTRUE(verbose)) .cpgd_message_print(out)
   invisible(out)
 }
 
 
-#' Expected accuracy by evidence tier
+#' Expected accuracy by evidence tier (version 1.0 figures)
 #'
-#' The validation figures behind the \code{expected_accuracy} column, so they can
-#' be inspected rather than taken on trust.
+#' The validation figures of version 1.0, per catalogue model and measured
+#' class: cross-validation, locked-test and replication figures, kept for
+#' their provenance. They are no longer what \code{expected_accuracy} and
+#' \code{best_expected_accuracy} quote: since 1.1.0 every quoted figure, and
+#' the number in \code{accuracy} and \code{best_accuracy}, comes from the
+#' per-tissue validation against independent yardsticks; see
+#' \code{\link{cpgd_accuracy_values}}.
 #'
 #' @return A \code{data.frame}.
 #' @examples

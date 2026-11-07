@@ -4,7 +4,13 @@
 \alias{cpg_brain_bridge}
 \title{What does a peripheral CpG measurement license about the brain?}
 \usage{
-cpg_brain_bridge(cpgs, tissue = c("saliva", "blood", "buccal"))
+cpg_brain_bridge(
+  cpgs,
+  tissue = c("saliva", "blood", "buccal"),
+  age_group = c("adult", "child", "any"),
+  require_detected = FALSE,
+  accuracy = getOption("cpgdirection.accuracy", "lower")
+)
 }
 \arguments{
 \item{cpgs}{CpG identifiers in any of the formats
@@ -12,6 +18,27 @@ cpg_brain_bridge(cpgs, tissue = c("saliva", "blood", "buccal"))
 
 \item{tissue}{Which peripheral tissue you measured: "saliva" (default),
 "blood" or "buccal".}
+
+\item{age_group}{\code{"adult"} (default), \code{"child"} or \code{"any"}:
+which age the caveat and the printed population refer to. It changes no
+direction and no rung of the ladder. \code{"child"} (for Project Alpha
+children and adolescents) and \code{"any"} also return
+\code{requested_gene_child_blood_helix} for blood-SMR fallback answers.}
+
+\item{require_detected}{With \code{age_group = "child"} only: the blood-SMR
+fallback uses only pairs HELIX child blood detected (\code{"sig"} or
+\code{"nominal"}); measured evidence is never filtered. Ignored, with a
+warning, for any other \code{age_group}.}
+
+\item{accuracy}{\code{"lower"} (default) or \code{"median"}: which single
+number \code{requested_gene_accuracy} carries for
+\code{requested_gene_best_accuracy}, the lower 95\% bound of the rung's
+validation in cortex or its point estimate (for a pair measured in both
+cortex cohorts: the floor set by their agreement, and the single-cohort
+accuracy it implies). Defaults to
+\code{getOption("cpgdirection.accuracy", "lower")}. The brain figures are
+the same-person-overlap-adjusted ones. See
+\code{\link{cpgd_accuracy_values}}.}
 }
 \value{
 A \code{data.table} of class \code{cpgd_bridge}: per CpG,
@@ -19,22 +46,57 @@ A \code{data.table} of class \code{cpgd_bridge}: per CpG,
   tissue), \code{rho_epic}/\code{rho_450k} (IMAGE-CpG, n = 27),
   \code{amaze_replicated}, \code{hannon_cortical_rho} (blood, n = 75),
   \code{sommerer_buccal_R} (n = 120), \code{ensemble_pctile} (genome-wide
-  synthesised saliva score), \code{strict_qc}, and the brain layer's
-  \code{t1_genes}/\code{t1_directions}. Where a gene was named in the input,
+  synthesised saliva score), \code{strict_qc}, the brain layer's
+  \code{t1_genes}/\code{t1_directions}, and the measured cortex pairs:
+  \code{measured_brain_genes}, \code{measured_brain_directions} and
+  \code{measured_brain_n_cohorts} (\code{;}-separated, aligned) and
+  \code{measured_brain_cohorts}. Where a gene was named in the input,
   \code{requested_gene}, \code{requested_gene_direction} and
-  \code{requested_gene_tier} answer for that gene specifically.
+  \code{requested_gene_tier} give the brain SMR answer for that gene, and
+  \code{requested_gene_best_direction}, \code{requested_gene_best_evidence}
+  and \code{requested_gene_best_accuracy} the answer of the brain-target
+  ladder, with \code{requested_gene_accuracy} the same figure as one
+  number (for a weighting engine:
+  \code{requested_gene_best_direction * (2 * requested_gene_accuracy - 1)}).
+  \code{attr(result, "brain_caveat")} holds the age caveat and
+  \code{attr(result, "accuracy")} the value chosen.
 }
 \description{
-For each input CpG: the brain causal direction and target gene(s) where a
-tier-T1/T2 estimate exists, the peripheral-brain concordance evidence for
-the tissue you measured, the deliverable grade where the CpG reaches the
-graded set, and otherwise a genome-wide synthesised saliva-bridge score.
+For each input CpG: the measured cortex associations and the brain causal
+direction and target gene(s) where they exist, the peripheral-brain
+concordance evidence for the tissue you measured, the deliverable grade
+where the CpG reaches the graded set, and otherwise a genome-wide
+synthesised saliva-bridge score.
 }
-\section{The three caveats this function will keep repeating}{
+\section{The brain-target ladder}{
+
+Where the input names a gene, \code{requested_gene_best_direction} answers
+for that gene from the strongest evidence held, in this order
+(\code{tools/validate_ladder_transport.R}, 4 Nov 2026):
+\tabular{ll}{
+  \code{requested_gene_best_evidence} \tab worth in brain \cr
+  \code{measured_brain} \tab measured in cortex (\code{\link{cpgd_brain_measured}}); ~1.00 in both cohorts, 0.93-0.98 in one \cr
+  \code{brain_T1} \tab 0.964 [0.926, 0.998] against independent adult cortex (0.995 in-sample on ROSMAP) \cr
+  \code{brain_T2} \tab 0.943 [0.899, 0.984] against independent adult cortex (0.939 in-sample on ROSMAP) \cr
+  \code{measured_blood} \tab 0.84 against adult cortex (below the 0.85 bar) \cr
+  \code{blood_SMR} \tab 0.67-0.77 against adult cortex, by rung \cr
+}
+Blood evidence is a labelled fallback for a brain question and never ranks
+above brain SMR. \code{requested_gene_direction} and
+\code{requested_gene_tier} keep their earlier meaning: the brain SMR layer
+alone, never substituted. See \code{\link{cpgd_brain_directions}} for why
+the 450K figures are in-sample.
+}
+
+\section{The caveats this function will keep repeating}{
 
 \enumerate{
-  \item Directions are BRAIN-derived. Peripheral eQTM directions agree with
-    brain only ~65\% of the time and are never used here.
+  \item Directions are BRAIN-derived first. Blood evidence transports to
+    adult cortex at 0.84 (measured) and 0.67-0.77 (SMR) and enters only as
+    the labelled fallback of the ladder above.
+  \item Age: validated in postnatal cortex from 1 year to old age; fetal
+    and infant (< 1 year) cortex is untested. The wording follows
+    \code{age_group} and is stored in \code{attr(result, "brain_caveat")}.
   \item Peripheral-brain concordance couplings rest on n = 27 living-brain
     donors; per-CpG estimates have a cross-resource reliability of r ~ 0.2-0.4.
     Grades exist precisely because single estimates cannot be trusted alone.
@@ -59,5 +121,10 @@ graded set, and otherwise a genome-wide synthesised saliva-bridge score.
 \examples{
 \dontshow{if (cpgd_has_data("saliva_bridge_scores")) withAutoprint(\{ # examplesIf}
 cpg_brain_bridge("cg06846259", tissue = "saliva")   # POMC, grade A++
+
+# a named gene, answered by the brain-target ladder, for a child cohort
+r <- cpg_brain_bridge("cg06846259_POMC", age_group = "child")
+as.data.frame(r)[, c("requested_gene", "requested_gene_best_direction",
+                     "requested_gene_best_evidence")]
 \dontshow{\}) # examplesIf}
 }

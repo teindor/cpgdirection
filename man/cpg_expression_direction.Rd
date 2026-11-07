@@ -15,7 +15,10 @@ cpg_expression_direction(
   min_distance_info = 0.02,
   target_tissue = NULL,
   html_out = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  age_group = c("adult", "child", "any"),
+  require_detected = FALSE,
+  accuracy = getOption("cpgdirection.accuracy", "lower")
 )
 }
 \arguments{
@@ -31,7 +34,9 @@ A single file path to a text or CSV file is also accepted.}
 \code{"solid_tissue"} returns that tissue alone.}
 
 \item{min_tissues}{Tissues that must agree before
-\code{consensus_direction} is reported. Default 2.}
+\code{consensus_direction} is reported. Default 2. In the ladder a
+consensus always needs two models at least: with \code{min_tissues = 1} a
+lone model's call is still ranked and quoted as a single call.}
 
 \item{min_confidence}{Optional numeric in \code{[0, 1]} overriding the
 tier-specific abstention thresholds.}
@@ -50,8 +55,10 @@ Default 0.02. It is a floor, not the main gate: whether a distance call is
 made at all is decided by whether the three tissue curves agree in sign.}
 
 \item{target_tissue}{Optional, one of \code{"blood"},
-\code{"nasal_epithelium"} or \code{"solid_tissue"}. Where the tissues
-disagree, resolve using this tissue instead of abstaining. Declare it on
+\code{"nasal_epithelium"} or \code{"solid_tissue"}: the tissue the
+question is about. It sets the order of the ladder and the figures each
+call carries (blood when not given). Where the tissues
+disagree, it also resolves using this tissue instead of abstaining. Declare it on
 biological grounds \strong{before} looking at the votes; the resulting rows
 are worth that tissue's accuracy, not the consensus figure, and are still
 flagged in \code{direction_uncertain}. Setting it also fills any row that
@@ -65,6 +72,34 @@ path; a string is used as the file name (a relative name also lands in
 \code{\link{cpgd_report}}.}
 
 \item{verbose}{Emit a summary with \code{message()}. Default \code{TRUE}.}
+
+\item{age_group}{\code{"adult"} (default), \code{"child"} or \code{"any"}:
+which population the blood accuracy figures in
+\code{best_expected_accuracy} refer to. \code{"child"} quotes HELIX child
+blood (6-11 y) for every source HELIX scores on 100+ pairs (measured,
+SMR, tumour, the nasal model's calls; the adult figure otherwise) and adds
+\code{smr_child_blood_helix}; \code{"any"} quotes both and adds the
+column. Directions and rungs never change: age did not
+move the ladder in validation (see \code{\link{cpgd_smr_directions}}).
+\code{"adult"} equals the default. Project Alpha users
+(children and adolescents) should set \code{"child"}. Only
+\code{tissue = "all"} carries the SMR layer; with a single tissue
+\code{age_group} and \code{require_detected} have no effect.}
+
+\item{require_detected}{With \code{age_group = "child"} only: drop SMR
+pairs whose \code{child_blood_helix} is not \code{"sig"} or
+\code{"nominal"} before the ladder runs; measured, catalogue and distance
+evidence are untouched and a message reports how many pairs were dropped.
+Ignored, with a warning, for any other \code{age_group}.}
+
+\item{accuracy}{Which single number \code{best_accuracy} (and, with one
+tissue, \code{accuracy}) carries for each accuracy string:
+\code{"lower"} (default), the lower bound of the 95\% interval of the
+source's validation in the tissue, never below 0.5, or
+\code{"median"}, its point estimate. The default
+comes from \code{getOption("cpgdirection.accuracy", "lower")}, so a
+session can switch it for every call, including those an engine such as
+DMSA makes. See \code{\link{cpgd_accuracy_values}}.}
 }
 \value{
 With \code{tissue = "all"}, a \code{data.table} of class
@@ -72,14 +107,22 @@ With \code{tissue = "all"}, a \code{data.table} of class
   \describe{
     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
       evidence available}
-    \item{best_evidence}{which source it came from — \code{measured},
+    \item{best_evidence}{which kind of source it came from — \code{measured},
       \code{smr_replicated}, \code{smr_high}, \code{catalogue_consensus},
       \code{smr_moderate},
       \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
       \code{distance_only}, \code{distance_tissue_conflict},
       \code{distance_uninformative}, \code{tissue_conflict} or
-      \code{no_evidence}, in ladder order}
+      \code{no_evidence}}
+    \item{best_rung}{the exact source that answered, as ranked (e.g.
+      \code{measured_blood_single}, \code{smr_replicated_S2},
+      \code{catalogue_single_nasal_A}); the state for an abstention;
+      \code{attr(result, "rank_tissue")} names the tissue whose order was
+      used}
     \item{best_confidence, best_expected_accuracy}{what that answer is worth}
+    \item{best_accuracy}{the same figure as one number (see the section
+      One number for weighting engines); \code{attr(result, "accuracy")}
+      records which value was chosen}
     \item{consensus_direction, n_tissues_calling, tissue_agreement}{the
       catalogue layer}
     \item{gene_*, dir_*, conf_*, tier_*, status_*}{per tissue}
@@ -108,6 +151,10 @@ With \code{tissue = "all"}, a \code{data.table} of class
       \code{reported} (never supplies \code{best_direction});
       \code{smr_replication} says why; \code{smr_outcome} names the
       outcome study behind the sign}
+    \item{smr_child_blood_helix}{with \code{age_group = "child"} or
+      \code{"any"} only: whether HELIX child blood detected the SMR pair
+      (\code{sig}, \code{nominal}, \code{null}, \code{untested}).
+      Informational; \code{null} means not detected at n = 823, not absent}
     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
       gene. Distinguishes "no instrument exists" from "the instrument points
       at a different gene", which are different facts with different remedies}
@@ -116,18 +163,23 @@ With \code{tissue = "all"}, a \code{data.table} of class
       (Onco-eQTM, 27 TCGA cancer types; \code{\link{cpgd_onco_eqtm}}),
       keyed and gated exactly like SMR: only a gene match may reach
       \code{best_direction}, and only tier O1 does so (as
-      \code{onco_consensus}, below every single-tissue peripheral call).
+      \code{onco_consensus}, ranked by its accuracy like every source).
       \code{onco_agreement} compares the tumour sign with a peripheral
       \code{best_direction} for the same pair; \code{NA} when the tumour
       sign is itself the best direction}
     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
       evidence, and whether it concerns a gene other than the one requested}
     \item{measured_n_cohorts, measured_cohort_agreement}{for a measured
-      call, how many independent cohorts measured the pair and the share
-      agreeing on its sign (2.99.8, eQTM Atlas build). Replicated pairs
-      (2+ cohorts, same sign) read \code{~1.00}; single-cohort pairs read
-      \code{0.96-0.99}, the between-cohort replication rate on shared pairs}
+      call, how many cohorts measured the pair (strata and cell types of one
+      study counted separately) and the share agreeing on its sign (2.99.8,
+      eQTM Atlas build). The ladder ranks a measured sign by the tissue it
+      was measured in and whether 2+ independent studies (donor groups)
+      there agree}
   }
+  With a single \code{tissue}, the per-tissue result instead: \code{status},
+  \code{direction}, \code{probability_plus1}, \code{confidence},
+  \code{evidence_tier}, \code{expected_accuracy} and \code{accuracy} (the
+  same figure as one number), \code{call} and \code{note}.
 }
 \description{
 The main entry point. By default it runs every method the package has and
@@ -136,14 +188,37 @@ returns one row per CpG carrying all of them, plus a single
 available for that CpG.
 }
 \details{
-Three sources are consulted, in this order:
-\enumerate{
-  \item a directly measured eQTM for the requested gene, where one exists;
-  \item the catalogue models, run in all three packaged tissues, with a
-    consensus where they agree;
-  \item distance to the transcription start site, which applies to any
-    CpG-gene pair and is much weaker.
+Every source that holds a sign for the CpG and the requested gene is a
+candidate: a measured eQTM (by the tissue it was measured in, one study or
+replicated), the SMR causal layer (by rung and stratum), the catalogue
+models (their consensus, or one tissue's model alone, by tier), the tumour
+consensus, and the distance curves. The most accurate candidate in the
+call's tissue answers.
 }
+\section{The ladder is ranked by accuracy, per tissue}{
+
+The order is not fixed. \code{tools/validate_rung_accuracy.R} scores every
+source in each tissue against a measured yardstick independent of it (adult
+blood: MESA monocytes and T cells; nasal epithelium: EVA-PR; solid tissue:
+FUSION and GTEx, each held out in turn), and the sources are ranked there by
+the lower bound of the 95\% interval of that agreement
+(\code{\link{cpgd_accuracy_values}}) -- the number a call returns by
+default, so the answering source always carries the highest weight
+available and a small sample cannot outrank a large one on a noisy point.
+Nothing else enters the order: no tier, stratum or parent placement. The
+tissue is \code{target_tissue}, else blood. A source whose point estimate
+there is below 0.5, or that no yardstick scores at all, never answers in
+that tissue. A catalogue
+consensus is between predicted calls on the same gene (a DIRECT_eQTM row is
+a measured sign and answers through the measured rung of its tissue);
+models naming different genes are single calls about their own genes.
+Where predicted calls on the same gene disagree, no source ranked at or
+below the distance curves settles it (\code{tissue_conflict}). Age never
+changes the order. In adult blood replicated SMR S1 ranks above a single
+measured blood study, SMR moderate just above the catalogue consensus, and
+single calls of the nasal and solid-tissue models fall below the distance
+curves or out of the ladder.
+\code{best_rung} names the source that answered.
 
 Passing a specific \code{tissue} instead returns the single-tissue result,
 with the column set documented under \emph{Value} in earlier versions.
@@ -156,6 +231,24 @@ a CpG can have several target genes, with legitimately opposite directions,
 and this interface by construction shows only one of them. DMSA and any
 other many-to-many consumer must use the pair API.
 }
+
+\section{One number for weighting engines}{
+
+  \code{best_expected_accuracy} quotes a validation in words.
+  \code{best_accuracy} carries the same validation as one number, the
+  probability that \code{best_direction} is right given that the pair is
+  coupled: by default the lower bound of its 95\% interval, never below
+  0.5, with \code{accuracy = "median"} the point estimate. An engine that
+  weights by
+  sign certainty can use \eqn{P(d = +1)} = \code{best_accuracy} where
+  \code{best_direction} is \code{+1} and \code{1 - best_accuracy} where
+  it is \code{-1}, i.e. the multiplier
+  \code{best_direction * (2 * best_accuracy - 1)}. It is \code{NA} where
+  the call abstains or carries no figure. With \code{age_group = "any"} it
+  is the smaller of the adult and the child figure. Every value and its
+  source: \code{\link{cpgd_accuracy_values}}.
+}
+
 \section{The two alternative codings}{
 
 Where the evidence leaves a sign nearly free to flip — a distance prior at
@@ -212,21 +305,28 @@ read what it says. Promoting whichever tissue happens to break the tie the way
 you hoped is selecting on the outcome, and a majority rule tuned after seeing
 the votes is the same thing wearing a better hat.
 
-The price is explicit. Rows resolved this way carry that tissue's accuracy:
-0.77-0.85 for blood, 0.70-0.87 for nasal epithelium (not externally
-validated), and 0.55-0.70 for solid tissue, which is tumour, provisional, and
-whose brain and kidney arms did not exceed their own majority baselines under
-leave-one-cohort-out. If solid tissue is your brain proxy, that last clause is
-the one to quote in your limitations.
+The price is explicit. Rows resolved this way carry that tissue's own
+figure (\code{catalogue_model_<tissue>_<tier>} or
+\code{distance_curve_<tissue>} in \code{best_rung};
+\code{\link{cpgd_accuracy_values}}). Tier-A calls of the tissue's model:
+blood 0.75 against MESA, solid tissue 0.71 against FUSION and GTEx; the
+nasal model has no independent nasal yardstick, so it quotes its
+cross-tissue figure (0.69). The tissue's distance curve: blood 0.64, solid
+tissue 0.54 (a tumour curve), nasal 0.60 (cross-tissue). The solid-tissue
+model is trained on tumour, provisional, and its brain and kidney arms did
+not exceed their own majority baselines under leave-one-cohort-out. If solid
+tissue is your brain proxy, that last clause is the one to quote in your
+limitations.
 }
 
 \section{How to read best_direction}{
 
 It is the direction supported by the best evidence this package holds for
 that CpG, not a claim about any one tissue and not a substitute for measured
-RNA in your own samples. Always read \code{best_evidence} alongside it: a
-\code{measured} row and a \code{distance_only} row are not comparable, and
-the difference in what they are worth is roughly 1.00 against 0.62.
+RNA in your own samples. Always read \code{best_rung} and
+\code{best_accuracy} alongside it: in adult blood a replicated measured
+sign agrees with an independent cohort 0.97 of the time and a
+\code{distance_only} call 0.67.
 
 \code{tissue_conflict} means the tissues returned opposite directions. That
 is reported as \code{NA} rather than resolved, because a weaker method should

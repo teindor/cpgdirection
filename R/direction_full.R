@@ -5,14 +5,36 @@
 #' \code{best_direction} column holding the answer from the strongest evidence
 #' available for that CpG.
 #'
-#' Three sources are consulted, in this order:
-#' \enumerate{
-#'   \item a directly measured eQTM for the requested gene, where one exists;
-#'   \item the catalogue models, run in all three packaged tissues, with a
-#'     consensus where they agree;
-#'   \item distance to the transcription start site, which applies to any
-#'     CpG-gene pair and is much weaker.
-#' }
+#' Every source that holds a sign for the CpG and the requested gene is a
+#' candidate: a measured eQTM (by the tissue it was measured in, one study or
+#' replicated), the SMR causal layer (by rung and stratum), the catalogue
+#' models (their consensus, or one tissue's model alone, by tier), the tumour
+#' consensus, and the distance curves. The most accurate candidate in the
+#' call's tissue answers.
+#'
+#' @section The ladder is ranked by accuracy, per tissue:
+#' The order is not fixed. \code{tools/validate_rung_accuracy.R} scores every
+#' source in each tissue against a measured yardstick independent of it (adult
+#' blood: MESA monocytes and T cells; nasal epithelium: EVA-PR; solid tissue:
+#' FUSION and GTEx, each held out in turn), and the sources are ranked there by
+#' the lower bound of the 95\% interval of that agreement
+#' (\code{\link{cpgd_accuracy_values}}) -- the number a call returns by
+#' default, so the answering source always carries the highest weight
+#' available and a small sample cannot outrank a large one on a noisy point.
+#' Nothing else enters the order: no tier, stratum or parent placement. The
+#' tissue is \code{target_tissue}, else blood. A source whose point estimate
+#' there is below 0.5, or that no yardstick scores at all, never answers in
+#' that tissue. A catalogue
+#' consensus is between predicted calls on the same gene (a DIRECT_eQTM row is
+#' a measured sign and answers through the measured rung of its tissue);
+#' models naming different genes are single calls about their own genes.
+#' Where predicted calls on the same gene disagree, no source ranked at or
+#' below the distance curves settles it (\code{tissue_conflict}). Age never
+#' changes the order. In adult blood replicated SMR S1 ranks above a single
+#' measured blood study, SMR moderate just above the catalogue consensus, and
+#' single calls of the nasal and solid-tissue models fall below the distance
+#' curves or out of the ladder.
+#' \code{best_rung} names the source that answered.
 #'
 #' Passing a specific \code{tissue} instead returns the single-tissue result,
 #' with the column set documented under \emph{Value} in earlier versions.
@@ -34,7 +56,9 @@
 #'   \code{best_*} columns. \code{"blood"}, \code{"nasal_epithelium"} or
 #'   \code{"solid_tissue"} returns that tissue alone.
 #' @param min_tissues Tissues that must agree before
-#'   \code{consensus_direction} is reported. Default 2.
+#'   \code{consensus_direction} is reported. Default 2. In the ladder a
+#'   consensus always needs two models at least: with \code{min_tissues = 1} a
+#'   lone model's call is still ranked and quoted as a single call.
 #' @param min_confidence Optional numeric in \code{[0, 1]} overriding the
 #'   tier-specific abstention thresholds.
 #' @param allow_nearest_gene If a gene is requested but no pairing for it is
@@ -48,8 +72,10 @@
 #'   Requires the Bioconductor annotation packages, and builds a TSS table on
 #'   first use. Set \code{FALSE} to skip it.
 #' @param target_tissue Optional, one of \code{"blood"},
-#'   \code{"nasal_epithelium"} or \code{"solid_tissue"}. Where the tissues
-#'   disagree, resolve using this tissue instead of abstaining. Declare it on
+#'   \code{"nasal_epithelium"} or \code{"solid_tissue"}: the tissue the
+#'   question is about. It sets the order of the ladder and the figures each
+#'   call carries (blood when not given). Where the tissues
+#'   disagree, it also resolves using this tissue instead of abstaining. Declare it on
 #'   biological grounds \strong{before} looking at the votes; the resulting rows
 #'   are worth that tissue's accuracy, not the consensus figure, and are still
 #'   flagged in \code{direction_uncertain}. Setting it also fills any row that
@@ -61,20 +87,68 @@
 #'   \code{tempdir()}; give an absolute path to keep the report). See
 #'   \code{\link{cpgd_report}}.
 #' @param verbose Emit a summary with \code{message()}. Default \code{TRUE}.
+#' @param age_group \code{"adult"} (default), \code{"child"} or \code{"any"}:
+#'   which population the blood accuracy figures in
+#'   \code{best_expected_accuracy} refer to. \code{"child"} quotes HELIX child
+#'   blood (6-11 y) for every source HELIX scores on 100+ pairs (measured,
+#'   SMR, tumour, the nasal model's calls; the adult figure otherwise) and adds
+#'   \code{smr_child_blood_helix}; \code{"any"} quotes both and adds the
+#'   column. Directions and rungs never change: age did not
+#'   move the ladder in validation (see \code{\link{cpgd_smr_directions}}).
+#'   \code{"adult"} equals the default. Project Alpha users
+#'   (children and adolescents) should set \code{"child"}. Only
+#'   \code{tissue = "all"} carries the SMR layer; with a single tissue
+#'   \code{age_group} and \code{require_detected} have no effect.
+#' @param require_detected With \code{age_group = "child"} only: drop SMR
+#'   pairs whose \code{child_blood_helix} is not \code{"sig"} or
+#'   \code{"nominal"} before the ladder runs; measured, catalogue and distance
+#'   evidence are untouched and a message reports how many pairs were dropped.
+#'   Ignored, with a warning, for any other \code{age_group}.
+#' @param accuracy Which single number \code{best_accuracy} (and, with one
+#'   tissue, \code{accuracy}) carries for each accuracy string:
+#'   \code{"lower"} (default), the lower bound of the 95\% interval of the
+#'   source's validation in the tissue, never below 0.5, or
+#'   \code{"median"}, its point estimate. The default
+#'   comes from \code{getOption("cpgdirection.accuracy", "lower")}, so a
+#'   session can switch it for every call, including those an engine such as
+#'   DMSA makes. See \code{\link{cpgd_accuracy_values}}.
+#'
+#' @section One number for weighting engines:
+#'   \code{best_expected_accuracy} quotes a validation in words.
+#'   \code{best_accuracy} carries the same validation as one number, the
+#'   probability that \code{best_direction} is right given that the pair is
+#'   coupled: by default the lower bound of its 95\% interval, never below
+#'   0.5, with \code{accuracy = "median"} the point estimate. An engine that
+#'   weights by
+#'   sign certainty can use \eqn{P(d = +1)} = \code{best_accuracy} where
+#'   \code{best_direction} is \code{+1} and \code{1 - best_accuracy} where
+#'   it is \code{-1}, i.e. the multiplier
+#'   \code{best_direction * (2 * best_accuracy - 1)}. It is \code{NA} where
+#'   the call abstains or carries no figure. With \code{age_group = "any"} it
+#'   is the smaller of the adult and the child figure. Every value and its
+#'   source: \code{\link{cpgd_accuracy_values}}.
 #'
 #' @return With \code{tissue = "all"}, a \code{data.table} of class
 #'   \code{cpgd_full}, one row per unique CpG:
 #'   \describe{
 #'     \item{best_direction}{+1, -1 or \code{NA}: the answer from the strongest
 #'       evidence available}
-#'     \item{best_evidence}{which source it came from — \code{measured},
+#'     \item{best_evidence}{which kind of source it came from — \code{measured},
 #'       \code{smr_replicated}, \code{smr_high}, \code{catalogue_consensus},
 #'       \code{smr_moderate},
 #'       \code{catalogue_single}, \code{onco_consensus}, \code{smr_weak},
 #'       \code{distance_only}, \code{distance_tissue_conflict},
 #'       \code{distance_uninformative}, \code{tissue_conflict} or
-#'       \code{no_evidence}, in ladder order}
+#'       \code{no_evidence}}
+#'     \item{best_rung}{the exact source that answered, as ranked (e.g.
+#'       \code{measured_blood_single}, \code{smr_replicated_S2},
+#'       \code{catalogue_single_nasal_A}); the state for an abstention;
+#'       \code{attr(result, "rank_tissue")} names the tissue whose order was
+#'       used}
 #'     \item{best_confidence, best_expected_accuracy}{what that answer is worth}
+#'     \item{best_accuracy}{the same figure as one number (see the section
+#'       One number for weighting engines); \code{attr(result, "accuracy")}
+#'       records which value was chosen}
 #'     \item{consensus_direction, n_tissues_calling, tissue_agreement}{the
 #'       catalogue layer}
 #'     \item{gene_*, dir_*, conf_*, tier_*, status_*}{per tissue}
@@ -103,6 +177,10 @@
 #'       \code{reported} (never supplies \code{best_direction});
 #'       \code{smr_replication} says why; \code{smr_outcome} names the
 #'       outcome study behind the sign}
+#'     \item{smr_child_blood_helix}{with \code{age_group = "child"} or
+#'       \code{"any"} only: whether HELIX child blood detected the SMR pair
+#'       (\code{sig}, \code{nominal}, \code{null}, \code{untested}).
+#'       Informational; \code{null} means not detected at n = 823, not absent}
 #'     \item{smr_in_table}{whether the CpG has any SMR evidence at all, for any
 #'       gene. Distinguishes "no instrument exists" from "the instrument points
 #'       at a different gene", which are different facts with different remedies}
@@ -111,18 +189,23 @@
 #'       (Onco-eQTM, 27 TCGA cancer types; \code{\link{cpgd_onco_eqtm}}),
 #'       keyed and gated exactly like SMR: only a gene match may reach
 #'       \code{best_direction}, and only tier O1 does so (as
-#'       \code{onco_consensus}, below every single-tissue peripheral call).
+#'       \code{onco_consensus}, ranked by its accuracy like every source).
 #'       \code{onco_agreement} compares the tumour sign with a peripheral
 #'       \code{best_direction} for the same pair; \code{NA} when the tumour
 #'       sign is itself the best direction}
 #'     \item{measured_genes, annotation_mismatch, mismatch_note}{measured
 #'       evidence, and whether it concerns a gene other than the one requested}
 #'     \item{measured_n_cohorts, measured_cohort_agreement}{for a measured
-#'       call, how many independent cohorts measured the pair and the share
-#'       agreeing on its sign (2.99.8, eQTM Atlas build). Replicated pairs
-#'       (2+ cohorts, same sign) read \code{~1.00}; single-cohort pairs read
-#'       \code{0.96-0.99}, the between-cohort replication rate on shared pairs}
+#'       call, how many cohorts measured the pair (strata and cell types of one
+#'       study counted separately) and the share agreeing on its sign (2.99.8,
+#'       eQTM Atlas build). The ladder ranks a measured sign by the tissue it
+#'       was measured in and whether 2+ independent studies (donor groups)
+#'       there agree}
 #'   }
+#'   With a single \code{tissue}, the per-tissue result instead: \code{status},
+#'   \code{direction}, \code{probability_plus1}, \code{confidence},
+#'   \code{evidence_tier}, \code{expected_accuracy} and \code{accuracy} (the
+#'   same figure as one number), \code{call} and \code{note}.
 #'
 #' @section The two alternative codings:
 #' Where the evidence leaves a sign nearly free to flip — a distance prior at
@@ -175,19 +258,26 @@
 #' you hoped is selecting on the outcome, and a majority rule tuned after seeing
 #' the votes is the same thing wearing a better hat.
 #'
-#' The price is explicit. Rows resolved this way carry that tissue's accuracy:
-#' 0.77-0.85 for blood, 0.70-0.87 for nasal epithelium (not externally
-#' validated), and 0.55-0.70 for solid tissue, which is tumour, provisional, and
-#' whose brain and kidney arms did not exceed their own majority baselines under
-#' leave-one-cohort-out. If solid tissue is your brain proxy, that last clause is
-#' the one to quote in your limitations.
+#' The price is explicit. Rows resolved this way carry that tissue's own
+#' figure (\code{catalogue_model_<tissue>_<tier>} or
+#' \code{distance_curve_<tissue>} in \code{best_rung};
+#' \code{\link{cpgd_accuracy_values}}). Tier-A calls of the tissue's model:
+#' blood 0.75 against MESA, solid tissue 0.71 against FUSION and GTEx; the
+#' nasal model has no independent nasal yardstick, so it quotes its
+#' cross-tissue figure (0.69). The tissue's distance curve: blood 0.64, solid
+#' tissue 0.54 (a tumour curve), nasal 0.60 (cross-tissue). The solid-tissue
+#' model is trained on tumour, provisional, and its brain and kidney arms did
+#' not exceed their own majority baselines under leave-one-cohort-out. If solid
+#' tissue is your brain proxy, that last clause is the one to quote in your
+#' limitations.
 #'
 #' @section How to read best_direction:
 #' It is the direction supported by the best evidence this package holds for
 #' that CpG, not a claim about any one tissue and not a substitute for measured
-#' RNA in your own samples. Always read \code{best_evidence} alongside it: a
-#' \code{measured} row and a \code{distance_only} row are not comparable, and
-#' the difference in what they are worth is roughly 1.00 against 0.62.
+#' RNA in your own samples. Always read \code{best_rung} and
+#' \code{best_accuracy} alongside it: in adult blood a replicated measured
+#' sign agrees with an independent cohort 0.97 of the time and a
+#' \code{distance_only} call 0.67.
 #'
 #' \code{tissue_conflict} means the tissues returned opposite directions. That
 #' is reported as \code{NA} rather than resolved, because a weaker method should
@@ -220,13 +310,20 @@ cpg_expression_direction <- function(cpgs,
                                      min_distance_info = 0.02,
                                      target_tissue = NULL,
                                      html_out = NULL,
-                                     verbose = TRUE) {
+                                     verbose = TRUE,
+                                     age_group = c("adult", "child", "any"),
+                                     require_detected = FALSE,
+                                     accuracy = getOption("cpgdirection.accuracy", "lower")) {
+
+  age_group <- match.arg(age_group)
+  require_detected <- .cpgd_require_detected(age_group, require_detected)
+  accuracy <- .cpgd_accuracy_arg(accuracy)
 
   if (!identical(tissue, "all")) {
     r1 <- .cpgd_one_tissue(cpgs, genes = genes, tissue = tissue,
                            min_confidence = min_confidence,
                            allow_nearest_gene = allow_nearest_gene,
-                           verbose = verbose)
+                           verbose = verbose, accuracy = accuracy)
     if (!is.null(html_out)) .cpgd_maybe_report(r1, html_out)
     return(invisible(r1))
   }
@@ -288,11 +385,16 @@ cpg_expression_direction <- function(cpgs,
   out[, "tissue_agreement"   := round(agree, 3)]
   out[, "consensus_direction" := cons]
 
-  # the direction when exactly one tissue spoke, kept separate from consensus
+  # the direction when exactly one tissue spoke, kept separate from consensus,
+  # and which tissue's model it was (its accuracy depends on that)
   single <- vapply(seq_len(n), function(i) {
     v <- D[i, ][!is.na(D[i, ])]
     if (length(v) == 1L) v[1] else NA_real_
   }, numeric(1))
+  single_tis <- vapply(seq_len(n), function(i) {
+    w <- which(!is.na(D[i, ]))
+    if (length(w) == 1L) unname(short[w]) else NA_character_
+  }, character(1))
 
   # worst tier among the tissues that actually called: a consensus is only as
   # good as its weakest contributor
@@ -316,6 +418,7 @@ cpg_expression_direction <- function(cpgs,
   # merges below re-sort by cpg_id, and a parallel vector would silently end up
   # attached to the wrong rows.
   out[, ".single"     := single]
+  out[, ".single_tis" := single_tis]
   out[, ".worst_tier" := worst_tier]
   out[, ".conf_cat"   := conf_cat]
 
@@ -354,6 +457,13 @@ cpg_expression_direction <- function(cpgs,
   out[, "measured_direction_requested" := md]
   out[, "measured_n_cohorts" := as.integer(mn)]
   out[, "measured_cohort_agreement" := as.numeric(ma)]
+  # the same, per tissue the pair was measured in: the ladder ranks a measured
+  # sign by where it was measured
+  MT <- .cpgd_measured_by_tissue(M, out$cpg_id, req, last)
+  for (s in names(MT)) {
+    data.table::set(out, j = paste0(".meas_d_", s), value = MT[[s]]$d)
+    data.table::set(out, j = paste0(".meas_rep_", s), value = MT[[s]]$rep)
+  }
 
   # ---- layer 1b: causal directions from SMR --------------------------------
   # GoDMC mQTL as exposure, eQTLGen cis-eQTL as outcome. This asks whether a
@@ -365,7 +475,8 @@ cpg_expression_direction <- function(cpgs,
              "smr_gene_dist", "smr_gene", "smr_gene_match", "smr_in_table",
              "smr_heidi_status", "smr_p_heidi",
              "smr_rung", "smr_replication", "smr_outcome")
-  S <- tryCatch(cpgd_smr_directions(), error = function(e) NULL)
+  with_child <- !identical(age_group, "adult")
+  S <- tryCatch(.cpgd_smr_table(), error = function(e) NULL)
   if (!is.null(S) && nrow(S)) {
     # heidi_status is absent from tables built before 2.2.5, so read it
     # defensively rather than assuming the shipped file is current: a user with
@@ -382,7 +493,24 @@ cpg_expression_direction <- function(cpgs,
       hstat = hs, pheidi = ph,
       rung = .cpgd_smr_rung(S),
       rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
-      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"))
+      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"),
+      cb   = .cpgd_smr_child(S))
+    require_detected <- .cpgd_check_child_column(S, age_group, require_detected)
+    # Whether the CpG has SMR evidence at all, judged BEFORE any filter, so a
+    # CpG whose pairs require_detected removed is not reported as having no
+    # instrument.
+    in_table <- unique(SS$cpg_id)
+    # age_group = "child", require_detected = TRUE: only SMR pairs HELIX child
+    # blood detected (sig or nominal) stay in the layer. Measured, catalogue
+    # and distance evidence are not filtered.
+    if (isTRUE(require_detected)) {
+      drop <- !(SS$cb %in% CPGD_CHILD_DETECTED)
+      message(sprintf(paste0("require_detected: %s SMR pair(s) for these CpGs ",
+                             "dropped (child_blood_helix not sig/nominal); ",
+                             "measured and catalogue evidence unaffected."),
+                      format(sum(drop & SS$cpg_id %chin% out$cpg_id), big.mark = ",")))
+      SS <- SS[!drop]
+    }
     # one row per pair: strongest tier, then smallest p
     data.table::setorderv(SS, c("cpg_id", "g", "tier", "p"))
     SS <- SS[, .SD[1L], by = c("cpg_id", "g")]
@@ -391,7 +519,7 @@ cpg_expression_direction <- function(cpgs,
     # Whether the CpG appears in the SMR table AT ALL, independent of gene. The
     # print method needs this to avoid asserting a coverage explanation for a
     # CpG that is present and simply had no row for the gene we asked about.
-    out[, "smr_in_table" := out$cpg_id %chin% unique(SS$cpg_id)]
+    out[, "smr_in_table" := out$cpg_id %chin% in_table]
 
     # Candidate gene keys, in priority order: what the caller asked for, then
     # the target genes the catalogue layers resolved on their own. A hit on any
@@ -410,6 +538,7 @@ cpg_expression_direction <- function(cpgs,
     ni <- rep(NA_integer_, n); gd <- rep(NA_real_, n); gg <- rep(NA_character_, n)
     hh <- rep(NA_character_, n); hp <- rep(NA_real_, n)
     rg <- rep(NA_character_, n); rp <- rep(NA_character_, n); oc <- rep(NA_character_, n)
+    cbv <- rep(NA_character_, n)
     for (k in seq_along(cand)) {
       key <- cand[[k]]
       if (k > 2L) key[asked] <- NA_character_
@@ -424,6 +553,7 @@ cpg_expression_direction <- function(cpgs,
       gd[take] <- hit$gd[take];   gg[take] <- key[take]
       hh[take] <- hit$hstat[take]; hp[take] <- hit$pheidi[take]
       rg[take] <- hit$rung[take];  rp[take] <- hit$rep[take]; oc[take] <- hit$outc[take]
+      cbv[take] <- hit$cb[take]
     }
     matched <- !is.na(d)
 
@@ -450,6 +580,7 @@ cpg_expression_direction <- function(cpgs,
     gd[fill] <- hb$gd[fill];   gg[fill] <- hb$g[fill]
     hh[fill] <- hb$hstat[fill]; hp[fill] <- hb$pheidi[fill]
     rg[fill] <- hb$rung[fill];  rp[fill] <- hb$rep[fill]; oc[fill] <- hb$outc[fill]
+    cbv[fill] <- hb$cb[fill]
 
     out[, "smr_direction"     := d]
     out[, "smr_tier"          := ti]
@@ -470,11 +601,15 @@ cpg_expression_direction <- function(cpgs,
     out[, "smr_rung"          := rg]
     out[, "smr_replication"   := rp]
     out[, "smr_outcome"       := oc]
+    # Child-blood detection of the reported SMR pair, only when asked for: the
+    # adult default carries no age-specific column.
+    if (with_child) out[, "smr_child_blood_helix" := cbv]
   } else {
     out[, (scols) := list(NA_real_, NA_character_, NA_real_, NA_integer_,
                           NA_real_, NA_character_, FALSE, FALSE,
                           NA_character_, NA_real_,
                           NA_character_, NA_character_, NA_character_)]
+    if (with_child) out[, "smr_child_blood_helix" := NA_character_]
   }
 
   # ---- layer 1c: tumour consensus (Onco-eQTM) -----------------------------
@@ -579,124 +714,106 @@ cpg_expression_direction <- function(cpgs,
   }
 
   # ---- the ladder ---------------------------------------------------------
-  # Strongest evidence wins. Order matters and is the whole point of the column.
-  # which() throughout: these conditions carry NA, and a logical NA in a
-  # subscripted assignment is an error rather than a skipped row.
-  best <- rep(NA_real_, nrow(out))
-  src  <- rep(NA_character_, nrow(out))
-  wt   <- out$.worst_tier
-
-  i <- which(!is.na(out$measured_direction_requested))
-  best[i] <- out$measured_direction_requested[i];  src[i] <- "measured"
-
+  # Every source that has a sign for the row is a candidate; the most accurate
+  # one in the call's tissue answers (target_tissue, else blood). The order is
+  # not written here: .cpgd_rung_order() reads it from the per-tissue
+  # validation (R/rung_accuracy.R, tools/validate_rung_accuracy.R). which()
+  # throughout: these conditions carry NA, and a logical NA in a subscripted
+  # assignment is an error rather than a skipped row.
+  rank_tissue <- if (is.null(target_tissue)) "blood" else match.arg(target_tissue, CPGD_TISSUES)
+  # the catalogue calls, rebuilt from the table (merges re-sorted it): a
+  # DIRECT_eQTM call is a measured sign; a consensus or a conflict is between
+  # predicted calls on the same gene (.cpgd_catalogue_cand())
+  mcol <- function(pre) as.matrix(out[, paste0(pre, short), with = FALSE])
+  CC <- .cpgd_catalogue_cand(mcol("dir_"), mcol("tier_"), mcol("status_"), mcol("gene_"),
+                             min_tissues)
+  colnames(CC$single) <- colnames(CC$direct) <- unname(short)
+  TTm <- mcol("tier_"); colnames(TTm) <- unname(short)
+  cand <- list()
+  # measured, by the tissue it was measured in, for the requested gene; where
+  # the measured layer has nothing in a tissue, that tissue's DIRECT_eQTM call
+  for (s in c("blood", "nasal", "solid")) {
+    dv <- out[[paste0(".meas_d_", s)]]; rp <- out[[paste0(".meas_rep_", s)]]
+    if (is.null(dv)) { dv <- rep(NA_real_, nrow(out)); rp <- rep(FALSE, nrow(out)) }
+    cand[[paste0("measured_", s, "_replicated")]] <- ifelse(rp %in% TRUE, dv, NA_real_)
+    cand[[paste0("measured_", s, "_single")]] <-
+      ifelse(rp %in% TRUE, NA_real_, ifelse(is.na(dv), CC$direct[, s], dv))
+  }
   # Only SMR rows that concern the SAME gene as the rest of the row may supply
   # best_direction. Where smr_gene_match is FALSE the estimate is still reported
-  # in the smr_* columns, but it answers a question about a different pair and
-  # must not be promoted into a column that answers this one.
+  # in the smr_* columns, but it answers a question about a different pair. The
+  # reported rung never supplies a sign.
   smr_ok <- out$smr_gene_match %in% TRUE & !is.na(out$smr_direction)
   rung <- out$smr_rung
-
-  # Replicated (the same sign from eQTLGen and FinnGen PBMC on the GoDMC
-  # instruments: S1 0.986, S2 0.971 against measured blood, 3 Nov 2026 build) is
-  # beaten only by a measured eQTM.
-  i <- which(is.na(src) & smr_ok & rung == "replicated")
-  best[i] <- out$smr_direction[i];                 src[i] <- "smr_replicated"
-
-  # S1 (95.9%) outranks every predicted layer; it is beaten only by a measured
-  # eQTM. Slotted by validated accuracy, not by which layer is newest.
-  i <- which(is.na(src) & smr_ok & rung == "high")
-  best[i] <- out$smr_direction[i];                 src[i] <- "smr_high"
-
-  i <- which(is.na(src) & !is.na(out$consensus_direction) &
-             out$n_tissues_calling >= min_tissues)
-  best[i] <- out$consensus_direction[i];           src[i] <- "catalogue_consensus"
-
-  # S2 (84.9%) sits alongside the catalogue models, below their consensus.
-  # FinnGen-only pairs with SMR p < 5e-8 at the top cis-mQTL (PBMC) enter here too,
-  # as do eQTLGen S3 pairs whose majority sign FinnGen PBMC reproduces (0.855).
-  i <- which(is.na(src) & smr_ok & rung == "moderate")
-  best[i] <- out$smr_direction[i];                 src[i] <- "smr_moderate"
-
-  i <- which(is.na(src) & out$n_tissues_calling == 1L & !is.na(out$.single))
-  best[i] <- out$.single[i];                       src[i] <- "catalogue_single"
-
-  # Onco-eQTM O1 (0.82 blood / 0.93 nasal / 0.70 SMR-S1 against the peripheral
-  # references; tools/validate_onco.R) sits below every single-tissue
-  # peripheral call and above S3 and the distance curves.
+  smr_src <- data.table::fcase(rung %in% "replicated", "smr_replicated",
+                               rung %in% "high", "smr_high",
+                               rung %in% "moderate", "smr_moderate",
+                               rung %in% "weak", "smr_weak", default = NA_character_)
+  skey <- .cpgd_smr_key(smr_src, out$smr_tier, out$smr_outcome, out$smr_replication)
+  for (k in unique(stats::na.omit(skey)))
+    cand[[paste0("smr_", k)]] <- ifelse(smr_ok & skey %in% k, out$smr_direction, NA_real_)
+  # consensus needs two models at least, whatever min_tissues says: a lone
+  # model's call is a single call, ranked and quoted as that model's
+  for (tr in c("A", "B"))
+    cand[[paste0("catalogue_consensus_", tr)]] <-
+      ifelse(!is.na(CC$cons) & CC$worst %in% tr, CC$cons, NA_real_)
+  for (s in c("blood", "nasal", "solid")) for (tr in c("A", "B"))
+    cand[[paste0("catalogue_single_", s, "_", tr)]] <-
+      ifelse(!is.na(CC$single[, s]) & TTm[, s] %in% tr, CC$single[, s], NA_real_)
   onco_ok <- out$onco_gene_match %in% TRUE & !is.na(out$onco_direction) &
              out$onco_tier %in% "O1"
-  i <- which(is.na(src) & onco_ok)
-  best[i] <- out$onco_direction[i];                src[i] <- "onco_consensus"
-
-  # S3 (70.4%) is weaker than a single-tissue catalogue call: its instruments
-  # disagree, which is a warning rather than extra evidence. S1 pairs whose
-  # sign the FinnGen PBMC outcome contradicts land here as well with the
-  # eQTLGen sign kept (0.92 on n=111, too few to earn a rung of their own);
-  # discordant S2/S3 are "reported" -- the evidence conflicts and no sign is
-  # called. Rows at rung "reported" never reach best_direction.
-  i <- which(is.na(src) & smr_ok & rung == "weak")
-  best[i] <- out$smr_direction[i];                 src[i] <- "smr_weak"
-
-  # Tissues pointing opposite ways is a finding, not a gap. Falling through to
-  # the distance curve here would let the weakest method settle a disagreement
-  # between two stronger ones.
-  i <- which(is.na(src) & out$n_tissues_calling >= 2L &
-             !is.na(out$tissue_agreement) & out$tissue_agreement < 1)
-  src[i] <- "tissue_conflict"
-
-  # Distance layer, three outcomes rather than two.
-  #
-  # Where all three tissue curves point the same way, that agreement is the
-  # evidence, and it is reported even when the pooled probability is modest.
-  i <- which(is.na(src) & out$dist_unanimous %in% TRUE &
-             !is.na(out$dir_universal) &
-             abs(out$p_universal - 0.5) * 2 >= min_distance_info)
-  best[i] <- out$dir_universal[i];                 src[i] <- "distance_only"
-
-  # Unanimous but sitting on 0.50 in every tissue: genuinely nothing.
-  i <- which(is.na(src) & out$dist_unanimous %in% TRUE)
-  src[i] <- "distance_uninformative"
-
-  # Tissues pointing opposite ways. This is the case the old pooled mean hid:
-  # blood at 0.44 and solid tissue at 0.60 average to 0.52 and look like
-  # ignorance, when both are speaking clearly and disagreeing. Report the
-  # disagreement and expose the per-tissue signs; do not average it away.
-  i <- which(is.na(src) & !is.na(out$dist_universal))
-  src[i] <- "distance_tissue_conflict"
-
-  src[is.na(src)] <- "no_evidence"
+  cand[["onco_consensus"]] <- ifelse(onco_ok, out$onco_direction, NA_real_)
+  # distance: all three tissue curves pointing the same way is the evidence
+  dist_ok <- out$dist_unanimous %in% TRUE & !is.na(out$dir_universal) &
+             abs(out$p_universal - 0.5) * 2 >= min_distance_info
+  cand[["distance_only"]] <- ifelse(dist_ok %in% TRUE, out$dir_universal, NA_real_)
+  # Tissues pointing opposite ways is a finding, not a gap: from the distance
+  # rung down, no weaker source settles a disagreement between catalogue models.
+  conflict <- CC$conflict
+  lad  <- .cpgd_apply_ladder(cand, .cpgd_rung_order(rank_tissue), conflict, nrow(out))
+  best <- lad$best; rkey <- lad$key
+  # Distance states where nothing answered: unanimous but sitting on 0.50 is
+  # genuinely nothing; curves pointing opposite ways is a disagreement to
+  # report, not average away (per-tissue signs in dist_dir_*).
+  i <- which(is.na(rkey) & out$dist_unanimous %in% TRUE)
+  rkey[i] <- "distance_uninformative"
+  i <- which(is.na(rkey) & !is.na(out$dist_universal))
+  rkey[i] <- "distance_tissue_conflict"
+  rkey[is.na(rkey)] <- "no_evidence"
+  src <- .cpgd_rung_evidence(rkey)
 
   # ---- declared target tissue ---------------------------------------------
   # Where the tissues disagree, a caller who has declared in advance which
   # tissue their question is about can have that tissue's answer instead of an
   # abstention. This is tissue SELECTION, not voting: the tissue is named before
   # the votes are seen, and its own accuracy is what the row is then worth.
-  #
-  # It is deliberately not a majority rule. Promoting whichever tissue happens
-  # to break a tie the way you hoped is selecting on the outcome; naming the
-  # tissue on biological grounds first is not.
   if (!is.null(target_tissue)) {
     tt <- match.arg(target_tissue, CPGD_TISSUES)
     ts <- short[[tt]]
     dcol <- paste0("dist_dir_", ts)
     ccol <- paste0("dir_", ts)
+    tcol <- paste0("tier_", ts)
     if (dcol %in% names(out)) {
       i <- which(src == "distance_tissue_conflict" & !is.na(out[[dcol]]))
       best[i] <- out[[dcol]][i];  src[i] <- "distance_targeted"
+      rkey[i] <- paste0("distance_curve_", ts)
     }
     if (ccol %in% names(out)) {
       i <- which(src == "tissue_conflict" & !is.na(out[[ccol]]))
       best[i] <- out[[ccol]][i];  src[i] <- "catalogue_targeted"
+      # the declared tissue's call: its model's figure, or, for a DIRECT_eQTM
+      # row, the figure of a measured sign
+      rkey[i] <- ifelse(out[[paste0("status_", ts)]][i] %in% "DIRECT_eQTM",
+                        paste0("measured_", ts, "_single"),
+                        paste0("catalogue_model_", ts, "_", out[[tcol]][i]))
     }
     # Last resort: anything that would still abstain takes the target tissue's
-    # sign, if that tissue has one. Naming a tissue is a statement that its
-    # answer is the one you want wherever a better one is unavailable, so
-    # stopping at conflicts alone would have been half a decision. Rows filled
-    # here are labelled and carry no accuracy figure, because they have none:
-    # they are a stated prior, not a measurement.
+    # sign, if that tissue has one. Rows filled here are labelled and carry no
+    # accuracy figure, because they have none: they are a stated prior.
     if (dcol %in% names(out)) {
       i <- which(is.na(best) & !is.na(out[[dcol]]))
       best[i] <- out[[dcol]][i];  src[i] <- "targeted_last_resort"
+      rkey[i] <- "targeted_last_resort"
     }
   }
 
@@ -707,35 +824,15 @@ cpg_expression_direction <- function(cpgs,
   i <- which(src == "distance_only")
   bconf[i] <- round(abs(out$p_universal[i] - 0.5) * 2, 4)
 
-  bacc <- rep(NA_character_, nrow(out))
-  i <- which(src == "measured")
-  bacc[i] <- ifelse((out$measured_n_cohorts[i] >= 2L & out$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
-                    CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
-  bacc[which(src == "smr_replicated" & out$smr_tier == "S1")] <- CPGD_SMR_ACCURACY[["replicated_S1"]]
-  bacc[which(src == "smr_replicated" & out$smr_tier != "S1")] <- CPGD_SMR_ACCURACY[["replicated_S2"]]
-  bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
-  bacc[which(src == "smr_moderate" & !(out$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
-  bacc[which(src == "smr_moderate" &   out$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
-  bacc[which(src == "smr_moderate" &   out$smr_outcome %in% "eQTLGen" & out$smr_tier %in% "S3")] <- CPGD_SMR_ACCURACY[["moderate_s3_replicated"]]
-  bacc[which(src == "smr_weak" &   out$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
-  bacc[which(src == "smr_weak" & !(out$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
-  bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
-  bacc[which(src == "catalogue_consensus" & wt == "A")] <- "0.77-0.87 (tier A, tissues agree)"
-  bacc[which(src == "catalogue_consensus" & wt == "B")] <- "0.64-0.84 (tier B, tissues agree)"
-  bacc[which(src == "catalogue_single"    & wt == "A")] <- "0.62-0.87 (tier A, one tissue only)"
-  bacc[which(src == "catalogue_single"    & wt == "B")] <- "0.55-0.84 (tier B, one tissue only)"
-  bacc[which(src == "distance_only")] <- "0.60-0.65 (distance only, tier U)"
-  if (!is.null(target_tissue)) {
-    tt <- match.arg(target_tissue, CPGD_TISSUES)
-    tacc <- switch(tt,
-      blood            = "0.77-0.85 (blood declared as target tissue)",
-      nasal_epithelium = "0.70-0.87 (nasal declared as target; NOT externally validated)",
-      solid_tissue     = "0.55-0.70 (solid tissue declared as target; tumour, provisional, brain and kidney below baseline under LOCO)")
-    bacc[which(src %in% c("distance_targeted", "catalogue_targeted"))] <- tacc
-    bacc[which(src == "targeted_last_resort")] <-
-      "unquantified (last resort: the target tissue's sign where nothing better exists)"
-  }
+  # what the answer is worth: the validation of its source in the ranked tissue
+  bacc <- .cpgd_rung_label(ifelse(is.na(best), NA_character_, rkey), rank_tissue, age_group)
+  bacc[which(src == "targeted_last_resort")] <- CPGD_LAST_RESORT_ACCURACY
 
+  # the tier of the catalogue source that answered (its own model's tier for a
+  # single call)
+  wt <- out$.worst_tier
+  i <- which(grepl("^catalogue_(consensus|single|model)_.*_?[AB]$", rkey))
+  wt[i] <- substring(rkey[i], nchar(rkey[i]))
   wt[which(src %in% c("distance_only", "distance_uninformative",
                       "distance_tissue_conflict", "distance_targeted",
                       "targeted_last_resort"))] <- "U"
@@ -793,8 +890,12 @@ cpg_expression_direction <- function(cpgs,
 
   out[, "best_direction"  := best]
   out[, "best_evidence"   := src]
+  data.table::set(out, j = "best_rung", value = rkey)
   out[, "best_confidence" := bconf]
   out[, "best_expected_accuracy" := bacc]
+  # the same figure as one number, for engines that weight by it
+  data.table::set(out, j = "best_accuracy",
+                  value = .cpgd_accuracy_number(bacc, accuracy))
   out[, "best_tier" := worst_tier]
   out[, "best_label" := data.table::fcase(
         get("best_direction") ==  1, "higher methylation -> HIGHER expression",
@@ -843,12 +944,12 @@ cpg_expression_direction <- function(cpgs,
 
   ord <- c("input", "cpg_id", "requested_gene",
            "best_direction", "best_label", "best_confidence", "best_evidence",
-           "best_tier", "best_expected_accuracy",
+           "best_rung", "best_tier", "best_expected_accuracy", "best_accuracy",
            "direction_uncertain", "best_direction_filled", "best_direction_flipped",
            "smr_direction", "smr_gene", "smr_gene_match", "smr_tier", "smr_p",
            "smr_n_instruments", "smr_gene_dist", "smr_agreement", "smr_in_table",
            "smr_heidi_status", "smr_p_heidi",
-           "smr_rung", "smr_replication", "smr_outcome",
+           "smr_rung", "smr_replication", "smr_outcome", "smr_child_blood_helix",
            "onco_direction", "onco_tier", "onco_n_cancers", "onco_median_r",
            "onco_gene", "onco_gene_match", "onco_agreement",
            "consensus_direction", "n_tissues_calling", "tissue_agreement",
@@ -860,12 +961,20 @@ cpg_expression_direction <- function(cpgs,
            "measured_direction_requested", "measured_n_cohorts",
            "measured_cohort_agreement",
            "annotation_mismatch", "mismatch_note", "note")
-  drop <- intersect(c(".single", ".worst_tier", ".conf_cat"), names(out))
+  drop <- intersect(c(".single", ".single_tis", ".worst_tier", ".conf_cat",
+                     paste0(".meas_", rep(c("d_", "rep_"), each = 3),
+                            c("blood", "nasal", "solid"))), names(out))
   if (length(drop)) out[, (drop) := NULL]
   out <- out[, intersect(ord, names(out)), with = FALSE]
   data.table::setattr(out, "target_tissue",
                       if (is.null(target_tissue)) NULL else
                         match.arg(target_tissue, CPGD_TISSUES))
+  # The population the SMR figures describe; set only off the adult default,
+  # so the default object is unchanged.
+  if (with_child) data.table::setattr(out, "age_group", age_group)
+  if (isTRUE(require_detected)) data.table::setattr(out, "require_detected", TRUE)
+  data.table::setattr(out, "accuracy", accuracy)
+  data.table::setattr(out, "rank_tissue", rank_tissue)
   data.table::setattr(out, "class", c("cpgd_full", class(out)))
   if (isTRUE(verbose)) .cpgd_message_print(out)
   if (!is.null(html_out)) .cpgd_maybe_report(out, html_out)
@@ -928,7 +1037,10 @@ print.cpgd_full <- function(x, ...) {
       # other gene. Blaming array coverage in the second case is simply wrong,
       # and it cost an afternoon of looking in the wrong file.
       nin <- if ("smr_in_table" %in% names(x)) sum(x$smr_in_table %in% TRUE) else 0L
-      if (nin == 0L) {
+      if (nin > 0L && isTRUE(attr(x, "require_detected"))) {
+        cat(sprintf("    no SMR direction reported: %d of these CpGs have SMR pairs, but\n", nin),
+            "    require_detected removed them (not detected in child blood).\n", sep = "")
+      } else if (nin == 0L) {
         cat("    no SMR evidence for any CpG here: none of them appears in the\n",
             "    table at all. GoDMC is a 450K meta-analysis, so EPIC-only probes\n",
             "    were never assayed and cannot have an mQTL.\n", sep = "")
@@ -1001,8 +1113,23 @@ print.cpgd_full <- function(x, ...) {
         "  coin flips. Do NOT pick the column that fits better - that is\n",
         "  selecting on the outcome.\n", sep = "")
   }
-  cat("\n  Read best_evidence alongside best_direction: measured is worth ~1.00,\n",
-      "  distance_only ~0.62. All of it is conditional on the CpG being an eQTM.\n", sep = "")
+  cat("\n  Read best_rung and best_accuracy alongside best_direction: in adult\n",
+      "  blood a replicated measured sign is worth 0.97, distance_only 0.67\n",
+      "  (cpgd_accuracy_values()). All of it is conditional on the CpG being an eQTM.\n",
+      sep = "")
+  ag <- attr(x, "age_group")
+  if (!is.null(ag) && ag %in% names(CPGD_AGE_POPULATION)) {
+    cat(sprintf("\n  Blood accuracy figures refer to: %s,\n", CPGD_AGE_POPULATION[[ag]]),
+        "  conditional on the pair being coupled. Directions and rungs do not\n",
+        "  change with age; see ?cpgd_smr_directions.\n", sep = "")
+    if ("smr_child_blood_helix" %in% names(x)) {
+      tb <- table(factor(x$smr_child_blood_helix, levels = CPGD_CHILD_BLOOD_LEVELS))
+      cat(sprintf("  child_blood_helix of the SMR pairs shown: %s\n",
+                  paste(sprintf("%s %d", names(tb), as.integer(tb)), collapse = ", ")))
+    }
+    if (isTRUE(attr(x, "require_detected")))
+      cat("  require_detected: SMR pairs HELIX did not detect were removed before the ladder ran.\n")
+  }
   cols <- intersect(c("cpg_id", "requested_gene", "best_direction", "best_evidence",
                       "best_confidence", "n_tissues_calling"), names(x))
   cat("\n")
@@ -1038,7 +1165,9 @@ print.cpgd_full <- function(x, ...) {
                                          universal = TRUE,
                                          min_tissues = 2L,
                                          min_confidence = NULL,
-                                         min_distance_info = 0.02) {
+                                         min_distance_info = 0.02,
+                                         age_group = "adult",
+                                         accuracy = "lower") {
   P <- data.table::copy(data.table::as.data.table(pairs))
   stopifnot(all(c("cpg_id", "target_gene") %in% names(P)))
   P <- unique(P, by = c("cpg_id", "target_gene"))
@@ -1083,7 +1212,11 @@ print.cpgd_full <- function(x, ...) {
   }
 
   # ---- SMR, this pair only ------------------------------------------------
-  S <- .cpgd_source_table(sources, "smr", cpgd_smr_directions)
+  # require_detected is applied by the caller (cpg_gene_pairs), which hands the
+  # filtered table in through `sources$smr`, so discovery and resolution see
+  # the same SMR evidence.
+  with_child <- !identical(age_group, "adult")
+  S <- .cpgd_source_table(sources, "smr", .cpgd_smr_table)
   if (!is.null(S) && nrow(S)) {
     hs <- if ("heidi_status" %in% names(S)) as.character(S$heidi_status)
           else rep(NA_character_, nrow(S))
@@ -1100,7 +1233,8 @@ print.cpgd_full <- function(x, ...) {
       ia = ia, hstat = hs, pheidi = ph,
       rung = .cpgd_smr_rung(S),
       rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
-      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"))
+      outc = .cpgd_smr_col(S, "outcome", "eQTLGen"),
+      cb   = .cpgd_smr_child(S))
     # one row per pair: strongest tier, then smallest p -- same rule as the
     # CpG-level ladder uses
     data.table::setorderv(SS, c("cpg_id", ".gkey", "tier", "p"))
@@ -1117,6 +1251,7 @@ print.cpgd_full <- function(x, ...) {
     P[, "smr_rung"             := hit$rung]
     P[, "smr_replication"      := hit$rep]
     P[, "smr_outcome"          := hit$outc]
+    if (with_child) P[, "smr_child_blood_helix" := hit$cb]
   } else {
     P[, c("smr_direction", "smr_tier", "p_SMR", "n_instruments",
           "instrument_agreement", "p_HEIDI", "heidi_status",
@@ -1124,6 +1259,7 @@ print.cpgd_full <- function(x, ...) {
         list(NA_real_, NA_character_, NA_real_, NA_integer_, NA_real_,
              NA_real_, NA_character_,
              NA_character_, NA_character_, NA_character_)]
+    if (with_child) P[, "smr_child_blood_helix" := NA_character_]
   }
 
   # ---- tumour consensus (Onco-eQTM), this pair only ----------------------
@@ -1170,10 +1306,10 @@ print.cpgd_full <- function(x, ...) {
     data.table::setkeyv(LL, c("cpg_id", ".gkey"))
     hit <- LL[P[, c("cpg_id", ".gkey"), with = FALSE], on = c("cpg_id", ".gkey")]
     # the same call rule as .cpgd_one_tissue(): tier A calls at conf >= thrA,
-    # tier B at conf >= thrB, tier C abstains; DIRECT_eQTM rows always call
+    # tier B at conf >= thrB, tier C abstains, DIRECT_eQTM rows alike (their
+    # measured sign reaches the ladder through the measured rungs)
     call <- data.table::fcase(
       is.na(hit$d), NA_real_,
-      hit$st == "DIRECT_eQTM", hit$d,
       hit$ti == "A" & !is.na(hit$cf) & hit$cf >= thrA, hit$d,
       hit$ti == "B" & !is.na(hit$cf) & hit$cf >= thrB, hit$d,
       default = NA_real_)
@@ -1233,55 +1369,55 @@ print.cpgd_full <- function(x, ...) {
   P[, "dist_dir_nasal" := dist_p$dist_dir_nasal]
   P[, "dist_dir_solid" := dist_p$dist_dir_solid]
 
-  # ---- the ladder, unchanged in order, applied within the pair -----------
-  best <- rep(NA_real_, n)
-  src  <- rep(NA_character_, n)
-
-  i <- which(!is.na(P$measured_direction))
-  best[i] <- P$measured_direction[i];  src[i] <- "measured"
-
+  # ---- the ladder, ranked by accuracy in `tissue`, within the pair --------
+  # The same candidates and the same order as the CpG-level ladder
+  # (.cpgd_rung_order(); R/rung_accuracy.R), resolved strictly within the pair.
+  cand <- list()
+  # the catalogue calls: a DIRECT_eQTM call is a measured sign; a consensus or
+  # a conflict is between predicted calls (.cpgd_catalogue_cand())
+  pcol <- function(pre) as.matrix(P[, paste0(pre, short), with = FALSE])
+  CC <- .cpgd_catalogue_cand(pcol("cat_dir_"), pcol("cat_tier_"), pcol("cat_status_"),
+                             NULL, min_tissues)
+  colnames(CC$single) <- colnames(CC$direct) <- unname(short)
+  TTm <- pcol("cat_tier_"); colnames(TTm) <- unname(short)
+  MT <- .cpgd_measured_by_tissue(M, P$cpg_id, P$.gkey,
+                                 norm = function(x) gsub("_", "-", toupper(x)))
+  for (s in names(MT)) {
+    dv <- MT[[s]]$d
+    cand[[paste0("measured_", s, "_replicated")]] <- ifelse(MT[[s]]$rep %in% TRUE, dv, NA_real_)
+    cand[[paste0("measured_", s, "_single")]]     <-
+      ifelse(MT[[s]]$rep %in% TRUE, NA_real_, ifelse(is.na(dv), CC$direct[, s], dv))
+  }
   smr_ok <- !is.na(P$smr_direction)
   rung <- P$smr_rung
-  i <- which(is.na(src) & smr_ok & rung == "replicated")
-  best[i] <- P$smr_direction[i];       src[i] <- "smr_replicated"
-
-  i <- which(is.na(src) & smr_ok & rung == "high")
-  best[i] <- P$smr_direction[i];       src[i] <- "smr_high"
-
-  i <- which(is.na(src) & !is.na(cons))
-  best[i] <- cons[i];                  src[i] <- "catalogue_consensus"
-
-  i <- which(is.na(src) & smr_ok & rung == "moderate")
-  best[i] <- P$smr_direction[i];       src[i] <- "smr_moderate"
-
-  i <- which(is.na(src) & n_call == 1L & !is.na(single))
-  best[i] <- single[i];                src[i] <- "catalogue_single"
-
-  # Onco-eQTM O1 (>= 5 cancer types, one sign): 0.82 blood / 0.93 nasal / 0.70
-  # SMR-S1 against the peripheral references (tools/validate_onco.R). Below
-  # every single-tissue peripheral call, above S3 and the distance curves.
+  smr_src <- data.table::fcase(rung %in% "replicated", "smr_replicated",
+                               rung %in% "high", "smr_high",
+                               rung %in% "moderate", "smr_moderate",
+                               rung %in% "weak", "smr_weak", default = NA_character_)
+  skey <- .cpgd_smr_key(smr_src, P$smr_tier, P$smr_outcome, P$smr_replication)
+  for (k in unique(stats::na.omit(skey)))
+    cand[[paste0("smr_", k)]] <- ifelse(smr_ok & skey %in% k, P$smr_direction, NA_real_)
+  # consensus needs two models at least, whatever min_tissues says
+  for (tr in c("A", "B"))
+    cand[[paste0("catalogue_consensus_", tr)]] <-
+      ifelse(!is.na(CC$cons) & CC$worst %in% tr, CC$cons, NA_real_)
+  for (s in c("blood", "nasal", "solid")) for (tr in c("A", "B"))
+    cand[[paste0("catalogue_single_", s, "_", tr)]] <-
+      ifelse(!is.na(CC$single[, s]) & TTm[, s] %in% tr, CC$single[, s], NA_real_)
   onco_ok <- !is.na(P$onco_direction) & P$onco_tier %in% "O1"
-  i <- which(is.na(src) & onco_ok)
-  best[i] <- P$onco_direction[i];      src[i] <- "onco_consensus"
-
-  i <- which(is.na(src) & smr_ok & rung == "weak")
-  best[i] <- P$smr_direction[i];       src[i] <- "smr_weak"
-
-  i <- which(is.na(src) & n_call >= 2L & !is.na(agree) & agree < 1)
-  src[i] <- "tissue_conflict"
-
-  i <- which(is.na(src) & P$dist_unanimous %in% TRUE &
-               !is.na(P$dir_universal) &
-               abs(P$p_universal - 0.5) * 2 >= min_distance_info)
-  best[i] <- P$dir_universal[i];       src[i] <- "distance_only"
-
-  i <- which(is.na(src) & P$dist_unanimous %in% TRUE)
-  src[i] <- "distance_uninformative"
-
-  i <- which(is.na(src) & !is.na(P$abs_dist))
-  src[i] <- "distance_tissue_conflict"
-
-  src[is.na(src)] <- "no_evidence"
+  cand[["onco_consensus"]] <- ifelse(onco_ok, P$onco_direction, NA_real_)
+  dist_ok <- P$dist_unanimous %in% TRUE & !is.na(P$dir_universal) &
+             abs(P$p_universal - 0.5) * 2 >= min_distance_info
+  cand[["distance_only"]] <- ifelse(dist_ok %in% TRUE, P$dir_universal, NA_real_)
+  conflict <- CC$conflict
+  lad  <- .cpgd_apply_ladder(cand, .cpgd_rung_order(tissue), conflict, n)
+  best <- lad$best; rkey <- lad$key
+  i <- which(is.na(rkey) & P$dist_unanimous %in% TRUE)
+  rkey[i] <- "distance_uninformative"
+  i <- which(is.na(rkey) & !is.na(P$abs_dist))
+  rkey[i] <- "distance_tissue_conflict"
+  rkey[is.na(rkey)] <- "no_evidence"
+  src <- .cpgd_rung_evidence(rkey)
 
   bconf <- rep(NA_real_, n)
   bconf[which(src == "measured")] <- 1
@@ -1299,6 +1435,8 @@ print.cpgd_full <- function(x, ...) {
   prob[i] <- ifelse(best[i] > 0, 1, 0)
 
   tier <- worst_tier
+  i <- which(grepl("^catalogue_(consensus|single)_.*[AB]$", rkey))
+  tier[i] <- substring(rkey[i], nchar(rkey[i]))
   tier[which(src == "measured")] <- "M"
   i <- which(src %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"))
   tier[i] <- P$smr_tier[i]
@@ -1306,24 +1444,7 @@ print.cpgd_full <- function(x, ...) {
   tier[which(src %in% c("distance_only", "distance_uninformative",
                         "distance_tissue_conflict"))] <- "U"
 
-  bacc <- rep(NA_character_, n)
-  i <- which(src == "measured")
-  bacc[i] <- ifelse((P$measured_n_cohorts[i] >= 2L & P$measured_cohort_agreement[i] >= 0.99) %in% TRUE,
-                    CPGD_MEASURED_ACCURACY[["replicated"]], CPGD_MEASURED_ACCURACY[["single"]])
-  bacc[which(src == "smr_replicated" & P$smr_tier == "S1")] <- CPGD_SMR_ACCURACY[["replicated_S1"]]
-  bacc[which(src == "smr_replicated" & P$smr_tier != "S1")] <- CPGD_SMR_ACCURACY[["replicated_S2"]]
-  bacc[which(src == "smr_high")]     <- CPGD_SMR_ACCURACY[["high"]]
-  bacc[which(src == "smr_moderate" & !(P$smr_outcome %in% "eQTLGen"))] <- CPGD_SMR_ACCURACY[["moderate_finngen"]]
-  bacc[which(src == "smr_moderate" &   P$smr_outcome %in% "eQTLGen")]  <- CPGD_SMR_ACCURACY[["moderate"]]
-  bacc[which(src == "smr_moderate" &   P$smr_outcome %in% "eQTLGen" & P$smr_tier %in% "S3")] <- CPGD_SMR_ACCURACY[["moderate_s3_replicated"]]
-  bacc[which(src == "smr_weak" &   P$smr_replication %in% "discordant")]  <- CPGD_SMR_ACCURACY[["weak_discordant"]]
-  bacc[which(src == "smr_weak" & !(P$smr_replication %in% "discordant"))] <- CPGD_SMR_ACCURACY[["weak"]]
-  bacc[which(src == "catalogue_consensus" & worst_tier == "A")] <- "0.77-0.87 (tier A, tissues agree)"
-  bacc[which(src == "catalogue_consensus" & worst_tier == "B")] <- "0.64-0.84 (tier B, tissues agree)"
-  bacc[which(src == "catalogue_single"    & worst_tier == "A")] <- "0.62-0.87 (tier A, one tissue only)"
-  bacc[which(src == "catalogue_single"    & worst_tier == "B")] <- "0.55-0.84 (tier B, one tissue only)"
-  bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
-  bacc[which(src == "distance_only")] <- "0.60-0.65 (distance only, tier U)"
+  bacc <- .cpgd_rung_label(ifelse(is.na(best), NA_character_, rkey), tissue, age_group)
 
   # agreement is a statement about two INDEPENDENT signs for the same pair;
   # where the tumour sign IS best_direction there is nothing to agree with
@@ -1333,10 +1454,13 @@ print.cpgd_full <- function(x, ...) {
 
   P[, "best_direction"  := best]
   P[, "best_evidence"   := src]
+  data.table::set(P, j = "best_rung", value = rkey)
   P[, "best_confidence" := bconf]
   P[, "direction_tier"  := tier]
   P[, "probability_plus1" := prob]
   P[, "best_expected_accuracy" := bacc]
+  data.table::set(P, j = "best_accuracy",
+                  value = .cpgd_accuracy_number(bacc, accuracy))
   P[, "usable" := !is.na(best)]
   P[, "abstain_reason" := data.table::fcase(
       !is.na(best), "",

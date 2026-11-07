@@ -2,7 +2,7 @@
 % Please edit documentation in R/cpg_expression_direction.R
 \name{cpgd_accuracy_table}
 \alias{cpgd_accuracy_table}
-\title{Expected accuracy by evidence tier}
+\title{Expected accuracy by evidence tier (version 1.0 figures)}
 \usage{
 cpgd_accuracy_table()
 }
@@ -10,8 +10,13 @@ cpgd_accuracy_table()
 A \code{data.frame}.
 }
 \description{
-The validation figures behind the \code{expected_accuracy} column, so they can
-be inspected rather than taken on trust.
+The validation figures of version 1.0, per catalogue model and measured
+class: cross-validation, locked-test and replication figures, kept for
+their provenance. They are no longer what \code{expected_accuracy} and
+\code{best_expected_accuracy} quote: since 1.1.0 every quoted figure, and
+the number in \code{accuracy} and \code{best_accuracy}, comes from the
+per-tissue validation against independent yardsticks; see
+\code{\link{cpgd_accuracy_values}}.
 }
 \examples{
 cpgd_accuracy_table()

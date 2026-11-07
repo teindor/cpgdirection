@@ -11,10 +11,20 @@ documents them. Genome build is hg19 throughout unless stated.
 All source data are open resources; nothing here derives from controlled-access
 individual-level data.
 
+The November 2026 build (version 1.1.0) was made by `tools/build_nov2026_extdata.R`
+from the outputs of the lead scripts in `tools/` (`ingest_helix_dryad.R`,
+`ingest_wang2021_pairs.R`, `build_probe_uniqueness.R`,
+`recompute_dev_brain_eqtm.R`); its report is
+`tools/reports/build_nov2026_extdata.md`. The Hub resource `smr_directions`
+gained the informational column `child_blood_helix` at the same time (HELIX
+child blood: `sig`, `nominal`, `null`, `untested`; 241,044 of 549,316 pairs
+tested); it is documented with the other Hub layers in `cpgdirectionData`.
+
 ## `measured_eqtms.csv.gz`
 
-Directly measured cis-eQTM pairs with a replicated sign, 75,062 rows
-(blood 26,555; nasal epithelium 11,045; solid tissue 37,462).
+Directly measured cis-eQTM pairs with a replicated sign, 93,818 rows
+(blood 45,311; nasal epithelium 11,045; solid tissue 37,462) from version 1.1.0;
+75,062 rows (blood 26,555) before.
 
 * **Sources.** The eQTM Atlas (Sriram et al. 2026, bioRxiv
   doi:10.64898/2026.06.07.730721; browser
@@ -43,13 +53,67 @@ Directly measured cis-eQTM pairs with a replicated sign, 75,062 rows
   and `cohorts` record the provenance. Tumour-derived pairs from the earlier
   solid-tissue catalogue are not in this file (tumour evidence lives in the
   Onco-eQTM layer of `cpgdirectionData`).
+* **November 2026 additions (1.1.0, blood only).** (1) HELIX child blood
+  (Ruiz-Arenas et al. 2022; Dryad doi:10.5061/dryad.fxpnvx0t0; ages 6-11,
+  n = 823): signed, cell-type-adjusted significant pairs within 250 kb with a
+  gene symbol (26,002 pairs), cohort `HELIX_2022_Dryad_adj`, source
+  `helix_dryad_2022` (`tools/ingest_helix_dryad.R`); 0.988 against the blood
+  pairs of the other cohorts (n = 4,091). The 8,432 unsigned `packaged_v1`
+  blood rows HELIX now covers are replaced by the signed HELIX row. (2) MESA
+  CD14+ monocytes (n = 1,201) and CD4+ T cells (n = 214) from Wang et al.
+  2021, Table S2 (`tools/ingest_wang2021_pairs.R`; MESA Illumina probes
+  mapped with illuminaHumanv4.db), cohorts `MESA_monocytes` and
+  `MESA_Tcells`, source `wang2021_S2`; 0.93 against the shipped blood
+  cohorts. The Horvath liver pairs of the same table (0.841 against shipped
+  solid tissue, interval straddling the 0.85 bar) are held out
+  (`--include-liver` to add them). Merge rule: one vote per cohort per pair,
+  majority sign, ties dropped (118 pairs), `n_cohorts` /
+  `cohort_agreement` / `cohorts` recomputed; 10 duplicated blood rows removed;
+  13 existing pairs changed sign; 6,997 blood pairs are now multi-cohort.
 * **Columns.** `cpg_id`, `target_gene`, `tissue`, `direction` (+1/-1),
   `tss_dist` (signed CpG-TSS distance, bp), `n_cohorts`, `cohort_agreement`,
-  `cohorts`, `source` (`eqtm_atlas` or `packaged_v1`).
+  `cohorts`, `source` (`eqtm_atlas`, `helix_dryad_2022`, `wang2021_S2` or
+  `packaged_v1`).
 * **Reproduce.** From the package root, with the Atlas exports in a directory:
   `Rscript inst/scripts/build_measured_eqtms.R --atlas-dir <dir> --out tools/out`,
   then copy `tools/out/measured_eqtms_v2.csv.gz` to
-  `inst/extdata/measured_eqtms.csv.gz`.
+  `inst/extdata/measured_eqtms.csv.gz`; then add the November sources with
+  `Rscript tools/build_nov2026_extdata.R` (inputs listed in its header).
+
+## `brain_measured_eqtms.csv.gz`
+
+Directly measured cis-eQTM pairs in dorsolateral prefrontal cortex (new in
+1.1.0), one row per pair per cohort: 9,198 rows, 9,018 pairs, read by
+`cpgd_brain_measured()` and used only by `cpg_brain_bridge()` (never by a
+peripheral ladder).
+
+* **Sources.** (1) `ROSMAP_DLPFC_aged`: the ROSMAP aged-cortex pairs of Wang
+  et al. 2021, Table S2 (n = 502; known covariates including age regressed
+  by the authors), 8,815 pairs over 8,150 CpGs, source `wang2021_S2`
+  (`tools/ingest_wang2021_pairs.R`, written into this file by
+  `tools/build_nov2026_extdata.R`). (2) `Jaffe_DLPFC_ageadj`: 383 pairs
+  recomputed with age removed (`tools/recompute_dev_brain_eqtm.R`, lead 18b):
+  GSE74193 450K DLPFC (controls passing QC, one array per donor) against
+  GSE30272 HEEBO expression, donors paired 1:1 by an age (3 decimals), sex
+  and race fingerprint because GSE30272 carries no donor number (216 donors;
+  maximum age difference 0.0005 y); model
+  `expr ~ meth + ns(age, 4) + sex + race`, fitted separately in postnatal
+  1-25 y (n = 94) and adult > 25 y (n = 119) donors; pairs at FDR < 0.05 in
+  either set, one cohort vote (majority sign), source
+  `lead18b_GSE74193_GSE30272`. The Wang developmental pairs (fetal to 25 y,
+  age not regressed) are not used: most reproduced only as age trends.
+* **Validation.** The two cohorts agree on 174 of 180 shared pairs (0.967;
+  admission bar 0.85); postnatal 1-25 y age-adjusted signs match ROSMAP at
+  0.975 (FDR, n = 118) and adult > 25 y at 0.980 (n = 150).
+* **Columns.** `cpg_id`, `target_gene`, `direction` (+1/-1), `corr`
+  (ROSMAP Spearman rho; empty for the Jaffe rows), `FDR`, `tss_dist`,
+  `cohort`, `source`. `cpgd_brain_measured()` collapses it to one row per pair
+  with `n_cohorts`, `cohort_agreement` and `cohorts`, the same rule as the
+  peripheral measured table.
+* **Caveats.** HEEBO is a two-colour array with small n; the Jaffe pairing is
+  inferred, not keyed on donor ID (mispairing would pull agreement towards
+  0.5, and agreement is 0.93-0.98). The Jaffe adult donors overlap the Wang
+  "ageing" donors; ROSMAP is independent of both.
 
 ## `distance_curves.csv`
 
@@ -90,7 +154,10 @@ Probe reliability flags for 926,858 EPIC v2 CpGs, used by
   experimental evidence of Peters et al. 2024, BMC Genomics 25:251
   (doi:10.1186/s12864-024-10027-5): WGBS-confirmed cross-hybridising probes,
   BLAT-predicted off-targets and alignment mismatches, from the paper's
-  supplementary tables.
+  supplementary tables; (4, from 1.1.0) the T2T-CHM13 and pangenome probe
+  uniqueness sets of Dong et al. 2025, Cell Rep 44:115755 (MIT;
+  github.com/functionalepigenomics/Illumina_Infinium_HumanMethylation_BeadChips_Annotation,
+  files dated 6 January 2025; `tools/build_probe_uniqueness.R`).
 * **Rule.** Flags are collapsed from probe to CpG level over replicate
   probes. Exclusion-grade flags use the every-replicate rule:
   `masked_general` (Zhou) and `cross_hybridizing` (Garvan, WGBS-evidenced) are
@@ -101,6 +168,15 @@ Probe reliability flags for 926,858 EPIC v2 CpGs, used by
   packaged hg19 position equals the Zhou hg19 manifest position (99.5% exact;
   3,632 CpGs flagged unverified; NA where the CpG is absent from that
   manifest). `qc_sources` names the tracks consulted.
+* **T2T / pangenome columns (1.1.0, informational).** `t2t_ambiguous`
+  (73,943 CpGs), `pan_t2t_ambiguous` (110,956), `pangenome_xpop_ambiguous`
+  (110,649) and `pan_t2t_eur_ambiguous` (125,780) are TRUE when every
+  replicate probe of the CpG is non-unique on that reference;
+  `t2t_snp_maf05` (4,597) when any probe carries a T2T-called SNP at
+  MAF >= 0.05; `chm13_chr` / `chm13_pos` locate the first T2T-unique probe.
+  They do not feed `qc_exclude`: in validation against the package's
+  direction sources the ambiguous classes were not clearly worse on both
+  checks.
 * **Script.** Built at version 2.3.0; the build script is not part of the
   package. The rule above is the complete specification.
 

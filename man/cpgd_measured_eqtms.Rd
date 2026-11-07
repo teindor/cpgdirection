@@ -10,7 +10,9 @@ cpgd_measured_eqtms()
 A \code{data.table} with \code{cpg_id}, \code{target_gene},
   \code{tissue}, \code{direction}, \code{tss_dist}, and (2.99.8)
   \code{n_cohorts}, \code{cohort_agreement}, \code{cohorts} (pipe-separated
-  cohort names, or \code{packaged_v1}) and \code{source}.
+  cohort names, or \code{packaged_v1}) and \code{source}
+  (\code{eqtm_atlas}, \code{helix_dryad_2022}, \code{wang2021_S2} or
+  \code{packaged_v1}).
 }
 \description{
 The CpG-gene pairs that were directly measured in at least one eQTM
@@ -20,23 +22,52 @@ cohort, rather than predicted. From 2.99.8 the table is built by
 (Kim et al. 2020, 2023), GTEx whole blood and seven organs (Oliva et al.
 2023), FUSION skeletal muscle (Taylor et al. 2019), Colonomics colon
 (Diez-Villanueva et al. 2021) and Framingham whole blood (Keshawarz et
-al. 2023), plus the Framingham and HELIX (Ruiz-Arenas et al. 2022) blood
-pairs of the earlier build that the Atlas exports do not cover. Pairs are
-cis (|CpG - TSS| <= 250 kb), significant by the cohort's own rule, with
-the sign taken by cohort majority; sign ties are dropped.
+al. 2023), plus the remaining blood pairs of the earlier build
+(\code{packaged_v1}: Framingham and HELIX Atlas exports) that no newer
+source covers. Pairs are cis (|CpG - TSS| <= 250 kb),
+significant by the cohort's own rule, with the sign taken by cohort
+majority (one vote per cohort); sign ties are dropped.
 \code{tissue} is \code{blood}, \code{nasal_epithelium} or
 \code{solid_tissue} (normal muscle, lung, ovary, colon, breast, prostate,
 testis pooled). Tumour-derived pairs are no longer in this table; tumour
 evidence is the Onco-eQTM layer.
 }
-\details{
+\section{Blood cohorts added in 1.1.0 (November 2026 build)}{
+
+The blood class grows from 26,555 to 45,311 pairs (6,997 measured in more
+than one cohort; \code{tools/build_nov2026_extdata.R}, report in
+\code{tools/reports/build_nov2026_extdata.md}):
+\itemize{
+  \item \strong{HELIX child blood} (Ruiz-Arenas et al. 2022; Dryad
+    doi:10.5061/dryad.fxpnvx0t0; ages 6-11, n = 823): the signed,
+    cell-type-adjusted significant pairs, cohort
+    \code{HELIX_2022_Dryad_adj}, source \code{helix_dryad_2022}. They agree
+    with the blood pairs of the other cohorts at 0.988 (n = 4,091, Wilson
+    0.984-0.991) and replace the 8,432 unsigned \code{packaged_v1} HELIX
+    rows of the earlier build.
+  \item \strong{MESA sorted cells} (Wang et al. 2021, Table S2): CD14+
+    monocytes (n = 1,201) and CD4+ T cells (n = 214), cohorts
+    \code{MESA_monocytes} and \code{MESA_Tcells}, source
+    \code{wang2021_S2}; 0.93 against the shipped blood cohorts.
+}
+The 250 kb window is enforced on every row; 10 duplicated rows were removed,
+118 pairs dropped as cohort ties and 13 existing pairs changed sign. Liver
+(Wang et al. 2021, 0.841 against shipped solid tissue, interval straddling
+the 0.85 bar) is held out. Nasal and solid tissue are unchanged.
+
 These matter for a specific reason. Nearest-gene annotation is wrong often
 enough to be a problem: a substantial share of measured pairs involve a
 gene that is \emph{not} the nearest gene to the CpG, and many CpGs have
 measured associations with more than one gene. A CpG annotated to gene X
 on the array may have its measured relationship with gene Y.
 }
+
 \examples{
 m <- cpgd_measured_eqtms()
 m[m$cpg_id == "cg00000165", ]
+}
+\seealso{
+\code{\link{cpgd_brain_measured}} for measured pairs in brain
+  cortex, which are kept out of this table and used only by
+  \code{\link{cpg_brain_bridge}}.
 }

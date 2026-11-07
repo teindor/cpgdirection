@@ -151,31 +151,46 @@ test_that("only tier O1 reaches best_direction; O2-O4 stay reported", {
   }
 })
 
-test_that("onco_consensus sits below catalogue_single and above smr_weak", {
+test_that("onco_consensus is ranked by its accuracy in the call's tissue", {
+  # the order comes from the per-tissue validation, not from this test
+  o <- cpgdirection:::.cpgd_rung_order("blood")
+  above <- function(a, b) match(a, o) < match(b, o)
   lk <- data.table(cpg_id = CG1, target_gene = "GENEA", direction = 1,
                    probability_plus1 = 0.8, confidence = 0.6, evidence_tier = "A",
                    status = "PREDICTED", tss_dist = 500)
-  # a single-tissue catalogue call outranks O1, and the disagreement is visible
+  # a blood-model single call (+1) against O1 (-1): the more accurate answers,
+  # and the disagreement stays visible when the catalogue answers
   src <- src_with(lookup = lk, onco = fx_onco(CG1, "GENEA", direction = -1))
   p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = src)
   a <- p[p$target_gene == "GENEA", ]
-  expect_equal(a$best_evidence, "catalogue_single")
-  expect_equal(a$best_direction, 1)
-  expect_false(a$onco_agreement)
-  # O1 outranks an S3 SMR row for the same pair
+  if (above("onco_consensus", "catalogue_single_blood_A")) {
+    expect_equal(a$best_evidence, "onco_consensus"); expect_equal(a$best_direction, -1)
+    expect_true(is.na(a$onco_agreement))
+  } else {
+    expect_equal(a$best_evidence, "catalogue_single"); expect_equal(a$best_direction, 1)
+    expect_false(a$onco_agreement)
+  }
+  # against an S3 SMR row (smr_weak) and an S2 row (smr_moderate)
   smr3 <- data.table(cpg_id = CG1, target_gene = "GENEA", direction = 1,
                      smr_tier = "S3", p_SMR = 1e-3, n_instruments = 2L,
                      instrument_agreement = 0.5, cpg_gene_dist = 5000)
-  src <- src_with(smr = smr3, onco = fx_onco(CG1, "GENEA", direction = -1))
-  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = src)
-  a <- p[p$target_gene == "GENEA", ]
-  expect_equal(a$best_evidence, "onco_consensus")
-  expect_equal(a$best_direction, -1)
-  # ...but not an S2 row
-  smr2 <- data.table::copy(smr3)[, smr_tier := "S2"]
-  src <- src_with(smr = smr2, onco = fx_onco(CG1, "GENEA", direction = -1))
-  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = src)
-  expect_equal(p[p$target_gene == "GENEA", ]$best_evidence, "smr_moderate")
+  for (tr in c("S3", "S2")) {
+    sm <- data.table::copy(smr3)[, smr_tier := tr]
+    src <- src_with(smr = sm, onco = fx_onco(CG1, "GENEA", direction = -1))
+    p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = src)
+    a <- p[p$target_gene == "GENEA", ]
+    rk <- if (tr == "S3") "smr_weak" else "smr_moderate"
+    if (above("onco_consensus", rk)) {
+      expect_equal(a$best_evidence, "onco_consensus", info = tr)
+      expect_equal(a$best_direction, -1, info = tr)
+    } else {
+      expect_equal(a$best_evidence, rk, info = tr)
+      expect_equal(a$best_direction, 1, info = tr)
+    }
+  }
+  # in blood, as validated against MESA: O1 above SMR moderate and S3
+  expect_true(above("onco_consensus", "smr_moderate"))
+  expect_true(above("onco_consensus", "smr_weak"))
 })
 
 test_that("the tumour columns are always present; include_onco only adds targets", {

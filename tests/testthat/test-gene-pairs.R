@@ -256,27 +256,57 @@ test_that("abstention is pair-specific, never CpG-global", {
 
 # ---- evidence ladder inside the pair ---------------------------------------
 
-test_that("the pair ladder keeps the package's evidence precedence", {
-  # measured beats SMR S1 beats catalogue consensus
+test_that("the pair ladder answers with the most accurate source in the call's tissue", {
+  # measured (+1), SMR S1 (-1) and a catalogue consensus (-1) on one pair: the
+  # source ranked first in the tissue answers. The order is the per-tissue
+  # validation's (.cpgd_rung_order), not this test's.
   srcs <- src_with(
     measured = fx_measured_row(CG1, "GENEA", direction = 1),
     smr      = fx_smr_row(CG1, "GENEA", direction = -1, tier = "S1"),
     lookup   = list(
       blood            = fx_lookup_row(CG1, "GENEA", direction = -1),
       nasal_epithelium = fx_lookup_row(CG1, "GENEA", direction = -1)))
-  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
-  expect_equal(p$best_evidence, "measured")
-  expect_equal(p$best_direction, 1)
+  sign_of <- c(measured = 1, smr_high = -1, catalogue_consensus = -1)
+  for (tis in CPGD_TISSUES) {
+    o <- cpgdirection:::.cpgd_rung_order(tis)
+    p <- cpg_gene_pairs(CG1, tissue = tis, universal = FALSE, verbose = FALSE, sources = srcs)
+    # the three sources present: never the answer itself, so a wrong winner fails
+    present <- c("measured_blood_single", "smr_high", "catalogue_consensus_A")
+    win <- o[o %in% present][1]
+    expect_identical(p$best_rung, win, info = tis)
+    expect_equal(p$best_direction, unname(sign_of[cpgdirection:::.cpgd_rung_evidence(win)]),
+                 info = tis)
+  }
+  # lower bounds: blood (MESA), replicated SMR S1 above a single measured
+  # blood study (0.89 vs 0.87); solid tissue, the measured blood sign above
+  # SMR high (0.85 vs 0.78)
+  ob <- cpgdirection:::.cpgd_rung_order("blood"); os <- cpgdirection:::.cpgd_rung_order("solid_tissue")
+  expect_lt(match("smr_replicated_S1", ob), match("measured_blood_single", ob))
+  expect_lt(match("measured_blood_single", os), match("smr_high", os))
 
   srcs$measured <- EMPTY_SRC$measured
-  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
-  expect_equal(p$best_evidence, "smr_high")
-  expect_equal(p$best_direction, -1)
-
   srcs$smr <- EMPTY_SRC$smr
   p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
   expect_equal(p$best_evidence, "catalogue_consensus")
   expect_equal(p$best_direction, -1)
+})
+
+test_that("the pair call rule is the single-tissue rule: a DIRECT row below its tier threshold abstains", {
+  srcs <- src_with(lookup = list(
+    blood = fx_lookup_row(CG1, "GENEA", direction = -1, conf = 0.10, status = "DIRECT_eQTM")))
+  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
+  expect_true(is.na(p$lookup_direction))
+  expect_false(grepl("^catalogue", p$best_rung))
+  # above the threshold it calls, and a DIRECT row's call is a measured sign
+  srcs$lookup$blood$confidence <- 0.40
+  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
+  expect_equal(p$lookup_direction, -1)
+  expect_identical(p$best_rung, "measured_blood_single")
+  expect_equal(p$best_direction, -1)
+  # a PREDICTED row at the same confidence is the blood model's single call
+  srcs$lookup$blood$status <- "PREDICTED"
+  p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = srcs)
+  expect_identical(p$best_rung, "catalogue_single_blood_A")
 })
 
 test_that("evidence for a different gene is never promoted into a pair", {
@@ -353,6 +383,18 @@ test_that("input rows are traceable from pairs", {
   expect_equal(p[p$cpg_id == CG1, ]$input_id, 1L)
   expect_equal(p[p$cpg_id == CG2, ]$input_id, 2L)
   expect_match(p[p$cpg_id == CG1, ]$input, "TC21_GENEA")
+})
+
+test_that("a column subset prints as a plain table, not a zero-pair summary", {
+  p <- cpg_gene_pairs(c(CG1, CG2), universal = FALSE, verbose = FALSE,
+                      sources = src_with(manifest = fx_manifest(
+                        cpg_id = c(CG1, CG2), target_gene = c("GENEA", "GENEB"))))
+  full <- utils::capture.output(print(p))
+  expect_true(any(grepl("total unique CpG-gene pairs: +2", full)))
+  sub <- p[, c("cpg_id", "target_gene", "best_evidence"), with = FALSE]
+  out <- utils::capture.output(print(sub))
+  expect_false(any(grepl("total unique CpG-gene pairs", out, fixed = TRUE)))
+  expect_true(any(grepl("GENEA", out, fixed = TRUE)))
 })
 
 # ---- real packaged resources ----------------------------------------------

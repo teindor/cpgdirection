@@ -51,10 +51,11 @@
 #'   first and then restricted to genes in this set (any length). With
 #'   \code{gene_mode = "pairwise"} it must be the same length as \code{cpgs}
 #'   and \code{cpgs[i]} x \code{genes[i]} are evaluated as explicit pairs.
-#' @param tissue Tissue context for the catalogue mapping layer and the
-#'   \code{lookup_*} audit columns. Direction resolution consults all three
-#'   packaged catalogues for consensus, exactly as
-#'   \code{cpg_expression_direction()} does.
+#' @param tissue The tissue the question is about: it sets the order of the
+#'   evidence ladder (sources ranked by their accuracy in that tissue; see
+#'   \code{\link{cpg_expression_direction}}), the figures each call carries,
+#'   the catalogue mapping layer and the \code{lookup_*} audit columns.
+#'   Direction resolution still consults all three packaged catalogues.
 #' @param gene_mode \code{"filter"} (default) or \code{"pairwise"}; see
 #'   \code{genes}. The mode is never inferred from vector lengths -- state
 #'   \code{"pairwise"} explicitly when you mean it.
@@ -118,6 +119,24 @@
 #'   \code{brain}, \code{cpg_pos}, \code{gene_tss}, \code{distance_curves}.
 #' @param verbose Emit the discovery summary with \code{message()}. Default
 #'   \code{TRUE}.
+#' @param age_group \code{"adult"} (default), \code{"child"} or \code{"any"}:
+#'   which population the blood figures in \code{best_expected_accuracy}
+#'   refer to (every source HELIX scores on 100+ pairs, not only SMR), as in
+#'   \code{\link{cpg_expression_direction}}. \code{"child"} and
+#'   \code{"any"} add \code{smr_child_blood_helix}. Directions, rungs and the
+#'   pair set never change; \code{"adult"} equals the default.
+#' @param require_detected With \code{age_group = "child"} only: SMR pairs
+#'   whose \code{child_blood_helix} is not \code{"sig"} or \code{"nominal"}
+#'   are removed before discovery and resolution, so they neither propose a
+#'   target nor supply a direction; measured, catalogue, manifest and
+#'   distance evidence are untouched. A message reports how many pairs were
+#'   dropped. Ignored, with a warning, for any other \code{age_group}.
+#' @param accuracy \code{"lower"} (default) or \code{"median"}: which single
+#'   number \code{best_accuracy} carries, the lower bound of the source's 95\%
+#'   interval in the tissue (never below 0.5) or its point estimate, as in
+#'   \code{\link{cpg_expression_direction}}. Defaults to
+#'   \code{getOption("cpgdirection.accuracy", "lower")}. See
+#'   \code{\link{cpgd_accuracy_values}}.
 #'
 #' @return A \code{data.table} of class \code{cpgd_pairs}, one row per
 #'   CpG x gene pair, with (among others):
@@ -137,9 +156,19 @@
 #'       probability_plus1}{the pair's direction record, resolved by the same
 #'       evidence ladder as \code{cpg_expression_direction()}, strictly within
 #'       \code{cpg_id + target_gene}}
+#'     \item{best_expected_accuracy, best_accuracy}{what the direction is
+#'       worth, in words and as one number: the probability the sign is right
+#'       given coupling, by default the conservative end of its validation.
+#'       A weighting engine (e.g. DMSA's expected-sign estimator) can use
+#'       \code{best_direction * (2 * best_accuracy - 1)}; \code{NA} where the
+#'       pair abstains. \code{attr(result, "accuracy")} records the choice}
 #'     \item{usable, abstain_reason}{pair-specific: one gene of a CpG can be
 #'       usable while another abstains}
 #'     \item{n_targets_for_cpg, is_coeffect}{co-effect accounting}
+#'     \item{smr_child_blood_helix}{with \code{age_group = "child"} or
+#'       \code{"any"}: HELIX child-blood detection of the pair's SMR row
+#'       (\code{sig}, \code{nominal}, \code{null}, \code{untested}; \code{NA}
+#'       where the pair has no SMR row)}
 #'   }
 #'
 #' @section Pair invariance:
@@ -190,9 +219,15 @@ cpg_gene_pairs <- function(cpgs,
                            direction_policy = c("best", "all_evidence"),
                            universal = TRUE,
                            sources = NULL,
-                           verbose = TRUE) {
+                           verbose = TRUE,
+                           age_group = c("adult", "child", "any"),
+                           require_detected = FALSE,
+                           accuracy = getOption("cpgdirection.accuracy", "lower")) {
 
   tissue <- match.arg(tissue, CPGD_TISSUES)
+  age_group <- match.arg(age_group)
+  require_detected <- .cpgd_require_detected(age_group, require_detected)
+  accuracy <- .cpgd_accuracy_arg(accuracy)
   gene_mode <- match.arg(gene_mode)
   annotation_mode <- match.arg(annotation_mode)
   probe_qc <- match.arg(probe_qc)
@@ -263,6 +298,27 @@ cpg_gene_pairs <- function(cpgs,
     }
   }
 
+  # ---- age_group = "child", require_detected = TRUE: only SMR pairs that
+  # HELIX child blood detected (sig or nominal) stay in the SMR layer. The
+  # filtered table is handed to discovery AND to the pair resolver through
+  # `sources`, so a dropped pair can neither propose a target nor supply a
+  # direction. Nothing but the SMR layer is filtered. -----------------------
+  if (!identical(age_group, "adult")) {
+    S0 <- .cpgd_source_table(sources, "smr", .cpgd_smr_table)
+    require_detected <- .cpgd_check_child_column(S0, age_group, require_detected)
+  }
+  if (isTRUE(require_detected)) {
+    if (!is.null(S0) && nrow(S0)) {
+      keep <- .cpgd_smr_child(S0) %in% CPGD_CHILD_DETECTED
+      message(sprintf(paste0("require_detected: %s SMR pair(s) for these CpGs ",
+                             "dropped (child_blood_helix not sig/nominal); ",
+                             "measured, catalogue and manifest evidence unaffected."),
+                      format(sum(!keep & S0$cpg_id %chin% u), big.mark = ",")))
+      if (is.null(sources)) sources <- list()
+      sources$smr <- S0[keep]
+    }
+  }
+
   # ---- candidate discovery: the union of every configured mapping source --
   cand <- list()
   src_counts <- c(manifest = NA_integer_, lookup = NA_integer_,
@@ -312,7 +368,7 @@ cpg_gene_pairs <- function(cpgs,
     }
   }
   if ("smr" %in% include) {
-    S <- .cpgd_source_table(sources, "smr", cpgd_smr_directions)
+    S <- .cpgd_source_table(sources, "smr", .cpgd_smr_table)
     if (!is.null(S) && nrow(S)) {
       known_gkeys <- c(known_gkeys,
                        gsub("_", "-", toupper(unique(S$target_gene))))
@@ -458,7 +514,8 @@ cpg_gene_pairs <- function(cpgs,
   # ---- direction, resolved WITHIN each pair -------------------------------
   res <- .cpgd_resolve_pair_direction(
     pairs[, c("cpg_id", "target_gene"), with = FALSE],
-    tissue = tissue, sources = sources, universal = universal)
+    tissue = tissue, sources = sources, universal = universal,
+    age_group = age_group, accuracy = accuracy)
   res[, ".gkey" := gsub("_", "-", toupper(get("target_gene")))]
   out <- merge(pairs, res[, setdiff(names(res), "target_gene"), with = FALSE],
                by = c("cpg_id", ".gkey"), all.x = TRUE, sort = FALSE)
@@ -548,9 +605,9 @@ cpg_gene_pairs <- function(cpgs,
   # ---- column order and policy -------------------------------------------
   core <- c("input_id", "input", "cpg_id", "target_gene", "pair_id",
             "mapping_sources", "mapping_primary", "mapping_strength",
-            "best_direction", "best_evidence", "best_confidence",
+            "best_direction", "best_evidence", "best_rung", "best_confidence",
             "direction_tier", "probability_plus1", "best_expected_accuracy",
-            "usable", "abstain_reason",
+            "best_accuracy", "usable", "abstain_reason",
             "n_targets_for_cpg", "is_coeffect",
             "has_manifest", "has_lookup", "has_measured_eqtm", "has_smr",
             "has_brain", "has_distal", "has_onco", "has_input_annotation",
@@ -561,7 +618,7 @@ cpg_gene_pairs <- function(cpgs,
             "n_tissues_calling", "tissue_agreement",
             "smr_direction", "smr_tier", "p_SMR", "n_instruments",
             "instrument_agreement", "p_HEIDI", "heidi_status",
-            "smr_rung", "smr_replication", "smr_outcome",
+            "smr_rung", "smr_replication", "smr_outcome", "smr_child_blood_helix",
             "abs_dist", "p_universal", "dir_universal", "dist_unanimous",
             "brain_direction", "brain_tier",
             "distal_sources", "distal_n_biosamples", "distal_score_max",
@@ -595,6 +652,9 @@ cpg_gene_pairs <- function(cpgs,
   data.table::setattr(out, "gene_mode", gene_mode)
   data.table::setattr(out, "probe_qc", probe_qc)
   data.table::setattr(out, "qc_excluded_cpgs", qc_excluded)
+  # set only off the adult default, so the default object is unchanged
+  if (!identical(age_group, "adult")) data.table::setattr(out, "age_group", age_group)
+  data.table::setattr(out, "accuracy", accuracy)
   data.table::setattr(out, "class", c("cpgd_pairs", class(out)))
   if (isTRUE(verbose)) .cpgd_message_print(out)
   invisible(out)
@@ -639,9 +699,11 @@ cpg_gene_pairs <- function(cpgs,
 
 #' @export
 print.cpgd_pairs <- function(x, ...) {
-  # A column subset or copy loses the discovery attributes; the summary would
-  # then print misleading zeros. Show those as plain tables instead.
-  if (is.null(attr(x, "n_submitted"))) {
+  # A copy can lose the discovery attributes, and a column subset keeps them
+  # but drops the columns the summary counts; either would print misleading
+  # zeros. Show those as plain tables instead.
+  if (is.null(attr(x, "n_submitted")) ||
+      !all(c("cpg_id", "target_gene", "pair_id") %in% names(x))) {
     return(print(data.table::as.data.table(unclass(x)), ...))
   }
   n_sub <- attr(x, "n_submitted")
@@ -713,6 +775,17 @@ print.cpgd_pairs <- function(x, ...) {
       "  candidate set; best_evidence says what the direction rests on. They\n",
       "  are different facts and are kept apart. A CpG can carry opposite\n",
       "  directions for different genes; read pairs, not CpGs.\n", sep = "")
+  ag <- attr(x, "age_group")
+  if (!is.null(ag) && ag %in% names(CPGD_AGE_POPULATION)) {
+    cat(sprintf("\n  Blood accuracy figures refer to: %s,\n", CPGD_AGE_POPULATION[[ag]]),
+        "  conditional on the pair being coupled. Directions and rungs do not\n",
+        "  change with age; see ?cpgd_smr_directions.\n", sep = "")
+    if ("smr_child_blood_helix" %in% names(x)) {
+      tb <- table(factor(x$smr_child_blood_helix, levels = CPGD_CHILD_BLOOD_LEVELS))
+      cat(sprintf("  child_blood_helix of the SMR pairs: %s\n",
+                  paste(sprintf("%s %d", names(tb), as.integer(tb)), collapse = ", ")))
+    }
+  }
   cat("\n")
   cols <- intersect(c("cpg_id", "target_gene", "mapping_primary",
                       "best_direction", "best_evidence", "usable"), names(x))

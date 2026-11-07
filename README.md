@@ -62,14 +62,24 @@ the distance fallback. Read two columns first.
 
 `best_evidence` is the one that stops you over-reading the result:
 
-| value | worth | meaning |
+| value | adult blood | meaning |
 |---|---|---|
-| `measured` | 0.96–1.00 | an eQTM cohort measured this CpG against this gene; ~1.00 when 2+ cohorts agree |
-| `catalogue_consensus` | 0.64–0.87 | tissues that called it agreed |
-| `catalogue_single` | 0.55–0.87 | one tissue only, no corroboration |
-| `distance_only` | 0.60–0.65 | distance to the TSS, nothing else |
+| `measured` | 0.75–0.97 | an eQTM study measured this CpG against this gene; highest when 2+ independent blood studies agree |
+| `smr_replicated`, `smr_high` | 0.85–0.93 | Mendelian randomisation, replicated or concordant instruments |
+| `onco_consensus` | 0.85 | five or more tumour types agree; tumour evidence |
+| `catalogue_consensus` | 0.80–0.85 | tissue models that predicted it agreed |
+| `smr_moderate` | 0.71–0.80 | Mendelian randomisation, one instrument |
+| `catalogue_single` | 0.63–0.83 | one tissue model only; the blood model above the distance curves, the nasal model below them |
+| `distance_only` | 0.67 | distance to the TSS, nothing else |
 | `tissue_conflict` | — | tissues disagreed; not resolved |
 | `no_evidence` | — | no catalogue holds the pair and no distance available |
+
+The figures are agreement with an independent yardstick (MESA sorted blood
+cells for adult blood), and the ladder is ordered by them in each tissue,
+by the lower bound of each source's 95% interval:
+`best_rung` names the exact source, `cpgd_accuracy_values()` lists every
+figure, and `cpg_gene_pairs(tissue = )` or `target_tissue =` switches to the
+nasal or solid-tissue order and figures.
 
 A `measured` row and a `distance_only` row are not comparable. Sorting on
 `best_direction` without reading `best_evidence` will mix them.
@@ -113,6 +123,42 @@ columns:
 ```r
 cpg_expression_direction("my_cpgs.txt")
 ```
+
+## Children and adolescents: `age_group = "child"`
+
+Age did not move the evidence ladder in validation (child blood, HELIX 6-11 y,
+scores the SMR rungs higher than adult blood; 1-25-year cortex
+matches adult cortex at 0.975 once age is regressed out), so `age_group`
+changes no direction. With `age_group = "child"` the blood accuracy figures
+are quoted from child blood wherever HELIX scores the source on 100+ pairs
+(measured, SMR, tumour and the nasal model's calls; the adult figure
+otherwise), the
+outputs carry `child_blood_helix` (`sig`, `nominal`, `null`, `untested`), and
+`require_detected = TRUE` optionally keeps only the SMR pairs HELIX detected.
+Every SMR figure is conditional on the pair being coupled in the tissue. For
+Project Alpha and other child cohorts:
+
+```r
+pairs <- cpg_gene_pairs(my_cpgs, age_group = "child")
+```
+
+## One accuracy number for weighting engines: `best_accuracy`
+
+`best_expected_accuracy` quotes a validation in words; `best_accuracy` gives
+the same validation as one number, the probability that the called sign is
+right given coupling. By default it is the lower bound of the 95% interval of
+the validation, never below 0.5; `accuracy = "median"` gives the point
+estimate instead, per call or for a whole session (including the calls DMSA
+makes):
+
+```r
+pairs <- cpg_gene_pairs(my_cpgs)                       # lower 95% bound
+pairs <- cpg_gene_pairs(my_cpgs, accuracy = "median")  # point estimate
+options(cpgdirection.accuracy = "median")              # every call from now on
+```
+
+An expected-sign weight is `best_direction * (2 * best_accuracy - 1)`.
+`cpgd_accuracy_values()` lists every number with its n, interval and source.
 
 ## Every target gene, one row per pair: `cpg_gene_pairs()`
 
@@ -178,22 +224,31 @@ One row per CpG:
 | `confidence` | 0–1 |
 | `evidence_tier` | A, B or C |
 | `expected_accuracy` | what a direction at this tier is worth |
+| `accuracy` | the same as one number (the conservative end by default) |
 | `call` | +1, −1 or `ABSTAIN` after thresholds |
 | `status` | `DIRECT_eQTM`, `PREDICTED`, `ABSTAIN`, `NO_EXPRESSION_ANCHOR`, `UNMAPPED` |
 | `gene_source` | how the target gene was chosen |
 | `note` | caveat in plain language |
 
-`summary(res)` gives coverage and the direction split; `cpgd_accuracy_table()`
-prints the validation figures behind `expected_accuracy`.
+`summary(res)` gives coverage and the direction split; `cpgd_accuracy_values()`
+lists the validation figure behind every `expected_accuracy` text
+(`cpgd_accuracy_table()` keeps the version 1.0 figures for their provenance).
 
 ## What a direction is worth
 
-| status | expected accuracy | basis |
-|---|---|---|
-| `DIRECT_eQTM` | 0.96–1.00 | read from a measured catalogue, not predicted; ~1.00 when replicated |
-| tier A | 0.77–0.85 | locked test 0.766; independent cohort 0.854 |
-| tier B | 0.64–0.85 | locked test 0.642; independent cohort 0.854 |
-| baseline | 0.58–0.63 | always guessing −1 |
+Agreement with an independent measured yardstick in the result's tissue
+(`cpgd_accuracy_values()`); "pooled" marks a figure that pools every
+yardstick because the tissue's own has fewer than 30 pairs.
+
+| status | blood (adult, MESA) | nasal epithelium | solid tissue (FUSION, GTEx) |
+|---|---|---|---|
+| `DIRECT_eQTM` | 0.89 | 0.89 (pooled) | 0.92 |
+| tier A | 0.75 | 0.69 (pooled) | 0.71 |
+| tier B | 0.89 (pooled, n = 27) | 0.83 (pooled) | unquantified (no validation pair) |
+| baseline: always guessing −1 | 0.58–0.63 | | |
+
+A `DIRECT_eQTM` row is one study's measured sign; `cpg_expression_direction()`
+with all tissues adds the other studies and ranks it among every source.
 
 Tier A means catalogued CpGs lie within 50 kb **and** the target gene is itself
 catalogued. Tier B means one of those. Tier C means neither, and the function

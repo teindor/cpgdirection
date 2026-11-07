@@ -140,9 +140,14 @@ cpgd_build_gene_tss <- function(out = NULL,
 #'   tissue plus a consensus.
 #' @param max_dist Pairs further apart than this are not called. Default 1e6.
 #' @param verbose Emit a summary with \code{message()}.
+#' @param accuracy \code{"lower"} (default) or \code{"median"}: which single
+#'   number the \code{accuracy} column carries for \code{expected_accuracy};
+#'   see \code{\link{cpgd_accuracy_values}}. Defaults to
+#'   \code{getOption("cpgdirection.accuracy", "lower")}.
 #'
 #' @return A \code{data.table} with the CpG, gene, distance, and a direction and
-#'   probability per tissue.
+#'   probability per tissue, \code{expected_accuracy} and the same figure as
+#'   one number, \code{accuracy}.
 #'
 #' @section What this is and is not:
 #' The estimate is the empirical fraction of positive associations at that
@@ -161,7 +166,9 @@ cpgd_build_gene_tss <- function(out = NULL,
 cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
                                     cpg_pos = NULL,
                                     tissue = "all",
-                                    max_dist = 1e6, verbose = TRUE) {
+                                    max_dist = 1e6, verbose = TRUE,
+                                    accuracy = getOption("cpgdirection.accuracy", "lower")) {
+  accuracy <- .cpgd_accuracy_arg(accuracy)
 
   G <- if (is.null(gene_tss)) cpgd_gene_tss()
        else if (is.character(gene_tss) && length(gene_tss) == 1L)
@@ -246,13 +253,20 @@ cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
     d[, "tissue_agreement" := round(pmax(n_pos, n_neg) / ncol(D), 3)]
   }
   d[, "evidence_tier" := "U"]
-  d[, "expected_accuracy" := "0.60-0.65 (distance only; weaker than tier A/B)"]
+  # the curves agreeing (all tissues), or the one curve asked for
+  uk <- if (length(tis) > 1) "distance_only" else paste0("distance_curve_", short[[tis]])
+  ut <- if (length(tis) > 1) "blood" else tis
+  data.table::set(d, j = "expected_accuracy",
+                  value = rep(.cpgd_rung_label(uk, ut, "adult"), nrow(d)))
+  data.table::set(d, j = "accuracy",
+                  value = .cpgd_accuracy_number(d$expected_accuracy, accuracy))
   data.table::setnames(d, "gene_use", "target_gene")
   keep <- c("input", "cpg_id", "target_gene", "abs_dist",
             unlist(lapply(short[tis], function(s) paste0(c("dir_", "p_", "ci_"), s))),
             "consensus_direction", "tissue_agreement", "evidence_tier",
-            "expected_accuracy")
+            "expected_accuracy", "accuracy")
   d <- d[, intersect(keep, names(d)), with = FALSE]
+  data.table::setattr(d, "accuracy", accuracy)
   if (isTRUE(verbose)) {
     message(sprintf("universal mode: %d CpG-gene pairs resolved from distance", nrow(d)))
     message("  tier U - distance only, no neighbourhood or gene evidence.\n",

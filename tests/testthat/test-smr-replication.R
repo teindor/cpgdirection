@@ -50,16 +50,20 @@ test_that("FinnGen PBMC-only admission is the top-cis-mQTL SMR threshold, nothin
   expect_true(all(pb$n_instruments[pb$finngen_evidence == "smr_top_snp"] == 1L))
 })
 
-test_that("replicated rows win the ladder below measured, reported rows never do", {
+test_that("replicated rows lose only to sources ranked above them; reported rows never answer", {
   S <- .smr_rep_table(); skip_if(is.null(S), "SMR table without replication columns")
   rep1 <- S[S$smr_rung == "replicated", ][1:50, ]
   rep1 <- rep1[!is.na(rep1$cpg_id), ]
   skip_if(!nrow(rep1), "no replicated rows")
   p <- cpg_gene_pairs(rep1$cpg_id, genes = rep1$target_gene, gene_mode = "pairwise",
                       universal = FALSE, verbose = FALSE, probe_qc = "ignore")
-  won <- p$best_evidence[!is.na(p$best_evidence)]
-  expect_true(all(won %in% c("measured", "smr_replicated")))
-  expect_true(any(won == "smr_replicated"))
+  # whatever beat a replicated row is ranked above its stratum in blood
+  o <- cpgdirection:::.cpgd_rung_order("blood")
+  sk <- paste0("smr_", cpgdirection:::.cpgd_smr_key("smr_replicated", p$smr_tier,
+                                                     p$smr_outcome, p$smr_replication))
+  beat <- p$best_rung != sk & !is.na(p$best_direction)
+  expect_true(all(match(p$best_rung[beat], o) < match(sk[beat], o)))
+  expect_true(any(p$best_evidence == "smr_replicated"))
   expect_true(all(p$smr_rung[p$best_evidence == "smr_replicated"] == "replicated"))
 
   rp <- S[S$smr_rung == "reported", ][1:50, ]

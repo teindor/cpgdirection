@@ -27,43 +27,85 @@ CPGD_EVIDENCE <- c(
   "no_evidence")
 stopifnot(!anyDuplicated(CPGD_EVIDENCE))
 
-# Validated once, quoted in two ladders: tools/validate_onco.R, 3 Oct 2026.
-CPGD_ONCO_ACCURACY <- paste0(
-  "0.70-0.94 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.83 n=1,955, ",
-  "nasal 0.94 n=1,500, normal solid tissue 0.87 n=1,976, SMR-S1 0.70 n=1,033; ",
-  "near-TSS agreement is largely ",
-  "the -1 base rate)")
+# The text a declared target tissue's last-resort sign carries: a stated
+# prior, not a measurement, so no number goes with it. Every other accuracy
+# text is built from the per-tissue validation (R/rung_accuracy.R).
+CPGD_LAST_RESORT_ACCURACY <-
+  "unquantified (last resort: the target tissue's sign where nothing better exists)"
 
-# The measured rung is no longer "~1.00 by definition". From 2.99.8 the table is
-# built from the eQTM Atlas cohorts plus the packaged Framingham/HELIX blood
-# pairs, and the cross-cohort agreement on shared pairs
-# (inst/scripts/build_measured_eqtms.R, 6 Oct 2026: blood 0.99, nasal 1.00, solid
-# 0.92-0.99 between independent cohorts) is the honest figure for a measured
-# sign. A pair replicated in two or more cohorts keeps the ~1.00 reading.
-CPGD_MEASURED_ACCURACY <- c(
-  single     = paste0("0.96-0.99 (measured eQTM, one cohort; sign replicated ",
-                      "between independent cohorts on shared pairs: blood 0.99, ",
-                      "nasal 1.00, solid 0.92-0.99)"),
-  replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+# Share of HELIX-tested pairs with nominal p < 0.05, by rung (5% expected under
+# the null). The complement is "not detected at n = 823", not "absent".
+CPGD_SMR_DETECTION_CHILD <- c(replicated = 0.40, high = 0.40, moderate = 0.20,
+                              weak = 0.28, reported = 0.21)
 
-# SMR rung accuracies against the measured blood eQTMs. "replicated" means the
-# same sign from two independent outcome studies on the GoDMC instruments
-# (eQTLGen bulk whole blood and FinnGen immune-multiome PBMC); "discordant"
-# means the two disagree and the eQTLGen (larger-study) sign is kept at the
-# weak rung. FinnGen-only pairs (absent from eQTLGen) enter the moderate rung
-# when the SMR test at the top cis-mQTL reaches p < 5e-8 against the PBMC
-# outcome; HEIDI conditions nothing. Validation against measured blood eQTMs:
-# tools/validate_celltype_smr.R, tools/build_smr_replication.R (v2), 2-3 Nov
-# 2026.
-CPGD_SMR_ACCURACY <- c(
-  replicated_S1 = "0.98-0.99 (SMR tier S1, same sign in eQTLGen and FinnGen PBMC; validated n=1,795)",
-  replicated_S2 = "0.96-0.98 (SMR tier S2, same sign in eQTLGen and FinnGen PBMC; validated n=3,387)",
-  high          = "0.94-0.97 (SMR tier S1, concordant instruments, no FinnGen PBMC pair; validated n=1,094)",
-  moderate      = "0.88-0.90 (SMR tier S2, single instrument, no FinnGen PBMC pair; validated n=2,191)",
-  moderate_finngen = "0.89-0.92 (SMR p<5e-8 at the top cis-mQTL, FinnGen PBMC outcome only; validated n=1,798)",
-  moderate_s3_replicated = "0.80-0.90 (SMR tier S3: instruments disagree, majority sign reproduced by FinnGen PBMC; validated n=214)",
-  weak          = "0.63-0.75 (SMR tier S3, instruments disagree; validated n=227)",
-  weak_discordant = "0.85-0.96 (SMR tier S1, FinnGen PBMC disagrees, eQTLGen sign kept; validated n=111, held at weak below the 200-pair bar; discordant S2/S3 are reported, not called)")
+# child_blood_helix values in smr_directions (Hub version with the column):
+# sig = HELIX sigPair; nominal = p < 0.05, not sig; null = tested, p >= 0.05;
+# untested. Informational only: never a rung condition.
+CPGD_CHILD_BLOOD_LEVELS <- c("sig", "nominal", "null", "untested")
+CPGD_CHILD_DETECTED <- c("sig", "nominal")
+
+# Who the quoted blood figures describe, by age_group (shown by the print
+# methods). Nasal and solid figures do not depend on age.
+CPGD_AGE_POPULATION <- c(
+  adult = "adult blood (MESA monocytes and T cells as the yardstick)",
+  child = "child blood (HELIX, 6-11 y, n = 823, where it scores the source on 100+ pairs; adult otherwise)",
+  any   = "adult and child blood side by side")
+
+# The accuracy key of an SMR row that supplies a direction: which validated
+# stratum its sign belongs to. `src` is the ladder rung (smr_replicated,
+# smr_high, smr_moderate, smr_weak); anything else gives NA. Within moderate,
+# eQTLGen pairs whose cell-type FinnGen arm disagrees (discordant_celltype S2)
+# are their own stratum: they validate well below the rest of the rung.
+.cpgd_smr_key <- function(src, tier, outcome, replication) {
+  eq <- outcome %in% "eQTLGen"
+  data.table::fcase(
+    src %in% "smr_replicated" & tier %in% "S1", "replicated_S1",
+    src %in% "smr_replicated" & !is.na(tier), "replicated_S2",
+    src %in% "smr_high", "high",
+    src %in% "smr_moderate" & !eq, "moderate_finngen",
+    src %in% "smr_moderate" & tier %in% "S3", "moderate_s3_replicated",
+    src %in% "smr_moderate" & replication %in% "discordant_celltype",
+      "moderate_discordant_celltype",
+    src %in% "smr_moderate", "moderate",
+    src %in% "smr_weak" & replication %in% "discordant", "weak_discordant",
+    src %in% "smr_weak", "weak",
+    default = NA_character_)
+}
+
+# require_detected acts only with age_group = "child"; anywhere else it is
+# reported and ignored rather than silently honoured or silently dropped.
+.cpgd_require_detected <- function(age_group, require_detected) {
+  if (!is.logical(require_detected) || length(require_detected) != 1L ||
+      is.na(require_detected)) {
+    stop("`require_detected` must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (isTRUE(require_detected) && !identical(age_group, "child")) {
+    warning("require_detected = TRUE applies only with age_group = \"child\"; ",
+            "ignored.", call. = FALSE)
+    return(FALSE)
+  }
+  require_detected
+}
+
+# An SMR resource built before the HELIX column cannot answer the child
+# questions. Say so once, return the column as NA, and refuse to apply
+# require_detected (it would otherwise remove the whole SMR layer, silently).
+# Returns the require_detected value to use.
+.cpgd_check_child_column <- function(S, age_group, require_detected) {
+  if (identical(age_group, "adult") || is.null(S) || !nrow(S) ||
+      "child_blood_helix" %in% names(S)) return(require_detected)
+  warning("this smr_directions resource predates the child_blood_helix ",
+          "column: it is returned as NA",
+          if (isTRUE(require_detected)) ", and require_detected cannot be applied (ignored)" else "",
+          ". Update cpgdirectionData.", call. = FALSE)
+  FALSE
+}
+
+# The child-blood column of an SMR table, NA where the table predates it.
+.cpgd_smr_child <- function(S) {
+  if ("child_blood_helix" %in% names(S)) as.character(S$child_blood_helix)
+  else rep(NA_character_, nrow(S))
+}
 
 # Effective SMR rung for a table row. Tables built before the replication
 # rebuild carry no smr_rung column; they map tier -> rung as the ladder always

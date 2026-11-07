@@ -279,12 +279,35 @@ cpgd_build_manifest_genes <- function(manifest_file,
 #' (computationally predicted off-targets) and \code{mapping_flagged}
 #' (alignment mismatches) mark rows without excluding them.
 #'
+#' @section T2T-CHM13 and pangenome uniqueness (1.1.0):
+#' Probe uniqueness re-assessed against the complete T2T-CHM13 assembly and
+#' the human pangenome (Dong et al. 2025, Cell Rep 44:115755; MIT-licensed
+#' annotation sets, \code{tools/build_probe_uniqueness.R}) is shipped for all
+#' 926,858 CpGs as \strong{informational} columns. A CpG is ambiguous when
+#' EVERY replicate probe is non-unique on that reference:
+#' \code{t2t_ambiguous} (T2T-CHM13; 73,943 CpGs), \code{pan_t2t_ambiguous}
+#' (pangenome + T2T; 110,956), \code{pangenome_xpop_ambiguous} (pangenome,
+#' all populations; 110,649) and \code{pan_t2t_eur_ambiguous} (pangenome +
+#' T2T, European haplotypes; 125,780). \code{t2t_snp_maf05} marks a CpG with
+#' any probe carrying a T2T-called SNP at MAF >= 0.05 (4,597);
+#' \code{chm13_chr}/\code{chm13_pos} give the CHM13 position of the first
+#' T2T-unique probe. Most ambiguous CpGs are new to the QC table (77,802 of
+#' the 110,649 pangenome-ambiguous CpGs are not \code{qc_exclude}), but in validation
+#' against the package's direction sources the ambiguous classes were not
+#' clearly worse on both checks, so \code{qc_exclude} -- and therefore
+#' \code{probe_qc = "exclude"} -- is unchanged. Filter on them yourself if
+#' your design calls for it; \code{qc_sources} names
+#' \code{Dong2025_T2T_pangenome} where they were consulted.
+#'
 #' @return A \code{data.table} with \code{cpg_id}, \code{n_probes},
 #'   \code{n_masked_general}, \code{mask_reasons}, \code{masked_general},
 #'   \code{masked_partial}, \code{pos_hg19_verified} (\code{NA} where the CpG
 #'   is absent from the verification source), \code{cross_hybridizing},
 #'   \code{ch_blat_predicted}, \code{mapping_flagged},
-#'   \code{n_offtargets_max}, \code{qc_exclude} and \code{qc_sources}.
+#'   \code{n_offtargets_max}, \code{qc_exclude}, \code{qc_sources} and, from
+#'   1.1.0, \code{t2t_ambiguous}, \code{pan_t2t_ambiguous},
+#'   \code{pangenome_xpop_ambiguous}, \code{pan_t2t_eur_ambiguous},
+#'   \code{t2t_snp_maf05}, \code{chm13_chr} and \code{chm13_pos}.
 #' @examples
 #' qc <- cpgd_probe_qc()
 #' head(qc[qc$masked_general == TRUE, ], 3)

@@ -9,7 +9,10 @@ cpg_direction_all_tissues(
   genes = NULL,
   min_tissues = 2L,
   allow_nearest_gene = FALSE,
-  verbose = TRUE
+  verbose = TRUE,
+  age_group = c("adult", "child", "any"),
+  require_detected = FALSE,
+  accuracy = getOption("cpgdirection.accuracy", "lower")
 )
 }
 \arguments{
@@ -25,6 +28,10 @@ consensus is reported. Default 2.}
 \code{\link{cpg_expression_direction}}.}
 
 \item{verbose}{Print a summary. Default \code{TRUE}.}
+
+\item{age_group, require_detected, accuracy}{Passed through; see
+\code{\link{cpg_expression_direction}}, \code{\link{cpgd_smr_directions}}
+and \code{\link{cpgd_accuracy_values}}.}
 }
 \value{
 A \code{data.table} with, per CpG: a direction, confidence and target

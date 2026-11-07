@@ -22,6 +22,9 @@
 #' @param allow_nearest_gene Passed through; see
 #'   \code{\link{cpg_expression_direction}}.
 #' @param verbose Print a summary. Default \code{TRUE}.
+#' @param age_group,require_detected,accuracy Passed through; see
+#'   \code{\link{cpg_expression_direction}}, \code{\link{cpgd_smr_directions}}
+#'   and \code{\link{cpgd_accuracy_values}}.
 #'
 #' @return A \code{data.table} with, per CpG: a direction, confidence and target
 #'   gene for each tissue; \code{consensus_direction},
@@ -45,11 +48,18 @@
 #' res[, c("cpg_id", "best_direction", "best_evidence"), with = FALSE]
 #' @export
 cpg_direction_all_tissues <- function(cpgs, genes = NULL, min_tissues = 2L,
-                                      allow_nearest_gene = FALSE, verbose = TRUE) {
+                                      allow_nearest_gene = FALSE, verbose = TRUE,
+                                      age_group = c("adult", "child", "any"),
+                                      require_detected = FALSE,
+                                      accuracy = getOption("cpgdirection.accuracy", "lower")) {
+  age_group <- match.arg(age_group)
   cpg_expression_direction(cpgs, genes = genes, tissue = "all",
                            min_tissues = min_tissues,
                            allow_nearest_gene = allow_nearest_gene,
-                           universal = FALSE, verbose = verbose)
+                           universal = FALSE, verbose = verbose,
+                           age_group = age_group,
+                           require_detected = require_detected,
+                           accuracy = accuracy)
 }
 
 
@@ -62,14 +72,37 @@ cpg_direction_all_tissues <- function(cpgs, genes = NULL, min_tissues = 2L,
 #' (Kim et al. 2020, 2023), GTEx whole blood and seven organs (Oliva et al.
 #' 2023), FUSION skeletal muscle (Taylor et al. 2019), Colonomics colon
 #' (Diez-Villanueva et al. 2021) and Framingham whole blood (Keshawarz et
-#' al. 2023), plus the Framingham and HELIX (Ruiz-Arenas et al. 2022) blood
-#' pairs of the earlier build that the Atlas exports do not cover. Pairs are
-#' cis (|CpG - TSS| <= 250 kb), significant by the cohort's own rule, with
-#' the sign taken by cohort majority; sign ties are dropped.
+#' al. 2023), plus the remaining blood pairs of the earlier build
+#' (\code{packaged_v1}: Framingham and HELIX Atlas exports) that no newer
+#' source covers. Pairs are cis (|CpG - TSS| <= 250 kb),
+#' significant by the cohort's own rule, with the sign taken by cohort
+#' majority (one vote per cohort); sign ties are dropped.
 #' \code{tissue} is \code{blood}, \code{nasal_epithelium} or
 #' \code{solid_tissue} (normal muscle, lung, ovary, colon, breast, prostate,
 #' testis pooled). Tumour-derived pairs are no longer in this table; tumour
 #' evidence is the Onco-eQTM layer.
+#'
+#' @section Blood cohorts added in 1.1.0 (November 2026 build):
+#' The blood class grows from 26,555 to 45,311 pairs (6,997 measured in more
+#' than one cohort; \code{tools/build_nov2026_extdata.R}, report in
+#' \code{tools/reports/build_nov2026_extdata.md}):
+#' \itemize{
+#'   \item \strong{HELIX child blood} (Ruiz-Arenas et al. 2022; Dryad
+#'     doi:10.5061/dryad.fxpnvx0t0; ages 6-11, n = 823): the signed,
+#'     cell-type-adjusted significant pairs, cohort
+#'     \code{HELIX_2022_Dryad_adj}, source \code{helix_dryad_2022}. They agree
+#'     with the blood pairs of the other cohorts at 0.988 (n = 4,091, Wilson
+#'     0.984-0.991) and replace the 8,432 unsigned \code{packaged_v1} HELIX
+#'     rows of the earlier build.
+#'   \item \strong{MESA sorted cells} (Wang et al. 2021, Table S2): CD14+
+#'     monocytes (n = 1,201) and CD4+ T cells (n = 214), cohorts
+#'     \code{MESA_monocytes} and \code{MESA_Tcells}, source
+#'     \code{wang2021_S2}; 0.93 against the shipped blood cohorts.
+#' }
+#' The 250 kb window is enforced on every row; 10 duplicated rows were removed,
+#' 118 pairs dropped as cohort ties and 13 existing pairs changed sign. Liver
+#' (Wang et al. 2021, 0.841 against shipped solid tissue, interval straddling
+#' the 0.85 bar) is held out. Nasal and solid tissue are unchanged.
 #'
 #' These matter for a specific reason. Nearest-gene annotation is wrong often
 #' enough to be a problem: a substantial share of measured pairs involve a
@@ -80,7 +113,12 @@ cpg_direction_all_tissues <- function(cpgs, genes = NULL, min_tissues = 2L,
 #' @return A \code{data.table} with \code{cpg_id}, \code{target_gene},
 #'   \code{tissue}, \code{direction}, \code{tss_dist}, and (2.99.8)
 #'   \code{n_cohorts}, \code{cohort_agreement}, \code{cohorts} (pipe-separated
-#'   cohort names, or \code{packaged_v1}) and \code{source}.
+#'   cohort names, or \code{packaged_v1}) and \code{source}
+#'   (\code{eqtm_atlas}, \code{helix_dryad_2022}, \code{wang2021_S2} or
+#'   \code{packaged_v1}).
+#' @seealso \code{\link{cpgd_brain_measured}} for measured pairs in brain
+#'   cortex, which are kept out of this table and used only by
+#'   \code{\link{cpg_brain_bridge}}.
 #' @examples
 #' m <- cpgd_measured_eqtms()
 #' m[m$cpg_id == "cg00000165", ]
@@ -238,6 +276,105 @@ cpgd_measured_eqtms <- function() {
 #' 81-94\% of the time when they differ, so a cell type never overrides PBMC;
 #' they add coverage (\code{finngen_contexts}), not sign.
 #'
+#' @section replicated and high are close, and ranked by the data:
+#' Scored against five measured references -- adult blood, child blood, nasal
+#' epithelium, solid tissue and adult cortex
+#' (\code{tools/validate_ladder_transport.R}, 4 Nov 2026) -- the two rungs
+#' differ by 0.00-0.03 with overlapping intervals in every one. From 1.1.0 the
+#' direction ladder ranks every SMR stratum (replicated S1 and S2, high, the
+#' moderate and weak strata) by its agreement with each tissue's independent
+#' yardstick (\code{tools/validate_rung_accuracy.R};
+#' \code{\link{cpgd_accuracy_values}}): in adult blood replicated S1 (0.93)
+#' and high (0.91) sit above replicated S2 (0.85).
+#'
+#' @section Every figure is conditional on coupling:
+#' An SMR accuracy is the probability that the sign is right \emph{given that
+#' the pair is coupled in the tissue}. An SMR direction says which way a CpG
+#' would act on the gene if it acts on it, not that it does. In child blood
+#' (HELIX, n = 823, cell-adjusted, within 250 kb) most SMR pairs show no
+#' detectable coupling: of the 241,044 pairs HELIX tested, the share with
+#' nominal p < 0.05 is 0.40 (replicated), 0.40 (high), 0.20 (moderate), 0.28
+#' (weak) and 0.21 (reported), against 0.05 under the null; 60\% of
+#' replicated and 80\% of moderate pairs are not detected. Sign agreement
+#' among the nominal hits, corrected for the null hits they contain,
+#' reproduces the significant-pair figures below, so the two analyses agree
+#' (helix_full_calibration_ruling.md, 4 Nov 2026). \code{smr_moderate} is
+#' large and diluted -- 160k tested pairs, 4.1\% HELIX-significant, close to
+#' the reported rung's 4.6\%.
+#'
+#' @section Child blood and age_group:
+#' The ladder's figures for the SMR strata (\code{\link{cpgd_accuracy_values}};
+#' adult blood against MESA, child blood against HELIX pairs outside the
+#' catalogue's training set; agreement, n pairs):
+#' \tabular{llll}{
+#'   SMR stratum \tab adult blood (MESA) \tab child blood (HELIX 6-11 y) \tab detected in child blood \cr
+#'   replicated S1 \tab 0.926 (244) \tab 0.963 (887) \tab 0.40 (replicated) \cr
+#'   replicated S2 \tab 0.846 (733) \tab 0.960 (2,188) \tab \cr
+#'   high \tab 0.908 (239) \tab 0.966 (770) \tab 0.40 \cr
+#'   moderate \tab 0.797 (1,179) \tab 0.902 (2,304) \tab 0.20 \cr
+#'   weak \tab 0.575 (73) \tab 0.635 (192) \tab 0.28 \cr
+#'   reported \tab never answers \tab never answers \tab 0.21 \cr
+#' }
+#' Age moves no direction and no rung: child blood scores every SMR rung above
+#' higher than adult blood (and in the transport table below, where both
+#' references are scored the same way), and both of the 3 Nov 2026
+#' rulings (concordant S3 to moderate, discordant S2/S3 reported) replicate
+#' out of sample in children.
+#' \code{age_group} therefore changes only (1) which validation figures the
+#' ladders quote (every blood source HELIX scores on 100+ pairs, not only
+#' SMR), (2) which age-specific evidence columns are returned and (3) an
+#' optional filter. \code{"adult"} is the default and gives the same output as
+#' leaving the argument out. \code{"child"} adds \code{child_blood_helix} --
+#' \code{"sig"} (HELIX significant pair), \code{"nominal"} (p < 0.05, not
+#' significant), \code{"null"} (tested, p >= 0.05) or \code{"untested"} --
+#' and quotes the child-blood figures; \code{"any"} quotes both. A
+#' \code{"null"} means "not detected at n = 823", not "absent", and never
+#' changes a rung. \code{require_detected = TRUE} (child only) keeps the pairs
+#' whose \code{child_blood_helix} is \code{"sig"} or \code{"nominal"}.
+#' \strong{Project Alpha users (children and adolescents) should set
+#' \code{age_group = "child"}.}
+#'
+#' @section What the age references cover:
+#' Blood: children aged 6-11 (HELIX) and adults. Cortex: 1-25 years (Jaffe
+#' DLPFC, age-adjusted) and adults (ROSMAP). There is no adolescent blood
+#' reference, no fetal or infant cortex, and no age information for nasal
+#' epithelium or solid tissue.
+#'
+#' @section Cross-tissue transport:
+#' Sign agreement against each independent measured reference (Wilson
+#' intervals in \code{tools/reports/validate_ladder_transport.md}; measured
+#' blood excludes the reference's own rows):
+#' \tabular{llllll}{
+#'   source \tab adult blood \tab child blood \tab nasal \tab solid \tab adult cortex \cr
+#'   SMR replicated \tab 0.914 (1,712) \tab 0.970 (6,444) \tab 0.777 (728) \tab 0.803 (2,016) \tab 0.772 (1,055) \cr
+#'   SMR high \tab 0.927 (589) \tab 0.970 (1,233) \tab 0.780 (236) \tab 0.815 (406) \tab 0.739 (218) \cr
+#'   SMR moderate \tab 0.803 (2,878) \tab 0.895 (6,576) \tab 0.623 (1,692) \tab 0.698 (3,112) \tab 0.666 (1,693) \cr
+#'   SMR weak \tab 0.710 (238) \tab 0.711 (454) \tab 0.635 (104) \tab 0.663 (169) \tab 0.725 (91) \cr
+#'   SMR reported \tab 0.616 (521) \tab 0.668 (1,309) \tab 0.541 (362) \tab 0.561 (651) \tab 0.533 (396) \cr
+#'   measured blood \tab -- \tab 0.988 \tab 0.911 (1,813) \tab 0.899 (4,149) \tab 0.840 (1,654) \cr
+#' }
+#' This is the 3 Nov 2026 transport analysis. The rung order is monotone in
+#' all five references. Age does not move the ladder; tissue does. Measured
+#' signs transport across tissue far better than blood SMR signs: measured
+#' blood beats SMR moderate by 0.17 in cortex, 0.20 in solid tissue and 0.29
+#' in nasal epithelium. The ladder's own order and figures
+#' (\code{\link{cpgd_accuracy_values}}) come from a later validation that
+#' scores every source, SMR and catalogue alike, against one yardstick per
+#' tissue that is independent of it; for adult blood that is MESA monocytes
+#' and T cells, which no catalogue was trained on. There, in adult blood, SMR
+#' moderate (0.80 [0.77, 0.82]) ranks below every measured blood sign and
+#' just above the catalogue consensus (0.80 [0.76, 0.83], formed from
+#' predicted calls); the ladder ranks by the lower bound.
+#'
+#' @param age_group \code{"adult"} (default), \code{"child"} or \code{"any"}.
+#'   Changes which validation figures are quoted and which age-specific
+#'   columns are returned, never a direction or a rung. \code{"adult"}
+#'   returns the table without \code{child_blood_helix}, as before 1.1.0.
+#' @param require_detected With \code{age_group = "child"} only: keep the
+#'   pairs whose \code{child_blood_helix} is \code{"sig"} or
+#'   \code{"nominal"}; a message reports how many were dropped. With any
+#'   other \code{age_group} it is ignored with a warning.
+#'
 #' @return A \code{data.table} with \code{cpg_id}, \code{target_gene},
 #'   \code{direction}, \code{smr_tier}, \code{p_SMR}, \code{n_instruments},
 #'   \code{instrument_agreement}, \code{cpg_gene_dist},
@@ -245,12 +382,47 @@ cpgd_measured_eqtms <- function() {
 #'   and \code{heidi_status} (\code{"pass"}, \code{"fail"}, \code{"not_tested"}),
 #'   and from 1.1.0 \code{outcome}, \code{replication}, \code{finngen_direction},
 #'   \code{finngen_tier}, \code{finngen_p_SMR}, \code{finngen_heidi_status},
-#'   \code{finngen_contexts}, \code{finngen_evidence} and \code{smr_rung}.
+#'   \code{finngen_contexts}, \code{finngen_evidence} and \code{smr_rung};
+#'   with \code{age_group = "child"} or \code{"any"} also
+#'   \code{child_blood_helix} (\code{NA} where the resource predates it).
 #' @examplesIf cpgd_has_data("smr_directions")
 #' s <- cpgd_smr_directions()
 #' s[s$cpg_id == "cg18998365", ]
+#'
+#' # children: the HELIX child-blood detection column
+#' k <- cpgd_smr_directions(age_group = "child")
+#' table(k$child_blood_helix, useNA = "ifany")
 #' @export
-cpgd_smr_directions <- function() {
+cpgd_smr_directions <- function(age_group = c("adult", "child", "any"),
+                                require_detected = FALSE) {
+  age_group <- match.arg(age_group)
+  require_detected <- .cpgd_require_detected(age_group, require_detected)
+  S <- .cpgd_smr_table()
+  has_child <- "child_blood_helix" %in% names(S)
+  if (identical(age_group, "adult")) {
+    if (!has_child) return(S)
+    return(S[, setdiff(names(S), "child_blood_helix"), with = FALSE])
+  }
+  require_detected <- .cpgd_check_child_column(S, age_group, require_detected)
+  # a copy, never the cache: a user's := on the result must not reach the
+  # table every ladder reads
+  S <- data.table::copy(S)
+  if (!has_child) S[, "child_blood_helix" := NA_character_]
+  if (isTRUE(require_detected)) {
+    keep <- S$child_blood_helix %in% CPGD_CHILD_DETECTED
+    message(sprintf(paste0("require_detected: %s of %s SMR pairs dropped ",
+                           "(child_blood_helix not sig/nominal)."),
+                    format(sum(!keep), big.mark = ","),
+                    format(length(keep), big.mark = ",")))
+    S <- S[keep]
+  }
+  S
+}
+
+# The full cached SMR table, every column, by reference. Internal callers use
+# this rather than the exported accessor, which drops child_blood_helix for
+# the adult default and would copy a 549k-row table on every call.
+.cpgd_smr_table <- function() {
   if (!is.null(.cpgd_env$smr)) return(.cpgd_env$smr)
   S <- .cpgd_data("smr_directions")
   data.table::setkeyv(S, c("cpg_id", "target_gene"))
