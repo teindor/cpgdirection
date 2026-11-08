@@ -141,17 +141,32 @@ test_that("the order is the lower bound alone; a point below 0.5 never answers",
   }
   ob <- order_in("blood")
   # a small sample does not outrank a large one on a noisy point: the blood
-  # model's tier-B single calls (12 pairs, 0.83 [0.55, 0.95]) sit below the
-  # catalogue consensus (534 pairs, 0.80 [0.76, 0.83])
+  # model's tier-B single calls (32 pairs, 0.81 [0.65, 0.91]) sit below the
+  # catalogue consensus (620 pairs, 0.78 [0.74, 0.81])
   expect_gt(match("catalogue_single_blood_B", ob), match("catalogue_consensus_A", ob))
   expect_lt(match("smr_replicated_S1", ob), match("measured_blood_single", ob))   # 0.89 vs 0.87
-  expect_false("catalogue_single_solid_A" %in% ob)                               # 0.39 in blood
+  # the solid model's single calls: 0.577 [0.512] in adult blood since the
+  # 0.99.5 lookups (0.39 before), so in the order, but below distance
+  expect_gt(match("catalogue_single_solid_A", ob), match("distance_only", ob))
   expect_lt(match("distance_only", ob), match("catalogue_single_nasal_A", ob))
   # nasal epithelium has one donor group (EVA-PR): no nasal sign is replicated
   for (t in CPGD_TISSUES) expect_false("measured_nasal_replicated" %in% order_in(t), info = t)
   # the order takes no age: age_group changes numbers, never rungs (tested on
   # the pairs below and on real data)
   expect_identical(names(formals(cpgdirection:::.cpgd_rung_order)), c("target", "pool"))
+})
+
+test_that("a point below 0.5 is left out of the order, whatever its lower bound", {
+  # no real source has one since the 0.99.5 lookups, so the rule is pinned on
+  # made-up figures
+  local_mocked_bindings(.cpgd_rung_figure1 = function(source, target = "blood", age = "adult")
+    switch(source,
+           a = list(agree = 0.49, lo = 0.48),
+           b = list(agree = 0.60, lo = 0.40),
+           c = list(agree = 0.90, lo = 0.70),
+           NULL))
+  expect_identical(cpgdirection:::.cpgd_rung_order("blood", pool = c("a", "b", "c", "d")),
+                   c("c", "b"))
 })
 
 test_that("the ladder answers with the first source in the order; conflicts stop at distance", {

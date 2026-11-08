@@ -8,12 +8,12 @@ Authors@R: c(
  comment = c(ORCID = "0000-0002-3078-7591")))
 Description: Assigns a direction to the association between DNA methylation at a
  CpG site and the expression of a nearby gene, for CpGs that have no measured
- expression quantitative trait methylation (eQTM) record. Predictions come
- from a precomputed table of 3,105,697 CpG-gene pairs covering 761,445 CpGs,
- assembled from four sources of evidence: directly measured eQTMs, summary-data
- Mendelian randomisation using genetic instruments, gradient-boosted models of
- genomic context and local catalogue structure fitted separately in blood,
- nasal epithelium and solid tissue, and a distance prior. Each call returns a
+ expression quantitative trait methylation (eQTM) record. Predictions draw
+ on four sources of evidence: directly measured eQTMs, summary-data Mendelian
+ randomisation using genetic instruments, gradient-boosted models of genomic
+ context and local catalogue structure fitted separately in blood, nasal
+ epithelium and solid tissue (precomputed for 3,455,039 CpG-gene pairs
+ covering 761,385 CpGs), and a distance prior. Each call returns a
  direction, a calibrated probability, an evidence tier and an expected
  accuracy, and abstains where the evidence is insufficient. Predictions
  estimate direction conditional on the CpG being an eQTM; they do not
@@ -25,7 +25,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.6.0)
 Imports: data.table (>= 1.14.0), utils, stats, tools,
-    cpgdirectionData
+    cpgdirectionData (>= 0.99.5)
 Suggests: testthat (>= 3.0.0), gt (>= 0.9.0), knitr, rmarkdown, BiocStyle,
     TxDb.Hsapiens.UCSC.hg19.knownGene,
     org.Hs.eg.db,

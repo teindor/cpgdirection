@@ -219,7 +219,7 @@ below the distance curves settles it (\code{tissue_conflict}). Age never
 changes the order. In adult blood replicated SMR S1 ranks above a single
 measured blood study, SMR moderate just above the catalogue consensus, and
 single calls of the nasal and solid-tissue models fall below the distance
-curves or out of the ladder.
+curves.
 \code{best_rung} names the source that answered.
 
 Passing a specific \code{tissue} instead returns the single-tissue result,

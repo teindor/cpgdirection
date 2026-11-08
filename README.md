@@ -67,9 +67,9 @@ the distance fallback. Read two columns first.
 | `measured` | 0.75–0.97 | an eQTM study measured this CpG against this gene; highest when 2+ independent blood studies agree |
 | `smr_replicated`, `smr_high` | 0.85–0.93 | Mendelian randomisation, replicated or concordant instruments |
 | `onco_consensus` | 0.85 | five or more tumour types agree; tumour evidence |
-| `catalogue_consensus` | 0.80–0.85 | tissue models that predicted it agreed |
+| `catalogue_consensus` | 0.78–0.84 | tissue models that predicted it agreed |
 | `smr_moderate` | 0.71–0.80 | Mendelian randomisation, one instrument |
-| `catalogue_single` | 0.63–0.83 | one tissue model only; the blood model above the distance curves, the nasal model below them |
+| `catalogue_single` | 0.58–0.81 | one tissue model only; the blood model's tier A just above the distance curves, the nasal and solid-tissue models below them |
 | `distance_only` | 0.67 | distance to the TSS, nothing else |
 | `tissue_conflict` | — | tissues disagreed; not resolved |
 | `no_evidence` | — | no catalogue holds the pair and no distance available |
@@ -281,9 +281,13 @@ cpg_expression_direction(my_cpgs, tissue = "solid_tissue")
 
 | tissue | cohorts | pairs | CpGs | grouped-CV AUC |
 |---|---|---|---|---|
-| blood | 4 | 1,663,799 | 641,325 | 0.793 |
-| nasal_epithelium | 2 | 1,472,435 | 553,145 | 0.865 |
-| solid_tissue | 6 (TCGA) | 849,229 | 454,821 | 0.664 |
+| blood | 4 | 2,051,017 | 672,298 | 0.793 |
+| nasal_epithelium | 2 | 1,523,103 | 555,440 | 0.865 |
+| solid_tissue | 6 (TCGA) | 1,188,710 | 542,032 | 0.664 |
+
+Pairs and CpGs are those of the lookups rebuilt in cpgdirectionData 0.99.5
+(every gene on its own chromosome at an hg19 TSS); the AUCs are the models',
+which did not change.
 
 **The three are not equally trustworthy, and the package says so in
 `expected_accuracy`.**

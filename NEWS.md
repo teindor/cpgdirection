@@ -1,5 +1,39 @@
 # cpgdirection 1.1.0 (in development -- lands after Bioconductor accepts 0.99.x)
 
+* **The catalogue lookups are rebuilt (cpgdirectionData 0.99.5), and the
+  ladder's figures with them.** The shipped lookups paired CpGs with genes on
+  another chromosome in 450,553 of the 1,408,361 blood rows whose gene
+  chromosome could be checked, 288,290 of 829,224 solid and 52,327 of
+  1,395,873 nasal. Their build placed each gene at its correct TSS position
+  but on a wrong chromosome for 46% of the blood lookup's Atlas genes (54% of
+  solid, 7% of nasal), and took the TSS of 934 genes from the Framingham and
+  GTEx Atlas exports, which are not hg19 (a median 326 kb off). The rebuild
+  reuses the saved models, pools, features, candidate rule and call
+  thresholds and changes only the gene placement; with the shipped placement
+  it regenerates the shipped tables in every column. Every gene it uses has
+  its chromosome confirmed by the EPIC v2 annotation and HGNC or, where
+  neither has the gene, by HELIX, the measured eQTMs and its own cis
+  training partners; no rebuilt row pairs a CpG with a gene on another
+  chromosome. Rows: blood 2,051,017, nasal 1,523,103, solid 1,188,710.
+  `R/rung_accuracy_table.R` is regenerated from them: catalogue calls that
+  did not change keep their accuracy (0.754 against MESA in blood); the new
+  calls, mostly for genes that were misplaced, agree 0.643, so the blood
+  figures fall (single blood A 0.751 [0.705] to 0.692 [0.661]; consensus A
+  0.800 [0.764] to 0.779 [0.745]) and catalogue_single_blood_A now ranks
+  below smr_moderate_finngen in blood. In solid tissue the solid model's
+  single tier-A calls fall from 0.778 [0.730] (325 pairs) to 0.668 [0.634]
+  (792) and now rank below distance_only; in adult blood they rise from 0.39
+  to 0.577 [0.512] and enter the order, below distance_only. The child-blood
+  and nasal yardsticks leave out each catalogue's DIRECT_eQTM pairs, which
+  changed, so the figures of other sources move there, and with them the
+  cross-tissue figures some sources borrow. The rule that orders the ladder
+  is unchanged. `cpgd_selftest()`'s reference is regenerated from the
+  rebuilt blood lookup, and the accuracy ranges in the README and the
+  vignette are those of the new table. `DESCRIPTION`, `CITATION.cff` and
+  `.zenodo.json` gave "3,105,697 pairs over 761,445 CpGs", a count no
+  current data reproduce; they now give the three rebuilt catalogues'
+  3,455,039 distinct pairs over 761,385 CpGs. New test: no lookup row pairs
+  a CpG with a gene on another chromosome.
 * **The evidence ladder is ranked by accuracy, per tissue.** Every source
   is now scored in each target tissue against a measured yardstick that is
   independent of it (`tools/validate_rung_accuracy.R`, report in

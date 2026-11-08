@@ -156,10 +156,10 @@ for the rung.
 | `smr_replicated` | 0.85-0.93 | Mendelian randomisation, same sign in two outcome studies (eQTLGen, FinnGen PBMC) |
 | `smr_high` | 0.91 | Mendelian randomisation, several instruments agreeing |
 | `onco_consensus` | 0.85 | five or more tumour types agreeing; tumour evidence, reported as such |
-| `catalogue_consensus` | 0.80-0.85 | genomic-context models, tissues agreeing |
+| `catalogue_consensus` | 0.78-0.84 | genomic-context models, tissues agreeing |
 | `smr_moderate` | 0.71-0.80 | Mendelian randomisation, one instrument, or a FinnGen-only pair |
-| `catalogue_single` | 0.63-0.83 | one tissue model only |
-| `smr_weak` | 0.58-0.78 | instruments disagree; a warning, not evidence |
+| `catalogue_single` | 0.58-0.81 | one tissue model only |
+| `smr_weak` | 0.58-0.85 | instruments disagree; a warning, not evidence |
 | `distance_only` | 0.67 | distance to the TSS, nothing else |
 | `no_evidence` | --- | nothing available; a correct answer, not a failure |
 
@@ -172,7 +172,7 @@ source with the highest bound holding a sign for the pair answers, and
 above a single measured blood study, SMR moderate just above the catalogue
 consensus (formed from predictions, not from the measured pairs the models
 were trained on), and single calls of the nasal and solid-tissue models below
-the distance curves or out of the ladder. Name the tissue (`target_tissue =`,
+the distance curves. Name the tissue (`target_tissue =`,
 or `tissue =` in `cpg_gene_pairs()`) to use the nasal or solid-tissue order
 and figures; `cpgd_accuracy_values()` lists them all, with their n and
 interval.
