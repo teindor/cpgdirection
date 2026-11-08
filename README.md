@@ -226,9 +226,13 @@ cpg_expression_direction(my_cpgs, tissue = "solid_tissue")
 
 | tissue | cohorts | pairs | CpGs | grouped-CV AUC |
 |---|---|---|---|---|
-| blood | 4 | 1,663,799 | 641,325 | 0.793 |
-| nasal_epithelium | 2 | 1,472,435 | 553,145 | 0.865 |
-| solid_tissue | 6 (TCGA) | 849,229 | 454,821 | 0.664 |
+| blood | 4 | 2,051,017 | 672,298 | 0.793 |
+| nasal_epithelium | 2 | 1,523,103 | 555,440 | 0.865 |
+| solid_tissue | 6 (TCGA) | 1,188,710 | 542,032 | 0.664 |
+
+Pairs and CpGs are those of the lookups rebuilt in cpgdirectionData 0.99.5
+(every gene on its own chromosome at an hg19 TSS); the AUCs are the models',
+which did not change.
 
 **The three are not equally trustworthy, and the package says so in
 `expected_accuracy`.**

@@ -1,3 +1,27 @@
+# cpgdirection 0.99.1
+
+* **The catalogue lookups are rebuilt (cpgdirectionData 0.99.5, now required).**
+  The lookups served by cpgdirectionData 0.99.0-0.99.4 paired CpGs with genes
+  on another chromosome in 450,553 of the 1,408,361 blood rows whose gene
+  chromosome could be checked, 288,290 of 829,224 solid and 52,327 of
+  1,395,873 nasal. Their build placed each gene at its correct TSS position
+  but on a wrong chromosome for 46% of the blood lookup's Atlas genes (54% of
+  solid, 7% of nasal), and took the TSS of 934 genes from Atlas exports that
+  are not hg19 (a median 326 kb off). The rebuild keeps the saved models,
+  pools, features, candidate rule and call thresholds and changes only the
+  gene placement; no rebuilt row pairs a CpG with a gene on another
+  chromosome. Rows: blood 2,051,017 (672,298 CpGs), nasal 1,523,103
+  (555,440), solid 1,188,710 (542,032). The models' cross-validated and
+  locked-test figures do not change.
+* `cpgd_selftest()`'s reference is regenerated from the rebuilt blood lookup
+  (22 of its 40 CpGs change; for example, cg00601836 now answers for ESR1, a
+  measured eQTM, where it used to name RIF1 on another chromosome).
+* New test: every lookup row pairs a CpG with a gene on its own chromosome,
+  by the EPIC v2 annotation.
+* `DESCRIPTION`, `CITATION.cff` and `.zenodo.json` gave "3,105,697 pairs over
+  761,445 CpGs", a count no current data reproduce; they now give the three
+  rebuilt catalogues' 3,455,039 distinct pairs over 761,385 CpGs.
+
 # cpgdirection 0.99.0
 
 **Bioconductor submission numbering.** This version continues 2.99.8 (the last
