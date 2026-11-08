@@ -213,6 +213,28 @@ test_that("replicated means two donor groups: one study's strata or cell types a
   expect_identical(r2$blood$rep[1:2], c(TRUE, TRUE))
 })
 
+test_that("measured signs: only the queried CpGs are read, and a split sign abstains", {
+  f <- cpgdirection:::.cpgd_measured_by_tissue
+  M <- data.table(cpg_id = c("cg1", "cg1", "cg2", "cg2", "cg9"),
+                  target_gene = "G", tissue = "blood",
+                  direction = c(1, -1, -1, -1, 1),
+                  n_cohorts = 1L, cohort_agreement = 1,
+                  cohorts = c("FUSION", "MESA_Tcells", "FUSION",
+                              "HELIX_2022_Dryad_adj", "GTEx: Lung"))
+  q <- c("cg1", "cg2", "cg3")
+  r <- f(M, q, rep("G", 3))
+  expect_identical(r$blood$d, c(NA, -1, NA))
+  expect_identical(r$blood$rep, c(FALSE, TRUE, FALSE))
+  # records of CpGs nobody asked about change nothing
+  junk <- data.table(cpg_id = sprintf("cgX%05d", 1:5000), target_gene = "G",
+                     tissue = "blood", direction = 1, n_cohorts = 1L,
+                     cohort_agreement = 1, cohorts = "FUSION")
+  expect_identical(f(rbind(M, junk), q, rep("G", 3)), r)
+  # a query with no measured record returns the empty answer
+  r0 <- f(M, c("cg7", "cg8"), rep("G", 2))
+  expect_true(all(is.na(unlist(lapply(r0, `[[`, "d")))))
+})
+
 test_that("catalogue candidates: DIRECT rows are measured signs; consensus and conflict need one gene", {
   cc <- cpgdirection:::.cpgd_catalogue_cand
   m <- function(...) matrix(c(...), nrow = 1L)

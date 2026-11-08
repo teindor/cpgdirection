@@ -65,6 +65,11 @@
     source on 100+ pairs.
   - The brain bridge's blood-SMR fallback is ordered by its accuracy in
     cortex: replicated > high > weak > moderate.
+  - The per-tissue measured signs behind the ladder are read for the
+    queried CpGs only, and grouped without `get()` inside `j`. Grouping the
+    whole measured table (93,818 records) that way exhausted 8 GB in
+    `cpg_gene_pairs()` when the Matrix package was loaded, as it is in any
+    session that loads dmsa. Results are unchanged.
 * **One accuracy number per call, for engines that weight by it.** Every
   accuracy text has a numeric twin: `best_accuracy` in
   `cpg_expression_direction()` and `cpg_gene_pairs()`, `accuracy` in the

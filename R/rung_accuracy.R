@@ -277,6 +277,9 @@ CPGD_RUNG_DESC <- c(
   empty <- list(d = rep(NA_real_, n), rep = rep(NA, n))
   res <- setNames(rep(list(empty), 3L), unname(short))
   if (is.null(M) || !nrow(M)) return(res)
+  # only the queried CpGs can match; the rest of the table is never read
+  M <- M[which(as.character(M$cpg_id) %in% as.character(cpg_id)), ]
+  if (!nrow(M)) return(res)
   # a measured table without a tissue column is read as blood
   nco <- if ("n_cohorts" %in% names(M)) suppressWarnings(as.integer(M$n_cohorts)) else rep(1L, nrow(M))
   agr <- if ("cohort_agreement" %in% names(M)) suppressWarnings(as.numeric(M$cohort_agreement)) else rep(1, nrow(M))
@@ -298,13 +301,20 @@ CPGD_RUNG_DESC <- c(
     if (length(j)) { ri <- c(ri, j); ug <- c(ug, paste0(".row", X$i[j])) }
     stopifnot(length(ri) == length(ug))
     G <- data.table::data.table(tis = X$tis[ri], cpg_id = X$cpg_id[ri], g = X$g[ri], grp = ug)
-    G <- G[, list(ngrp = data.table::uniqueN(get("grp"))), by = c("tis", "cpg_id", "g")]
+    G <- unique(G)[, list(ngrp = .N), by = c("tis", "cpg_id", "g")]
   } else {
     G <- NULL
   }
-  X <- X[, list(d = if (length(unique(get("d"))) == 1L) get("d")[1] else NA_real_,
-                nco = sum(get("nco")), agr = min(get("agr"))),
-         by = c("tis", "cpg_id", "g")]
+  # per pair and tissue: the sign if every record agrees, else NA; cohorts
+  # summed; the lowest agreement. Grouped without get() in j, which data.table
+  # cannot optimise and which exhausted memory on the full measured table.
+  keys <- c("tis", "cpg_id", "g")
+  lo <- X[, lapply(.SD, min), by = keys, .SDcols = c("d", "agr")]
+  hi <- X[, lapply(.SD, max), by = keys, .SDcols = "d"]
+  sm <- X[, lapply(.SD, sum), by = keys, .SDcols = "nco"]
+  X <- data.table::data.table(lo[, keys, with = FALSE],
+                              d = ifelse(lo$d == hi$d, lo$d, NA_real_),
+                              nco = sm$nco, agr = lo$agr)
   if (!is.null(G)) {
     X <- merge(X, G, by = c("tis", "cpg_id", "g"), all.x = TRUE)
     data.table::set(X, j = "nco", value = ifelse(is.na(X$ngrp), X$nco, X$ngrp))
