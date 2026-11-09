@@ -156,9 +156,9 @@ for the rung.
 | `smr_replicated` | 0.85-0.93 | Mendelian randomisation, same sign in two outcome studies (eQTLGen, FinnGen PBMC) |
 | `smr_high` | 0.91 | Mendelian randomisation, several instruments agreeing |
 | `onco_consensus` | 0.85 | five or more tumour types agreeing; tumour evidence, reported as such |
-| `catalogue_consensus` | 0.78-0.84 | genomic-context models, tissues agreeing |
+| `catalogue_consensus` | 0.79-0.83 | genomic-context models, tissues agreeing |
 | `smr_moderate` | 0.71-0.80 | Mendelian randomisation, one instrument, or a FinnGen-only pair |
-| `catalogue_single` | 0.58-0.81 | one tissue model only |
+| `catalogue_single` | 0.55-0.90 | one tissue model only |
 | `smr_weak` | 0.58-0.85 | instruments disagree; a warning, not evidence |
 | `distance_only` | 0.67 | distance to the TSS, nothing else |
 | `no_evidence` | --- | nothing available; a correct answer, not a failure |

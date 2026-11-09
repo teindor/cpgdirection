@@ -67,9 +67,9 @@ the distance fallback. Read two columns first.
 | `measured` | 0.75–0.97 | an eQTM study measured this CpG against this gene; highest when 2+ independent blood studies agree |
 | `smr_replicated`, `smr_high` | 0.85–0.93 | Mendelian randomisation, replicated or concordant instruments |
 | `onco_consensus` | 0.85 | five or more tumour types agree; tumour evidence |
-| `catalogue_consensus` | 0.78–0.84 | tissue models that predicted it agreed |
+| `catalogue_consensus` | 0.79–0.83 | tissue models that predicted it agreed |
 | `smr_moderate` | 0.71–0.80 | Mendelian randomisation, one instrument |
-| `catalogue_single` | 0.58–0.81 | one tissue model only; the blood model's tier A just above the distance curves, the nasal and solid-tissue models below them |
+| `catalogue_single` | 0.55–0.90 | one tissue model only; the blood model's tier A just above the distance curves, the nasal and solid-tissue models below them |
 | `distance_only` | 0.67 | distance to the TSS, nothing else |
 | `tissue_conflict` | — | tissues disagreed; not resolved |
 | `no_evidence` | — | no catalogue holds the pair and no distance available |
@@ -243,8 +243,8 @@ yardstick because the tissue's own has fewer than 30 pairs.
 | status | blood (adult, MESA) | nasal epithelium | solid tissue (FUSION, GTEx) |
 |---|---|---|---|
 | `DIRECT_eQTM` | 0.89 | 0.89 (pooled) | 0.92 |
-| tier A | 0.75 | 0.69 (pooled) | 0.71 |
-| tier B | 0.89 (pooled, n = 27) | 0.83 (pooled) | 0.5, neutral (no validation pair) |
+| tier A | 0.72 | 0.69 (pooled) | 0.64 |
+| tier B | 0.88 (pooled, n = 52) | 0.82 (pooled) | abstains (validated at 0.41) |
 | baseline: always guessing −1 | 0.58–0.63 | | |
 
 A `DIRECT_eQTM` row is one study's measured sign; `cpg_expression_direction()`
@@ -281,29 +281,37 @@ cpg_expression_direction(my_cpgs, tissue = "solid_tissue")
 
 | tissue | cohorts | pairs | CpGs | grouped-CV AUC |
 |---|---|---|---|---|
-| blood | 4 | 2,051,017 | 672,298 | 0.793 |
-| nasal_epithelium | 2 | 1,523,103 | 555,440 | 0.865 |
-| solid_tissue | 6 (TCGA) | 1,188,710 | 542,032 | 0.664 |
+| blood | 4 | 1,970,053 | 668,711 | 0.848 |
+| nasal_epithelium | 2 | 1,500,942 | 552,167 | 0.865 |
+| solid_tissue | 6 (TCGA) | 1,184,630 | 541,536 | 0.662 |
 
-Pairs and CpGs are those of the lookups rebuilt in cpgdirectionData 0.99.5
-(every gene on its own chromosome at an hg19 TSS); the AUCs are the models',
-which did not change.
+Pairs and CpGs are those of the lookups of cpgdirectionData 0.99.7 (one
+Ensembl gene per name, at a strand-aware hg19 TSS); the AUCs are those of the
+models retrained there on harmonized pools. The blood model's saved AUC was
+0.793; the rise comes from removing a pseudo-gene that lumped unnamed HELIX
+transcript clusters, not from better discrimination (0.848 before and 0.851
+after, on identified genes).
 
 **The three are not equally trustworthy, and the package says so in
 `expected_accuracy`.**
 
-*Blood* is the only arm with genuine external validation: a pre-registered
-locked test set (tier A AUC 0.781, 76.6% accuracy against a 59.2% baseline) and
-an independent white-blood-cell cohort (85.4%).
+*Blood* is the only arm with genuine external validation: for the original
+model, a pre-registered locked test set (tier A AUC 0.781, 76.6% accuracy
+against a 59.2% baseline) and an independent white-blood-cell cohort (85.4%).
+The model retrained in cpgdirectionData 0.99.7 does as well as the original
+against MESA (`cpgd_accuracy_values()`).
 
 *Nasal epithelium* has the highest cross-validated AUC, but both contributing
 cohorts come from one study and share participants, so 0.865 is within-study
 consistency, not external validation. Treat it as promising rather than proven.
 
-*Solid tissue* is tumour tissue from TCGA. Two of six tissues (brain, kidney)
-did not exceed their own majority baselines under leave-one-cohort-out. It is
-provisional, and brain results in particular should not be read as applying to
-healthy brain.
+*Solid tissue* is tumour tissue from TCGA. Under leave-one-cohort-out, brain
+does not exceed its own majority baseline (0.66 against 0.67) and kidney only
+just does (0.64 against 0.62). The model is also unstable: over 11
+retrainings its tier-A calls agreed 0.60 to 0.69 with FUSION (0.64 in this
+build), and its tier-B calls, far from any catalogued CpG, agreed below chance
+and abstain. It is provisional, and brain results in particular should not be
+read as applying to healthy brain.
 
 The same CpG can return different answers in different tissues. That is the
 finding, not a bug: catalogues differ in which CpGs they contain, and base

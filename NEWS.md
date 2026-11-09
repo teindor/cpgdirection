@@ -1,5 +1,83 @@
 # cpgdirection 1.1.0 (in development -- lands after Bioconductor accepts 0.99.x)
 
+* **The catalogue's training chain is rebuilt (cpgdirectionData 0.99.7),
+  and the ladder's figures with it.**
+  - **Why.** 0.99.5 corrected the gene placement but kept the original
+    pools and saved models, whose build was never committed. Those pools
+    had:
+    - wrong-end distances for Framingham's minus-strand genes (2,654 blood
+      rows, measured from a point a median 15.8 kb from the Ensembl TSS);
+    - non-hg19 TSSs in 156 TCGA rows;
+    - one gene under several names, each treated as its own gene;
+    - a pseudo-gene, "NAN", lumping 3,935 HELIX rows from 1,461 unnamed
+      transcript clusters.
+
+    The calibrators were fitted to models unlike the shipped ones
+    (scikit-learn's automatic early stopping), and neither they nor the
+    solid model could be regenerated.
+  - **What 0.99.7 does.**
+    - Each identified name (11,005 of 11,478) resolves to one Ensembl
+      GRCh37 gene, at one strand-aware hg19 TSS that the training distances
+      and the lookups share.
+    - The three models are retrained from committed, deterministic scripts,
+      with early stopping off so each calibrator matches its model.
+    - The solid model's tier-B calls abstain: they agree 0.41 with the solid
+      yardsticks, below chance.
+    - The candidate rule, tiers, thresholds and `DIRECT_eQTM` rule are
+      unchanged.
+  - **Rows.** Blood 1,970,053, nasal 1,500,942, solid 1,184,630.
+  - **Validation.** On independent yardsticks with genes matched by Ensembl
+    ID, blood and nasal hold, with differences the size refitting alone
+    produces. Solid is lower: GTEx solid -0.021 at ladder level. The solid
+    model is unstable; over 11 retrainings its tier-A calls agreed 0.60 to
+    0.69 with FUSION.
+
+  This is a correction, not a gain in accuracy.
+* **`R/rung_accuracy_table.R` is regenerated.** The procedure first
+  reproduced the committed table exactly on the 0.99.5 lookups.
+  - Adult blood: catalogue_consensus_A 0.779 [0.745] to 0.793 [0.759];
+    catalogue_model_blood_A 0.713 to 0.715; catalogue_single_nasal_A 0.629
+    to 0.615.
+  - Child blood: catalogue_model_nasal_A 0.597 to 0.550. Its yardstick
+    leaves out the blood catalogue's `DIRECT_eQTM` pairs, which now include
+    more HELIX pairs.
+  - Nasal epithelium: catalogue_single_blood_A now has 47 pairs of its own
+    (29 before), so it carries its own figure (0.468) instead of the pooled
+    one (0.703). It leaves the order: a point below 0.5 never answers.
+  - Solid tissue: catalogue_model_solid_A 0.675 [0.652] to 0.639 [0.619];
+    catalogue_single_solid_A 0.668 to 0.627.
+  - Elsewhere the orders change by local swaps.
+* **`cpgd_selftest()`'s reference is regenerated.** 26 of 40 rows change:
+  - probabilities move, because the models are retrained, and two calls
+    change: cg10073842-MAGEL2 is now -1 and cg10556198-CRHR1-IT1 +1;
+  - ten `tss_dist` values move by 1 bp, because EVA-PR's plus-strand TSSs
+    were 0-based;
+  - one moves by 28 bp: RPL32P1 no longer takes the Zhou TSS, which is
+    rounded to 100 bp;
+  - cg12793116-ADCY5 is now at -63,243 bp (the strand fix);
+  - four CpGs requesting CRHR1/LINC02210 now answer for CRHR1-IT1, LINC02210
+    being the same gene;
+  - cg22759407-PDE4D is now `UNMAPPED`: PDE4D's only blood training row
+    lies 1.26 Mb from its TSS, so PDE4D is no longer a blood candidate.
+* **README and vignette.**
+  - The model table shows the new AUCs. Blood's saved 0.793 is now 0.848
+    because the pseudo-gene is gone; on identified genes it is 0.848 before
+    and 0.851 after.
+  - The `best_evidence` ranges follow the new table (catalogue_consensus
+    0.79-0.83, catalogue_single 0.55-0.90).
+  - The tier table gives the current values. Blood tier A had been quoted as
+    0.75, solid tier A as 0.71 and blood tier B as 0.89; they are 0.72, 0.64
+    and 0.88. Solid tier B now abstains.
+  - The solid model's instability is stated.
+* **Counts.** `DESCRIPTION`, `CITATION.cff` and `.zenodo.json` now give
+  3,322,411 distinct pairs over 759,540 CpGs.
+* **New tests.**
+  - A gene's names are one candidate (AFDN/MLLT4, CRHR1-IT1/LINC02210,
+    DGCR14/ESS2, CECR1/ADA2).
+  - Two minus-strand genes, one from GTEx and one from Framingham, sit at
+    their 5' end.
+* `test-accuracy-values.R`'s comments follow the new figures.
+* Requires cpgdirectionData (>= 0.99.7).
 * **The catalogue lookups are rebuilt (cpgdirectionData 0.99.5), and the
   ladder's figures with them.** The shipped lookups paired CpGs with genes on
   another chromosome in 450,553 of the 1,408,361 blood rows whose gene

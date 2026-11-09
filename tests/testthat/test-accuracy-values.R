@@ -54,7 +54,8 @@ test_that("the rank table is well formed and its intervals are the Wilson interv
   expect_equal(R$hi, round(w[, "hi"], 4), tolerance = 1e-4)
   # every source the ladders use has a description; all but two have a row:
   # the replicated nasal sign (nasal epithelium has one donor group) and the
-  # solid-tissue model's tier-B single call (no yardstick pair)
+  # solid-tissue model's tier-B single call (since the 0.99.7 lookups the solid
+  # model's tier-B calls abstain, so no yardstick pair)
   expect_true(all(CPGD_LADDER_SOURCES %in% names(CPGD_RUNG_DESC)))
   expect_identical(setdiff(CPGD_LADDER_SOURCES, R$source),
                    c("measured_nasal_replicated", "catalogue_single_solid_B"))
@@ -145,8 +146,8 @@ test_that("the order is the lower bound alone; a point below 0.5 never answers",
   # catalogue consensus (620 pairs, 0.78 [0.74, 0.81])
   expect_gt(match("catalogue_single_blood_B", ob), match("catalogue_consensus_A", ob))
   expect_lt(match("smr_replicated_S1", ob), match("measured_blood_single", ob))   # 0.89 vs 0.87
-  # the solid model's single calls: 0.577 [0.512] in adult blood since the
-  # 0.99.5 lookups (0.39 before), so in the order, but below distance
+  # the solid model's single calls: 0.547 [0.493] in adult blood with the
+  # 0.99.7 lookups (0.39 before 0.99.5), so in the order, but below distance
   expect_gt(match("catalogue_single_solid_A", ob), match("distance_only", ob))
   expect_lt(match("distance_only", ob), match("catalogue_single_nasal_A", ob))
   # nasal epithelium has one donor group (EVA-PR): no nasal sign is replicated
@@ -157,8 +158,9 @@ test_that("the order is the lower bound alone; a point below 0.5 never answers",
 })
 
 test_that("a point below 0.5 is left out of the order, whatever its lower bound", {
-  # no real source has one since the 0.99.5 lookups, so the rule is pinned on
-  # made-up figures
+  # pinned on made-up figures, so that it does not depend on the data (with
+  # the 0.99.7 lookups, catalogue_single_blood_A in nasal epithelium is one:
+  # 0.468 [0.333])
   local_mocked_bindings(.cpgd_rung_figure1 = function(source, target = "blood", age = "adult")
     switch(source,
            a = list(agree = 0.49, lo = 0.48),
