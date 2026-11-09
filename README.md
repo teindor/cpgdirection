@@ -195,6 +195,12 @@ prints the validation figures behind `expected_accuracy`.
 | tier B | 0.64–0.85 | locked test 0.642; independent cohort 0.854 |
 | baseline | 0.58–0.63 | always guessing −1 |
 
+The figures are the validation of the original models. The models retrained in
+cpgdirectionData 0.99.7 do as well as the originals against independent
+yardsticks (MESA, HELIX, EVA-PR), except the solid model, which is lower on
+the solid yardsticks and unstable across retrainings. Its tier-B calls agreed
+below chance (0.41) and abstain.
+
 Tier A means catalogued CpGs lie within 50 kb **and** the target gene is itself
 catalogued. Tier B means one of those. Tier C means neither, and the function
 always abstains.
@@ -226,29 +232,34 @@ cpg_expression_direction(my_cpgs, tissue = "solid_tissue")
 
 | tissue | cohorts | pairs | CpGs | grouped-CV AUC |
 |---|---|---|---|---|
-| blood | 4 | 2,051,017 | 672,298 | 0.793 |
-| nasal_epithelium | 2 | 1,523,103 | 555,440 | 0.865 |
-| solid_tissue | 6 (TCGA) | 1,188,710 | 542,032 | 0.664 |
+| blood | 4 | 1,970,053 | 668,711 | 0.848 |
+| nasal_epithelium | 2 | 1,500,942 | 552,167 | 0.865 |
+| solid_tissue | 6 (TCGA) | 1,184,630 | 541,536 | 0.662 |
 
-Pairs and CpGs are those of the lookups rebuilt in cpgdirectionData 0.99.5
-(every gene on its own chromosome at an hg19 TSS); the AUCs are the models',
-which did not change.
+Pairs and CpGs are those of the lookups of cpgdirectionData 0.99.7 (one
+Ensembl gene per name, at a strand-aware hg19 TSS); the AUCs are those of the
+models retrained there on harmonized pools. The blood model's saved AUC was
+0.793; the rise comes from removing a pseudo-gene that lumped unnamed HELIX
+transcript clusters, not from better discrimination (0.848 before and 0.851
+after, on identified genes).
 
 **The three are not equally trustworthy, and the package says so in
 `expected_accuracy`.**
 
-*Blood* is the only arm with genuine external validation: a pre-registered
-locked test set (tier A AUC 0.781, 76.6% accuracy against a 59.2% baseline) and
-an independent white-blood-cell cohort (85.4%).
+*Blood* is the only arm with genuine external validation: for the original
+model, a pre-registered locked test set (tier A AUC 0.781, 76.6% accuracy
+against a 59.2% baseline) and an independent white-blood-cell cohort (85.4%).
 
 *Nasal epithelium* has the highest cross-validated AUC, but both contributing
 cohorts come from one study and share participants, so 0.865 is within-study
 consistency, not external validation. Treat it as promising rather than proven.
 
-*Solid tissue* is tumour tissue from TCGA. Two of six tissues (brain, kidney)
-did not exceed their own majority baselines under leave-one-cohort-out. It is
-provisional, and brain results in particular should not be read as applying to
-healthy brain.
+*Solid tissue* is tumour tissue from TCGA. Under leave-one-cohort-out, brain
+does not exceed its own majority baseline (0.66 against 0.67) and kidney only
+just does (0.64 against 0.62). The model is also unstable: over 11
+retrainings its tier-A calls agreed 0.60 to 0.69 with FUSION (0.64 in this
+build). It is provisional, and brain results in particular should not be
+read as applying to healthy brain.
 
 The same CpG can return different answers in different tissues. That is the
 finding, not a bug: catalogues differ in which CpGs they contain, and base

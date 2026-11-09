@@ -1,3 +1,48 @@
+# cpgdirection 0.99.3
+
+* **The catalogue's training chain is rebuilt (cpgdirectionData 0.99.7, now
+  required).** 0.99.5 corrected the gene placement but kept the original
+  pools and saved models. Those pools had:
+  - wrong-end distances for Framingham's minus-strand genes (2,654 blood
+    rows);
+  - non-hg19 TSSs in 156 TCGA rows;
+  - one gene under several names, each treated as its own gene;
+  - a pseudo-gene lumping 3,935 HELIX rows from 1,461 unnamed transcript
+    clusters.
+* **What changed.**
+  - Each identified name (11,005 of 11,478) resolves to one Ensembl GRCh37
+    gene at one strand-aware hg19 TSS, used by the training distances and
+    the lookups alike.
+  - The three models are retrained from committed, deterministic scripts,
+    with each calibrator matching its model.
+  - The solid model's tier-B calls abstain: they agree 0.41 with the solid
+    yardsticks, below chance.
+  - Rows: blood 1,970,053, nasal 1,500,942, solid 1,184,630.
+  - With genes matched by Ensembl ID, blood and nasal hold on independent
+    yardsticks. The solid model is lower on the solid yardsticks and
+    unstable across retrainings. This is a correction, not a gain in
+    accuracy.
+  - The `expected_accuracy` figures of this version are those of the
+    original models' validation.
+* **`cpgd_selftest()`'s reference is regenerated.** 26 of 40 rows change:
+  - probabilities move, because the models are retrained, and two calls
+    change (cg10073842-MAGEL2 now -1, cg10556198-CRHR1-IT1 now +1);
+  - ten `tss_dist` values move by 1 bp, because EVA-PR's plus-strand TSSs
+    were 0-based, and one (RPL32P1) moves by 28 bp;
+  - cg12793116-ADCY5 is now at -63,243 bp (the strand fix);
+  - four CpGs requesting CRHR1/LINC02210 now answer for CRHR1-IT1, the same
+    gene;
+  - cg22759407-PDE4D is now `UNMAPPED`, because PDE4D is no longer a blood
+    candidate.
+* **Counts.** `DESCRIPTION`, `CITATION.cff`, `.zenodo.json` and the README
+  now give 3,322,411 distinct pairs over 759,540 CpGs, and the README gives
+  the new AUCs.
+* **New tests.**
+  - A gene's names are one candidate.
+  - Two minus-strand genes, one from GTEx and one from Framingham, sit at
+    their 5' end.
+* 0.99.2 was prepared and withdrawn before release.
+
 # cpgdirection 0.99.1
 
 * **The catalogue lookups are rebuilt (cpgdirectionData 0.99.5, now required).**

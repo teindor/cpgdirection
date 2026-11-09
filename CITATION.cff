@@ -15,7 +15,7 @@ abstract: >-
   Assigns a direction to the association between DNA methylation at a CpG site
   and the expression of a nearby gene, for CpGs with no measured eQTM record,
   from measured eQTMs, Mendelian randomisation, tissue models precomputed for
-  3,455,039 CpG-gene pairs covering 761,385 CpGs, and a distance prior.
+  3,322,411 CpG-gene pairs covering 759,540 CpGs, and a distance prior.
   Each call returns a direction, a calibrated probability, an evidence tier and
   an expected accuracy, and abstains where the evidence is insufficient.
 keywords:

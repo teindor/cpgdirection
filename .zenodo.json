@@ -8,7 +8,7 @@
       "orcid": "0000-0002-3078-7591"
     }
   ],
-  "description": "Assigns a direction to the association between DNA methylation at a CpG site and the expression of a nearby gene, for CpGs with no measured eQTM record. Predictions draw on measured eQTMs, summary-data Mendelian randomisation, gradient-boosted models of genomic context fitted separately in blood, nasal epithelium and solid tissue (precomputed for 3,455,039 CpG-gene pairs covering 761,385 CpGs), and a distance prior. Each call returns a direction, a calibrated probability, an evidence tier and an expected accuracy, and abstains where the evidence is insufficient. Predictions estimate direction conditional on the CpG being an eQTM; they do not establish that an effect exists.",
+  "description": "Assigns a direction to the association between DNA methylation at a CpG site and the expression of a nearby gene, for CpGs with no measured eQTM record. Predictions draw on measured eQTMs, summary-data Mendelian randomisation, gradient-boosted models of genomic context fitted separately in blood, nasal epithelium and solid tissue (precomputed for 3,322,411 CpG-gene pairs covering 759,540 CpGs), and a distance prior. Each call returns a direction, a calibrated probability, an evidence tier and an expected accuracy, and abstains where the evidence is insufficient. Predictions estimate direction conditional on the CpG being an eQTM; they do not establish that an effect exists.",
   "license": "mit",
   "access_right": "open",
   "keywords": [
