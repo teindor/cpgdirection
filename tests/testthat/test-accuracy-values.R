@@ -5,6 +5,8 @@
 
 library(data.table)
 
+# per-pair accuracy by rung: the band is what the ladder ranks
+acc_acc <- c(replicated = 0.97, high = 0.93, moderate = 0.85, weak = 0.70, reported = 0.60)
 acc_smr <- function(cpg, gene, direction, rung, tier = "S1", child = "sig",
                     outcome = "eQTLGen", replication = "concordant") {
   data.table(cpg_id = cpg, target_gene = gene, direction = direction,
@@ -13,7 +15,7 @@ acc_smr <- function(cpg, gene, direction, rung, tier = "S1", child = "sig",
              top_instrument = "rs1", p_HEIDI = 0.5, nsnp_HEIDI = 3L,
              heidi_status = "pass", outcome = outcome,
              replication = replication, smr_rung = rung,
-             child_blood_helix = child)
+             smr_accuracy = acc_acc[[rung]], child_blood_helix = child)
 }
 acc_src <- function() list(
   manifest = NULL, lookup = NULL, probe_qc = NULL, onco = NULL,
@@ -58,7 +60,7 @@ test_that("the rank table is well formed and its intervals are the Wilson interv
   # model's tier-B calls abstain, so no yardstick pair)
   expect_true(all(CPGD_LADDER_SOURCES %in% names(CPGD_RUNG_DESC)))
   expect_identical(setdiff(CPGD_LADDER_SOURCES, R$source),
-                   c("measured_nasal_replicated", "catalogue_single_solid_B"))
+                   c("measured_nasal_replicated", "catalogue_single_solid_B", "distance_only_b6"))
 })
 
 test_that("cpgd_accuracy_values(): one row per quoted string, probabilities, lower <= median", {
@@ -134,22 +136,31 @@ test_that("the order is the lower bound alone; a point below 0.5 never answers",
     expect_false(is.unsorted(rev(lo)), info = t)
     tie <- which(diff(lo) == 0)
     expect_true(all(pt[tie] >= pt[tie + 1L]), info = t)
-    # in: every source with a figure whose point is >= 0.5; out: the rest
+    # in: every source with a figure whose point is >= 0.5 (a distance band:
+    # >= 0.55, the distance floor); out: the rest
     for (s in CPGD_LADDER_SOURCES) {
       f <- fig(s, t, age)
-      expect_identical(s %in% o, !is.null(f) && f$agree >= 0.5, info = paste(t, s))
+      floor_s <- if (startsWith(s, "distance_")) cpgdirection:::CPGD_DISTANCE_FLOOR else 0.5
+      expect_identical(s %in% o, !is.null(f) && f$agree >= floor_s, info = paste(t, s))
     }
   }
   ob <- order_in("blood")
   # a small sample does not outrank a large one on a noisy point: the blood
-  # model's tier-B single calls (32 pairs, 0.81 [0.65, 0.91]) sit below the
-  # catalogue consensus (620 pairs, 0.78 [0.74, 0.81])
+  # model's tier-B single calls (40 pairs) sit below the catalogue consensus
+  # (2,145 pairs) although their point estimates are level
   expect_gt(match("catalogue_single_blood_B", ob), match("catalogue_consensus_A", ob))
-  expect_lt(match("smr_replicated_S1", ob), match("measured_blood_single", ob))   # 0.89 vs 0.87
-  # the solid model's single calls: 0.547 [0.493] in adult blood with the
-  # 0.99.7 lookups (0.39 before 0.99.5), so in the order, but below distance
-  expect_gt(match("catalogue_single_solid_A", ob), match("distance_only", ob))
-  expect_lt(match("distance_only", ob), match("catalogue_single_nasal_A", ob))
+  # the SMR bands are ranked like any source: the top band above a single
+  # measured blood study, the bands in the order of their accuracy
+  expect_lt(match("smr_acc_95", ob), match("measured_blood_single", ob))
+  expect_false(is.unsorted(match(paste0("smr_acc_", c(95, 90, 80, 65, 55)), ob)))
+  # distance is ranked by band: the nearest band above the solid model's and
+  # the nasal model's single calls, and the bands in the order of their distance
+  expect_gt(match("catalogue_single_solid_A", ob), match("distance_only_b1", ob))
+  expect_lt(match("distance_only_b1", ob), match("catalogue_single_nasal_A", ob))
+  expect_lt(match("distance_only_b1", ob), match("distance_only_b2", ob))
+  expect_lt(match("distance_only_b2", ob), match("distance_only_b3", ob))
+  # the lowest SMR band is below 0.5 in solid tissue: it never answers there
+  expect_false("smr_acc_55" %in% order_in("solid_tissue"))
   # nasal epithelium has one donor group (EVA-PR): no nasal sign is replicated
   for (t in CPGD_TISSUES) expect_false("measured_nasal_replicated" %in% order_in(t), info = t)
   # the order takes no age: age_group changes numbers, never rungs (tested on
@@ -182,11 +193,20 @@ test_that("the ladder answers with the first source in the order; conflicts stop
   r <- cpgdirection:::.cpgd_apply_ladder(cand, c("c", "a", "b", "distance_only"),
                                          conflict = rep(FALSE, n), n)
   expect_identical(r$key, c("a", "b", "c", "c"))
+  # with distance in bands, conflicts stop at the highest-ranked band
+  cand <- list(a = c(1, NA, NA, NA), distance_only_b1 = c(NA, 1, NA, NA), b = c(NA, NA, -1, -1),
+               distance_only_b3 = c(NA, NA, NA, 1))
+  r <- cpgdirection:::.cpgd_apply_ladder(cand, c("a", "distance_only_b1", "b", "distance_only_b3"),
+                                         conflict = c(FALSE, FALSE, TRUE, FALSE), n)
+  expect_identical(r$key, c("a", "distance_only_b1", "tissue_conflict", "b"))
+  # the coarse label: an SMR band takes the rung of the row that supplied it
   expect_identical(cpgdirection:::.cpgd_rung_evidence(
-    c("measured_solid_single", "smr_replicated_S2", "smr_moderate_finngen", "smr_weak_discordant",
-      "catalogue_single_nasal_B", "catalogue_consensus_A", "onco_consensus", "no_evidence")),
+    c("measured_solid_single", "smr_acc_95", "smr_acc_80", "smr_acc_65",
+      "catalogue_single_nasal_B", "catalogue_consensus_A", "onco_consensus", "no_evidence",
+      "distance_only_b3"),
+    c(NA, "smr_replicated", "smr_moderate", "smr_weak", NA, NA, NA, NA, NA)),
     c("measured", "smr_replicated", "smr_moderate", "smr_weak", "catalogue_single",
-      "catalogue_consensus", "onco_consensus", "no_evidence"))
+      "catalogue_consensus", "onco_consensus", "no_evidence", "distance_only"))
 })
 
 test_that("in every tissue's order, the first source with a sign answers", {
@@ -329,32 +349,69 @@ test_that("min_tissues = 1 never turns a lone model's call into a consensus", {
   expect_false(any(grepl("^catalogue_consensus", f$best_rung[one])))
 })
 
-test_that("SMR keys: the discordant-cell-type stratum is its own source", {
+test_that("SMR keys: the band of the per-pair accuracy; below the floor and off the ladder give none", {
   key <- cpgdirection:::.cpgd_smr_key
-  expect_identical(key(rep("smr_moderate", 4), c("S2", "S2", "S3", "S2"),
-                       c("eQTLGen", "eQTLGen", "eQTLGen", "FinnGen_PBMC"),
-                       c("eqtlgen_only", "discordant_celltype", "concordant", "finngen_only")),
-                   c("moderate", "moderate_discordant_celltype", "moderate_s3_replicated",
-                     "moderate_finngen"))
-  expect_identical(key(c("smr_replicated", "smr_replicated", "smr_high", "smr_weak", "smr_weak", "x"),
-                       c("S1", "S2", "S1", "S1", "S3", "S1"), "eQTLGen",
-                       c("concordant", "concordant", "eqtlgen_only", "discordant", "eqtlgen_only", "x")),
-                   c("replicated_S1", "replicated_S2", "high", "weak_discordant", "weak", NA))
-  f <- cpgdirection:::.cpgd_rung_figure1("smr_moderate_discordant_celltype", "blood", "adult")
-  m <- cpgdirection:::.cpgd_rung_figure1("smr_moderate", "blood", "adult")
-  expect_lt(f$agree, m$agree)
+  band <- cpgdirection:::.cpgd_smr_band
+  expect_identical(band(c(0.999, 0.95, 0.949, 0.90, 0.80, 0.799, 0.65, 0.649, 0.55, 0.549, 0.2, NA)),
+                   c("acc_95", "acc_95", "acc_90", "acc_90", "acc_80", "acc_65", "acc_65", "acc_55",
+                     "acc_55", NA, NA, NA))
+  expect_identical(cpgdirection:::CPGD_SMR_FLOOR, 0.55)
+  # the rung does not change the key; a row that is not on the ladder has none
+  expect_identical(key(c("smr_replicated", "smr_high", "smr_moderate", "smr_weak", NA, "x"),
+                       c(0.97, 0.97, 0.97, 0.60, 0.97, 0.97)),
+                   c("acc_95", "acc_95", "acc_95", "acc_55", NA, NA))
+  expect_identical(key("smr_moderate", c(0.91, 0.30)), c("acc_90", NA))
+  # the bands are ladder sources, and in blood their figures fall with the band
+  expect_true(all(paste0("smr_acc_", c(95, 90, 80, 65, 55)) %in% CPGD_LADDER_SOURCES))
+  f <- vapply(paste0("smr_acc_", c(95, 90, 80, 65, 55)),
+              function(s) cpgdirection:::.cpgd_rung_figure1(s, "blood", "adult")$agree, numeric(1))
+  expect_false(is.unsorted(rev(f)))
+  # a table without the accuracy column: said once, and nothing is supplied
+  env <- cpgdirection:::.cpgd_env
+  old <- env$smr_accuracy_warned
+  env$smr_accuracy_warned <- FALSE
+  on.exit(env$smr_accuracy_warned <- old, add = TRUE)
+  S0 <- acc_src(); S0$smr <- data.table::copy(S0$smr)[, smr_accuracy := NULL]
+  expect_warning(p0 <- cpg_gene_pairs(c("cg20000001", "cg20000002", "cg20000003"), universal = FALSE,
+                                      verbose = FALSE, sources = S0), "predates the per-pair accuracy")
+  expect_false(any(startsWith(p0$best_evidence, "smr_")))
+  expect_true(all(!is.na(p0$smr_direction)))
+  expect_true(all(is.na(p0$smr_accuracy)))
+})
+
+test_that("distance keys: the band of |CpG - TSS|; a band below the floor supplies nothing", {
+  band <- cpgdirection:::.cpgd_distance_band
+  expect_identical(band(c(0, -499, 500, 1499, 1500, 4999, 5000, 9999, 10000, 49999, 50000, 250000, 250001, NA)),
+                   c("b1", "b1", "b2", "b2", "b3", "b3", "b4", "b4", "b5", "b5", "b6", "b6", "b7", NA))
+  expect_identical(cpgdirection:::.cpgd_distance_key("distance_curve_solid", c(100, 60000, NA)),
+                   c("distance_curve_solid_b1", "distance_curve_solid_b6", NA))
+  expect_identical(cpgdirection:::CPGD_DISTANCE_FLOOR, 0.55)
+  sup <- cpgdirection:::.cpgd_distance_supplies
+  fig <- cpgdirection:::.cpgd_rung_figure1
+  for (t in CPGD_TISSUES) for (k in c("distance_curve_blood_b1", "distance_curve_solid_b6", "distance_only_b7")) {
+    f <- fig(k, t, if (t == "blood") "adult" else "any")
+    expect_identical(sup(k, t), !is.null(f) && f$agree >= 0.55, info = paste(t, k))
+  }
+  expect_identical(sup(c(NA, "distance_curve_blood_b1"), "blood"), c(FALSE, TRUE))
+  # every band is described, so every emitted key has a quoted string
+  keys <- c(paste0("distance_only_b", 1:7),
+            paste0("distance_curve_", rep(c("blood", "nasal", "solid"), each = 7), "_b", 1:7))
+  expect_true(all(keys %in% names(cpgdirection:::CPGD_RUNG_DESC)))
+  expect_false(any(is.na(cpgdirection:::.cpgd_rung_label(keys, "blood", "adult"))))
+  # near the TSS the distance source is worth more than far from it
+  expect_gt(fig("distance_only_b1", "blood", "adult")$agree, fig("distance_only_b5", "blood", "adult")$agree)
 })
 
 # ---- the numbers ---------------------------------------------------------------------
 
 test_that("strings map to numbers; lower floors at 0.5; 'any' takes the smaller", {
-  la <- cpgdirection:::.cpgd_rung_label("smr_weak", "blood", "adult")
-  fa <- cpgdirection:::.cpgd_rung_figure1("smr_weak", "blood", "adult")
+  la <- cpgdirection:::.cpgd_rung_label("smr_acc_65", "blood", "adult")
+  fa <- cpgdirection:::.cpgd_rung_figure1("smr_acc_65", "blood", "adult")
   expect_equal(num(la, "median"), fa$agree)
   expect_equal(num(la), max(fa$lo, 0.5))
-  lk <- cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "child")
-  ly <- cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "any")
-  expect_equal(num(ly), min(num(cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "adult")),
+  lk <- cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "child")
+  ly <- cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "any")
+  expect_equal(num(ly), min(num(cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "adult")),
                             num(lk)))
   expect_identical(num(c(NA, "not a quoted string")), rep(NA_real_, 2))
   uq <- cpgdirection:::.cpgd_rung_label("catalogue_model_solid_B", "solid_tissue", "adult")
@@ -502,7 +559,7 @@ test_that("cpg_direction_universal() carries the number", {
 })
 
 test_that("the bridge: option, both values, age, and the cortex order of the blood SMR fallback", {
-  expect_identical(CPGD_BRAIN_SMR_ORDER, c("replicated", "high", "weak", "moderate"))
+  expect_identical(CPGD_BRAIN_SMR_ORDER, c("acc_95", "acc_90", "acc_80", "acc_55", "acc_65"))
   V <- cpgd_accuracy_values()
   cx <- V$median[match(paste0("brain_fallback_blood_SMR_", CPGD_BRAIN_SMR_ORDER), V$rung)]
   expect_false(is.unsorted(rev(cx)))

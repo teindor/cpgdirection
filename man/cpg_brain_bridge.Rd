@@ -79,7 +79,7 @@ for that gene from the strongest evidence held, in this order
   \code{brain_T1} \tab 0.964 [0.926, 0.998] against independent adult cortex (0.995 in-sample on ROSMAP) \cr
   \code{brain_T2} \tab 0.943 [0.899, 0.984] against independent adult cortex (0.939 in-sample on ROSMAP) \cr
   \code{measured_blood} \tab 0.84 against adult cortex (below the 0.85 bar) \cr
-  \code{blood_SMR} \tab 0.67-0.77 against adult cortex, by rung \cr
+  \code{blood_SMR} \tab 0.53-0.83 against adult cortex, by accuracy band of the pair (0.83 at 0.95 or higher) \cr
 }
 Blood evidence is a labelled fallback for a brain question and never ranks
 above brain SMR. \code{requested_gene_direction} and
@@ -92,7 +92,7 @@ the 450K figures are in-sample.
 
 \enumerate{
   \item Directions are BRAIN-derived first. Blood evidence transports to
-    adult cortex at 0.84 (measured) and 0.67-0.77 (SMR) and enters only as
+    adult cortex at 0.84 (measured) and 0.53-0.83 (SMR, by accuracy band) and enters only as
     the labelled fallback of the ladder above.
   \item Age: validated in postnatal cortex from 1 year to old age; fetal
     and infant (< 1 year) cortex is untested. The wording follows

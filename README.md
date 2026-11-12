@@ -27,7 +27,7 @@ BiocManager::install(c("teindor/cpgdirectionData", "teindor/cpgdirection"))
 
 The ten large data layers (catalogue lookups, SMR directions, probe positions,
 brain directions, saliva-bridge scores, the EPIC v2 probe-gene annotation,
-distal links, Onco-eQTM consensus; about 120 MB) are served by the companion
+distal links, Onco-eQTM consensus; about 215 MB) are served by the companion
 ExperimentHub package **cpgdirectionData** and fetched on first use, then
 cached by ExperimentHub. The small tables ship inside this package. An offline
 or pinned copy of the layers can be named with
@@ -64,18 +64,18 @@ the distance fallback. Read two columns first.
 
 | value | adult blood | meaning |
 |---|---|---|
-| `measured` | 0.75–0.97 | an eQTM study measured this CpG against this gene; highest when 2+ independent blood studies agree |
-| `smr_replicated`, `smr_high` | 0.85–0.93 | Mendelian randomisation, replicated or concordant instruments |
-| `onco_consensus` | 0.85 | five or more tumour types agree; tumour evidence |
-| `catalogue_consensus` | 0.79–0.83 | tissue models that predicted it agreed |
-| `smr_moderate` | 0.71–0.80 | Mendelian randomisation, one instrument |
-| `catalogue_single` | 0.55–0.90 | one tissue model only; the blood model's tier A just above the distance curves, the nasal and solid-tissue models below them |
-| `distance_only` | 0.67 | distance to the TSS, nothing else |
+| `measured` | 0.82–0.99 | an eQTM study measured this CpG against this gene; highest when 2+ independent blood studies agree |
+| `smr_replicated`, `smr_high`, `smr_moderate`, `smr_weak` | 0.62–0.96 | Mendelian randomisation. The label says how the sign was obtained; the figure is that of the pair's accuracy band (`best_rung`, `smr_accuracy`): 0.96 for pairs at 0.95 or higher, 0.62 for pairs at 0.55 to 0.65. Below 0.55 a pair supplies nothing |
+| `onco_consensus` | 0.83 | five or more tumour types agree; tumour evidence |
+| `catalogue_consensus` | 0.73 | tissue models that predicted it agreed |
+| `catalogue_single` | 0.60–0.77 | one tissue model only |
+| `distance_only` | 0.57–0.77 | distance to the TSS, nothing else; 0.77 within 0.5 kb of the TSS, 0.57 at 10 to 50 kb, nothing beyond |
 | `tissue_conflict` | — | tissues disagreed; not resolved |
 | `no_evidence` | — | no catalogue holds the pair and no distance available |
 
-The figures are agreement with an independent yardstick (MESA sorted blood
-cells for adult blood), and the ladder is ordered by them in each tissue,
+The figures are agreement with an independent yardstick (for adult blood,
+MESA sorted blood cells and the BLUEPRINT monocytes, neutrophils and T cells),
+and the ladder is ordered by them in each tissue,
 by the lower bound of each source's 95% interval:
 `best_rung` names the exact source, `cpgd_accuracy_values()` lists every
 figure, and `cpg_gene_pairs(tissue = )` or `target_tissue =` switches to the
@@ -240,11 +240,11 @@ Agreement with an independent measured yardstick in the result's tissue
 (`cpgd_accuracy_values()`); "pooled" marks a figure that pools every
 yardstick because the tissue's own has fewer than 30 pairs.
 
-| status | blood (adult, MESA) | nasal epithelium | solid tissue (FUSION, GTEx) |
+| status | blood (adult; MESA, BLUEPRINT) | nasal epithelium | solid tissue (FUSION, GTEx, joint tissues, kidney) |
 |---|---|---|---|
-| `DIRECT_eQTM` | 0.89 | 0.89 (pooled) | 0.92 |
-| tier A | 0.72 | 0.69 (pooled) | 0.64 |
-| tier B | 0.88 (pooled, n = 52) | 0.82 (pooled) | abstains (validated at 0.41) |
+| `DIRECT_eQTM` | 0.95 | 0.89 (pooled) | 0.88 |
+| tier A | 0.72 | 0.67 (pooled) | 0.67 |
+| tier B | 0.71 (n = 62) | 0.79 (pooled) | abstains (validated at 0.41) |
 | baseline: always guessing −1 | 0.58–0.63 | | |
 
 A `DIRECT_eQTM` row is one study's measured sign; `cpg_expression_direction()`

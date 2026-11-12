@@ -46,7 +46,7 @@ conditional on an association existing.
 
 Blood evidence transports to adult cortex less well than this layer:
 measured blood eQTMs agree with measured cortex 0.84 (n = 1,654) and the
-blood SMR rungs 0.67-0.77 (\code{tools/validate_ladder_transport.R}), so a
+blood SMR pairs 0.53-0.83 by accuracy band (\code{?cpgd_smr_directions}), so a
 peripheral direction is never substituted for a brain one;
 \code{\link{cpg_brain_bridge}} uses blood only as a labelled fallback.
 }

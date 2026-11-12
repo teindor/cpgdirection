@@ -61,11 +61,13 @@ call carries (blood when not given). Where the tissues
 disagree, it also resolves using this tissue instead of abstaining. Declare it on
 biological grounds \strong{before} looking at the votes; the resulting rows
 are worth that tissue's accuracy, not the consensus figure, and are still
-flagged in \code{direction_uncertain}. Setting it also fills any row that
+flagged in \code{direction_uncertain}. Setting it also fills a row that
 would otherwise abstain with that tissue's distance-curve sign, labelled
-\code{targeted_last_resort} in \code{best_evidence} and carrying that
-curve's validated figure (\code{best_rung} = \code{distance_curve_<tissue>}),
-so \code{best_direction} comes back complete.}
+\code{targeted_last_resort} in \code{best_evidence} and carrying the
+validated figure of that curve at the CpG's distance from the TSS
+(\code{best_rung} = \code{distance_curve_<tissue>_<band>}). A distance
+band whose figure in that tissue is below 0.55 fills nothing: the row
+keeps its abstention.}
 
 \item{html_out}{Optional. \code{TRUE} writes
 \code{cpgdirection_results.html} into \code{tempdir()} and reports the
@@ -117,7 +119,7 @@ With \code{tissue = "all"}, a \code{data.table} of class
       \code{distance_uninformative}, \code{tissue_conflict} or
       \code{no_evidence}}
     \item{best_rung}{the exact source that answered, as ranked (e.g.
-      \code{measured_blood_single}, \code{smr_replicated_S2},
+      \code{measured_blood_single}, \code{smr_acc_90},
       \code{catalogue_single_nasal_A}); the state for an abstention;
       \code{attr(result, "rank_tissue")} names the tissue whose order was
       used}
@@ -147,12 +149,20 @@ With \code{tissue = "all"}, a \code{data.table} of class
       separate concordant from discordant directions, and FinnGen-only pairs
       are admitted on the SMR test at the top cis-mQTL instead. See
       \code{?cpgd_smr_directions}}
-    \item{smr_rung, smr_replication, smr_outcome}{how the SMR row enters the
-      ladder: \code{smr_rung} is \code{replicated} (same sign in eQTLGen and
-      FinnGen PBMC), \code{high}, \code{moderate}, \code{weak} or
-      \code{reported} (never supplies \code{best_direction});
-      \code{smr_replication} says why; \code{smr_outcome} names the
+    \item{smr_rung, smr_replication, smr_outcome}{how the SMR sign was
+      obtained: \code{smr_rung} is \code{replicated} (same sign in at
+      least two of eQTLGen, FinnGen PBMC and INTERVAL, none dissenting),
+      \code{high}, \code{moderate}, \code{weak} or \code{reported}
+      (never supplies \code{best_direction}); \code{smr_replication}
+      gives the eQTLGen-FinnGen status; \code{smr_outcome} names the
       outcome study behind the sign}
+    \item{smr_accuracy}{the pair's own held-out probability that the SMR
+      sign equals the sign measured in blood
+      (\code{?cpgd_smr_directions}). The ladder places the pair in the
+      accuracy band this figure falls in (\code{best_rung}
+      \code{smr_acc_95} ... \code{smr_acc_55}) and the call carries that
+      band's validated figure for the tissue; below 0.55 the pair supplies
+      no direction}
     \item{smr_child_blood_helix}{with \code{age_group = "child"} or
       \code{"any"} only: whether HELIX child blood detected the SMR pair
       (\code{sig}, \code{nominal}, \code{null}, \code{untested}).
@@ -283,7 +293,14 @@ tissue \code{+1}, both with confidence. Those rows are reported as
 \code{distance_tissue_conflict}, with \code{dist_dir_blood},
 \code{dist_dir_nasal} and \code{dist_dir_solid} exposed so the tissue
 relevant to your question can be read directly. A distance call enters
-\code{best_direction} only when all three curves agree.
+\code{best_direction} only when all three curves agree, and it is ranked
+and weighted by the distance band of the CpG (within 0.5 kb, 0.5 to 1.5,
+1.5 to 5, 5 to 10, 10 to 50, 50 to 250 kb from the TSS;
+\code{best_rung} = \code{distance_only_<band>}): its accuracy falls from
+about 0.8 next to the TSS to 0.6 beyond 5 kb. A band whose validated
+figure in the call's tissue is below 0.55 supplies nothing, and neither
+does a CpG more than 250 kb from the TSS, where almost no measured pair
+exists to score it (\code{best_evidence} = \code{distance_uninformative}).
 
 \strong{A structural consequence worth knowing.} The blood curve peaks at
 0.449. Because a distance call requires unanimity, and blood never reaches
@@ -311,12 +328,15 @@ the votes is the same thing wearing a better hat.
 
 The price is explicit. Rows resolved this way carry that tissue's own
 figure (\code{catalogue_model_<tissue>_<tier>} or
-\code{distance_curve_<tissue>} in \code{best_rung};
+\code{distance_curve_<tissue>_<band>} in \code{best_rung};
 \code{\link{cpgd_accuracy_values}}). Tier-A calls of the tissue's model:
-blood 0.75 against MESA, solid tissue 0.71 against FUSION and GTEx; the
-nasal model has no independent nasal yardstick, so it quotes its
-cross-tissue figure (0.69). The tissue's distance curve: blood 0.64, solid
-tissue 0.54 (a tumour curve), nasal 0.60 (cross-tissue). The solid-tissue
+blood 0.72 against MESA and BLUEPRINT, solid tissue 0.67 against the four
+solid folds; the nasal model has too few independent nasal yardstick pairs
+and quotes its cross-tissue figure. The tissue's distance curve is scored
+by distance band: the blood curve from 0.77 (CpG within 0.5 kb of the TSS)
+to 0.56 (beyond 10 kb); the solid-tissue curve (a tumour curve) from 0.81
+to 0.60 (5 to 10 kb), and below the 0.55 floor beyond 10 kb, where it
+supplies nothing. The solid-tissue
 model is trained on tumour, provisional, and its brain and kidney arms did
 not exceed their own majority baselines under leave-one-cohort-out. If solid
 tissue is your brain proxy, that last clause is the one to quote in your
@@ -329,8 +349,9 @@ It is the direction supported by the best evidence this package holds for
 that CpG, not a claim about any one tissue and not a substitute for measured
 RNA in your own samples. Always read \code{best_rung} and
 \code{best_accuracy} alongside it: in adult blood a replicated measured
-sign agrees with an independent cohort 0.97 of the time and a
-\code{distance_only} call 0.67.
+sign agrees with an independent cohort 0.99 of the time, an SMR pair
+between 0.96 and 0.62 depending on its accuracy band, and a distance call
+between 0.77 (CpG within 0.5 kb of the TSS) and 0.57 (10 to 50 kb).
 
 \code{tissue_conflict} means the tissues returned opposite directions. That
 is reported as \code{NA} rather than resolved, because a weaker method should

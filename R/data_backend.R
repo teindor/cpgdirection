@@ -31,6 +31,20 @@
   "onco_eqtm_consensus",
   "cpg_coordinates")
 
+# The name a resource is served under by cpgdirectionData, where it differs
+# from the name used in this package. cpgdirection 0.99.x and 1.0.x take
+# every row of the Hub resource "smr_directions" at its tier, so the 1.1.0 SMR
+# layer (three outcomes, rung and per-pair accuracy; 354,880 more pairs) is
+# served as "smr_directions_v2" and the older resource stays as it was. In a
+# local directory either name is accepted, the Hub name first, so a directory
+# holding both tables (the Hub upload folder) gives the 1.1.0 layer.
+.CPGD_HUB_NAME <- c(smr_directions = "smr_directions_v2")
+
+.cpgd_hub_name <- function(base) {
+  h <- unname(.CPGD_HUB_NAME[base])
+  if (is.na(h)) base else h
+}
+
 # fread() on a .gz path delegates to the R.utils package, which this package
 # does not (and should not) depend on: the Bioconductor builders do not have
 # it, and cpgdirection 2.99.4 failed R CMD check on every platform for exactly
@@ -66,8 +80,10 @@
   # 1. explicit local directory
   dir <- getOption("cpgdirection.data_dir")
   if (!is.null(dir) && length(dir) == 1L && nzchar(dir)) {
-    for (f in file.path(dir, paste0(base, c(".csv.gz", ".csv", ".rds")))) {
-      if (file.exists(f)) return(.cpgd_read_data_file(f))
+    for (b in unique(c(.cpgd_hub_name(base), base))) {
+      for (f in file.path(dir, paste0(b, c(".csv.gz", ".csv", ".rds")))) {
+        if (file.exists(f)) return(.cpgd_read_data_file(f))
+      }
     }
   }
   # 2. bundled extdata (fat build; always the case for the small resources)
@@ -78,10 +94,11 @@
   # 3. the cpgdirectionData ExperimentHub package. It is an Import, so it is
   #    called directly; a failure to retrieve is reported, not masked.
   if (base %in% .CPGD_HUB_RESOURCES) {
-    out <- tryCatch(cpgdirectionData::cpgdData(base),
+    hub <- .cpgd_hub_name(base)
+    out <- tryCatch(cpgdirectionData::cpgdData(hub),
                     error = function(e) {
                       if (isTRUE(required)) {
-                        stop("could not retrieve '", base, "' from ",
+                        stop("could not retrieve '", hub, "' from ",
                              "cpgdirectionData: ", conditionMessage(e),
                              call. = FALSE)
                       }

@@ -78,11 +78,13 @@
 #'   disagree, it also resolves using this tissue instead of abstaining. Declare it on
 #'   biological grounds \strong{before} looking at the votes; the resulting rows
 #'   are worth that tissue's accuracy, not the consensus figure, and are still
-#'   flagged in \code{direction_uncertain}. Setting it also fills any row that
+#'   flagged in \code{direction_uncertain}. Setting it also fills a row that
 #'   would otherwise abstain with that tissue's distance-curve sign, labelled
-#'   \code{targeted_last_resort} in \code{best_evidence} and carrying that
-#'   curve's validated figure (\code{best_rung} = \code{distance_curve_<tissue>}),
-#'   so \code{best_direction} comes back complete.
+#'   \code{targeted_last_resort} in \code{best_evidence} and carrying the
+#'   validated figure of that curve at the CpG's distance from the TSS
+#'   (\code{best_rung} = \code{distance_curve_<tissue>_<band>}). A distance
+#'   band whose figure in that tissue is below 0.55 fills nothing: the row
+#'   keeps its abstention.
 #' @param html_out Optional. \code{TRUE} writes
 #'   \code{cpgdirection_results.html} into \code{tempdir()} and reports the
 #'   path; a string is used as the file name (a relative name also lands in
@@ -145,7 +147,7 @@
 #'       \code{distance_uninformative}, \code{tissue_conflict} or
 #'       \code{no_evidence}}
 #'     \item{best_rung}{the exact source that answered, as ranked (e.g.
-#'       \code{measured_blood_single}, \code{smr_replicated_S2},
+#'       \code{measured_blood_single}, \code{smr_acc_90},
 #'       \code{catalogue_single_nasal_A}); the state for an abstention;
 #'       \code{attr(result, "rank_tissue")} names the tissue whose order was
 #'       used}
@@ -175,12 +177,20 @@
 #'       separate concordant from discordant directions, and FinnGen-only pairs
 #'       are admitted on the SMR test at the top cis-mQTL instead. See
 #'       \code{?cpgd_smr_directions}}
-#'     \item{smr_rung, smr_replication, smr_outcome}{how the SMR row enters the
-#'       ladder: \code{smr_rung} is \code{replicated} (same sign in eQTLGen and
-#'       FinnGen PBMC), \code{high}, \code{moderate}, \code{weak} or
-#'       \code{reported} (never supplies \code{best_direction});
-#'       \code{smr_replication} says why; \code{smr_outcome} names the
+#'     \item{smr_rung, smr_replication, smr_outcome}{how the SMR sign was
+#'       obtained: \code{smr_rung} is \code{replicated} (same sign in at
+#'       least two of eQTLGen, FinnGen PBMC and INTERVAL, none dissenting),
+#'       \code{high}, \code{moderate}, \code{weak} or \code{reported}
+#'       (never supplies \code{best_direction}); \code{smr_replication}
+#'       gives the eQTLGen-FinnGen status; \code{smr_outcome} names the
 #'       outcome study behind the sign}
+#'     \item{smr_accuracy}{the pair's own held-out probability that the SMR
+#'       sign equals the sign measured in blood
+#'       (\code{?cpgd_smr_directions}). The ladder places the pair in the
+#'       accuracy band this figure falls in (\code{best_rung}
+#'       \code{smr_acc_95} ... \code{smr_acc_55}) and the call carries that
+#'       band's validated figure for the tissue; below 0.55 the pair supplies
+#'       no direction}
 #'     \item{smr_child_blood_helix}{with \code{age_group = "child"} or
 #'       \code{"any"} only: whether HELIX child blood detected the SMR pair
 #'       (\code{sig}, \code{nominal}, \code{null}, \code{untested}).
@@ -238,7 +248,14 @@
 #' \code{distance_tissue_conflict}, with \code{dist_dir_blood},
 #' \code{dist_dir_nasal} and \code{dist_dir_solid} exposed so the tissue
 #' relevant to your question can be read directly. A distance call enters
-#' \code{best_direction} only when all three curves agree.
+#' \code{best_direction} only when all three curves agree, and it is ranked
+#' and weighted by the distance band of the CpG (within 0.5 kb, 0.5 to 1.5,
+#' 1.5 to 5, 5 to 10, 10 to 50, 50 to 250 kb from the TSS;
+#' \code{best_rung} = \code{distance_only_<band>}): its accuracy falls from
+#' about 0.8 next to the TSS to 0.6 beyond 5 kb. A band whose validated
+#' figure in the call's tissue is below 0.55 supplies nothing, and neither
+#' does a CpG more than 250 kb from the TSS, where almost no measured pair
+#' exists to score it (\code{best_evidence} = \code{distance_uninformative}).
 #'
 #' \strong{A structural consequence worth knowing.} The blood curve peaks at
 #' 0.449. Because a distance call requires unanimity, and blood never reaches
@@ -264,12 +281,15 @@
 #'
 #' The price is explicit. Rows resolved this way carry that tissue's own
 #' figure (\code{catalogue_model_<tissue>_<tier>} or
-#' \code{distance_curve_<tissue>} in \code{best_rung};
+#' \code{distance_curve_<tissue>_<band>} in \code{best_rung};
 #' \code{\link{cpgd_accuracy_values}}). Tier-A calls of the tissue's model:
-#' blood 0.75 against MESA, solid tissue 0.71 against FUSION and GTEx; the
-#' nasal model has no independent nasal yardstick, so it quotes its
-#' cross-tissue figure (0.69). The tissue's distance curve: blood 0.64, solid
-#' tissue 0.54 (a tumour curve), nasal 0.60 (cross-tissue). The solid-tissue
+#' blood 0.72 against MESA and BLUEPRINT, solid tissue 0.67 against the four
+#' solid folds; the nasal model has too few independent nasal yardstick pairs
+#' and quotes its cross-tissue figure. The tissue's distance curve is scored
+#' by distance band: the blood curve from 0.77 (CpG within 0.5 kb of the TSS)
+#' to 0.56 (beyond 10 kb); the solid-tissue curve (a tumour curve) from 0.81
+#' to 0.60 (5 to 10 kb), and below the 0.55 floor beyond 10 kb, where it
+#' supplies nothing. The solid-tissue
 #' model is trained on tumour, provisional, and its brain and kidney arms did
 #' not exceed their own majority baselines under leave-one-cohort-out. If solid
 #' tissue is your brain proxy, that last clause is the one to quote in your
@@ -280,8 +300,9 @@
 #' that CpG, not a claim about any one tissue and not a substitute for measured
 #' RNA in your own samples. Always read \code{best_rung} and
 #' \code{best_accuracy} alongside it: in adult blood a replicated measured
-#' sign agrees with an independent cohort 0.97 of the time and a
-#' \code{distance_only} call 0.67.
+#' sign agrees with an independent cohort 0.99 of the time, an SMR pair
+#' between 0.96 and 0.62 depending on its accuracy band, and a distance call
+#' between 0.77 (CpG within 0.5 kb of the TSS) and 0.57 (10 to 50 kb).
 #'
 #' \code{tissue_conflict} means the tissues returned opposite directions. That
 #' is reported as \code{NA} rather than resolved, because a weaker method should
@@ -478,7 +499,7 @@ cpg_expression_direction <- function(cpgs,
   scols <- c("smr_direction", "smr_tier", "smr_p", "smr_n_instruments",
              "smr_gene_dist", "smr_gene", "smr_gene_match", "smr_in_table",
              "smr_heidi_status", "smr_p_heidi",
-             "smr_rung", "smr_replication", "smr_outcome")
+             "smr_rung", "smr_replication", "smr_outcome", "smr_accuracy")
   with_child <- !identical(age_group, "adult")
   S <- tryCatch(.cpgd_smr_table(), error = function(e) NULL)
   if (!is.null(S) && nrow(S)) {
@@ -498,6 +519,7 @@ cpg_expression_direction <- function(cpgs,
       rung = .cpgd_smr_rung(S),
       rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
       outc = .cpgd_smr_col(S, "outcome", "eQTLGen"),
+      acc  = .cpgd_smr_accuracy(S),
       cb   = .cpgd_smr_child(S))
     require_detected <- .cpgd_check_child_column(S, age_group, require_detected)
     # Whether the CpG has SMR evidence at all, judged BEFORE any filter, so a
@@ -542,7 +564,7 @@ cpg_expression_direction <- function(cpgs,
     ni <- rep(NA_integer_, n); gd <- rep(NA_real_, n); gg <- rep(NA_character_, n)
     hh <- rep(NA_character_, n); hp <- rep(NA_real_, n)
     rg <- rep(NA_character_, n); rp <- rep(NA_character_, n); oc <- rep(NA_character_, n)
-    cbv <- rep(NA_character_, n)
+    cbv <- rep(NA_character_, n); ac <- rep(NA_real_, n)
     for (k in seq_along(cand)) {
       key <- cand[[k]]
       if (k > 2L) key[asked] <- NA_character_
@@ -557,7 +579,7 @@ cpg_expression_direction <- function(cpgs,
       gd[take] <- hit$gd[take];   gg[take] <- key[take]
       hh[take] <- hit$hstat[take]; hp[take] <- hit$pheidi[take]
       rg[take] <- hit$rung[take];  rp[take] <- hit$rep[take]; oc[take] <- hit$outc[take]
-      cbv[take] <- hit$cb[take]
+      cbv[take] <- hit$cb[take];   ac[take] <- hit$acc[take]
     }
     matched <- !is.na(d)
 
@@ -584,7 +606,7 @@ cpg_expression_direction <- function(cpgs,
     gd[fill] <- hb$gd[fill];   gg[fill] <- hb$g[fill]
     hh[fill] <- hb$hstat[fill]; hp[fill] <- hb$pheidi[fill]
     rg[fill] <- hb$rung[fill];  rp[fill] <- hb$rep[fill]; oc[fill] <- hb$outc[fill]
-    cbv[fill] <- hb$cb[fill]
+    cbv[fill] <- hb$cb[fill];   ac[fill] <- hb$acc[fill]
 
     out[, "smr_direction"     := d]
     out[, "smr_tier"          := ti]
@@ -605,6 +627,9 @@ cpg_expression_direction <- function(cpgs,
     out[, "smr_rung"          := rg]
     out[, "smr_replication"   := rp]
     out[, "smr_outcome"       := oc]
+    # The pair's own held-out accuracy in blood (information; the figure a call
+    # carries is the validated figure of the band it falls in, best_accuracy).
+    out[, "smr_accuracy"      := ac]
     # Child-blood detection of the reported SMR pair, only when asked for: the
     # adult default carries no age-specific column.
     if (with_child) out[, "smr_child_blood_helix" := cbv]
@@ -612,7 +637,7 @@ cpg_expression_direction <- function(cpgs,
     out[, (scols) := list(NA_real_, NA_character_, NA_real_, NA_integer_,
                           NA_real_, NA_character_, FALSE, FALSE,
                           NA_character_, NA_real_,
-                          NA_character_, NA_character_, NA_character_)]
+                          NA_character_, NA_character_, NA_character_, NA_real_)]
     if (with_child) out[, "smr_child_blood_helix" := NA_character_]
   }
 
@@ -753,7 +778,7 @@ cpg_expression_direction <- function(cpgs,
                                rung %in% "high", "smr_high",
                                rung %in% "moderate", "smr_moderate",
                                rung %in% "weak", "smr_weak", default = NA_character_)
-  skey <- .cpgd_smr_key(smr_src, out$smr_tier, out$smr_outcome, out$smr_replication)
+  skey <- .cpgd_smr_key(smr_src, out$smr_accuracy)
   for (k in unique(stats::na.omit(skey)))
     cand[[paste0("smr_", k)]] <- ifelse(smr_ok & skey %in% k, out$smr_direction, NA_real_)
   # consensus needs two models at least, whatever min_tissues says: a lone
@@ -770,7 +795,11 @@ cpg_expression_direction <- function(cpgs,
   # distance: all three tissue curves pointing the same way is the evidence
   dist_ok <- out$dist_unanimous %in% TRUE & !is.na(out$dir_universal) &
              abs(out$p_universal - 0.5) * 2 >= min_distance_info
-  cand[["distance_only"]] <- ifelse(dist_ok %in% TRUE, out$dir_universal, NA_real_)
+  # one source per distance band: each carries its own validated figure, and a
+  # band below the distance floor in the call's tissue is not in the order
+  dkey <- .cpgd_distance_key("distance_only", out$dist_universal)
+  for (k in unique(stats::na.omit(dkey)))
+    cand[[k]] <- ifelse(dist_ok %in% TRUE & dkey %in% k, out$dir_universal, NA_real_)
   # Tissues pointing opposite ways is a finding, not a gap: from the distance
   # rung down, no weaker source settles a disagreement between catalogue models.
   conflict <- CC$conflict
@@ -784,7 +813,7 @@ cpg_expression_direction <- function(cpgs,
   i <- which(is.na(rkey) & !is.na(out$dist_universal))
   rkey[i] <- "distance_tissue_conflict"
   rkey[is.na(rkey)] <- "no_evidence"
-  src <- .cpgd_rung_evidence(rkey)
+  src <- .cpgd_rung_evidence(rkey, smr_src)
 
   # ---- declared target tissue ---------------------------------------------
   # Where the tissues disagree, a caller who has declared in advance which
@@ -797,10 +826,14 @@ cpg_expression_direction <- function(cpgs,
     dcol <- paste0("dist_dir_", ts)
     ccol <- paste0("dir_", ts)
     tcol <- paste0("tier_", ts)
+    # the declared tissue's curve, by distance band; a band below the distance
+    # floor in that tissue supplies nothing (the row keeps its abstention)
+    tkey <- .cpgd_distance_key(paste0("distance_curve_", ts), out$dist_universal)
+    tok  <- .cpgd_distance_supplies(tkey, tt)
     if (dcol %in% names(out)) {
-      i <- which(src == "distance_tissue_conflict" & !is.na(out[[dcol]]))
+      i <- which(src == "distance_tissue_conflict" & !is.na(out[[dcol]]) & tok)
       best[i] <- out[[dcol]][i];  src[i] <- "distance_targeted"
-      rkey[i] <- paste0("distance_curve_", ts)
+      rkey[i] <- tkey[i]
     }
     if (ccol %in% names(out)) {
       i <- which(src == "tissue_conflict" & !is.na(out[[ccol]]))
@@ -816,9 +849,9 @@ cpg_expression_direction <- function(cpgs,
     # carry that curve's validated figure: the validation scores the same
     # sign (the curve's p >= 0.5) on every yardstick pair.
     if (dcol %in% names(out)) {
-      i <- which(is.na(best) & !is.na(out[[dcol]]))
+      i <- which(is.na(best) & !is.na(out[[dcol]]) & tok)
       best[i] <- out[[dcol]][i];  src[i] <- "targeted_last_resort"
-      rkey[i] <- paste0("distance_curve_", ts)
+      rkey[i] <- tkey[i]
     }
   }
 
@@ -929,11 +962,11 @@ cpg_expression_direction <- function(cpgs,
   out[get("best_evidence") %in% c("smr_high", "smr_moderate", "smr_weak"), "note" :=
         "causal direction from SMR (blood); consistent with methylation affecting expression AND with linkage - see smr_heidi_status and smr_replication"]
   out[get("best_evidence") == "smr_replicated", "note" :=
-        "causal direction from SMR (blood), same sign from two independent outcome studies (eQTLGen and FinnGen PBMC) on the GoDMC instruments"]
+        "causal direction from SMR (blood), same sign from at least two independent outcome studies (eQTLGen, FinnGen PBMC, INTERVAL) on the GoDMC instruments, none dissenting"]
   out[get("best_evidence") == "smr_weak" & get("smr_replication") %in% "discordant", "note" :=
         "SMR (blood): eQTLGen and FinnGen PBMC give OPPOSITE signs for this pair; the eQTLGen sign is kept at the weak rung - inspect before using"]
   out[get("best_evidence") == "smr_moderate" & !(get("smr_outcome") %in% c(NA, "eQTLGen")), "note" :=
-        "causal direction from SMR (blood), FinnGen PBMC outcome only (pair absent from eQTLGen; SMR p<5e-8 at the top cis-mQTL), see ?cpgd_smr_directions"]
+        "causal direction from SMR (blood), pair absent from eQTLGen (FinnGen PBMC or INTERVAL outcome; see smr_outcome and ?cpgd_smr_directions)"]
   out[get("best_evidence") == "catalogue_single", "note" :=
         "only one tissue called; no cross-tissue corroboration"]
   out[get("best_evidence") == "onco_consensus", "note" :=
@@ -953,7 +986,8 @@ cpg_expression_direction <- function(cpgs,
            "smr_direction", "smr_gene", "smr_gene_match", "smr_tier", "smr_p",
            "smr_n_instruments", "smr_gene_dist", "smr_agreement", "smr_in_table",
            "smr_heidi_status", "smr_p_heidi",
-           "smr_rung", "smr_replication", "smr_outcome", "smr_child_blood_helix",
+           "smr_rung", "smr_replication", "smr_outcome", "smr_accuracy",
+           "smr_child_blood_helix",
            "onco_direction", "onco_tier", "onco_n_cancers", "onco_median_r",
            "onco_gene", "onco_gene_match", "onco_agreement",
            "consensus_direction", "n_tissues_calling", "tissue_agreement",
@@ -1118,7 +1152,8 @@ print.cpgd_full <- function(x, ...) {
         "  selecting on the outcome.\n", sep = "")
   }
   cat("\n  Read best_rung and best_accuracy alongside best_direction: in adult\n",
-      "  blood a replicated measured sign is worth 0.97, distance_only 0.67\n",
+      "  blood a replicated measured sign is worth 0.99, a distance call 0.77\n",
+      "  next to the TSS and 0.57 beyond 10 kb\n",
       "  (cpgd_accuracy_values()). All of it is conditional on the CpG being an eQTM.\n",
       sep = "")
   ag <- attr(x, "age_group")
@@ -1238,6 +1273,7 @@ print.cpgd_full <- function(x, ...) {
       rung = .cpgd_smr_rung(S),
       rep  = .cpgd_smr_col(S, "replication", "eqtlgen_only"),
       outc = .cpgd_smr_col(S, "outcome", "eQTLGen"),
+      acc  = .cpgd_smr_accuracy(S),
       cb   = .cpgd_smr_child(S))
     # one row per pair: strongest tier, then smallest p -- same rule as the
     # CpG-level ladder uses
@@ -1255,14 +1291,15 @@ print.cpgd_full <- function(x, ...) {
     P[, "smr_rung"             := hit$rung]
     P[, "smr_replication"      := hit$rep]
     P[, "smr_outcome"          := hit$outc]
+    P[, "smr_accuracy"         := hit$acc]
     if (with_child) P[, "smr_child_blood_helix" := hit$cb]
   } else {
     P[, c("smr_direction", "smr_tier", "p_SMR", "n_instruments",
           "instrument_agreement", "p_HEIDI", "heidi_status",
-          "smr_rung", "smr_replication", "smr_outcome") :=
+          "smr_rung", "smr_replication", "smr_outcome", "smr_accuracy") :=
         list(NA_real_, NA_character_, NA_real_, NA_integer_, NA_real_,
              NA_real_, NA_character_,
-             NA_character_, NA_character_, NA_character_)]
+             NA_character_, NA_character_, NA_character_, NA_real_)]
     if (with_child) P[, "smr_child_blood_helix" := NA_character_]
   }
 
@@ -1398,7 +1435,7 @@ print.cpgd_full <- function(x, ...) {
                                rung %in% "high", "smr_high",
                                rung %in% "moderate", "smr_moderate",
                                rung %in% "weak", "smr_weak", default = NA_character_)
-  skey <- .cpgd_smr_key(smr_src, P$smr_tier, P$smr_outcome, P$smr_replication)
+  skey <- .cpgd_smr_key(smr_src, P$smr_accuracy)
   for (k in unique(stats::na.omit(skey)))
     cand[[paste0("smr_", k)]] <- ifelse(smr_ok & skey %in% k, P$smr_direction, NA_real_)
   # consensus needs two models at least, whatever min_tissues says
@@ -1412,7 +1449,9 @@ print.cpgd_full <- function(x, ...) {
   cand[["onco_consensus"]] <- ifelse(onco_ok, P$onco_direction, NA_real_)
   dist_ok <- P$dist_unanimous %in% TRUE & !is.na(P$dir_universal) &
              abs(P$p_universal - 0.5) * 2 >= min_distance_info
-  cand[["distance_only"]] <- ifelse(dist_ok %in% TRUE, P$dir_universal, NA_real_)
+  dkey <- .cpgd_distance_key("distance_only", P$abs_dist)
+  for (k in unique(stats::na.omit(dkey)))
+    cand[[k]] <- ifelse(dist_ok %in% TRUE & dkey %in% k, P$dir_universal, NA_real_)
   conflict <- CC$conflict
   lad  <- .cpgd_apply_ladder(cand, .cpgd_rung_order(tissue), conflict, n)
   best <- lad$best; rkey <- lad$key
@@ -1421,7 +1460,7 @@ print.cpgd_full <- function(x, ...) {
   i <- which(is.na(rkey) & !is.na(P$abs_dist))
   rkey[i] <- "distance_tissue_conflict"
   rkey[is.na(rkey)] <- "no_evidence"
-  src <- .cpgd_rung_evidence(rkey)
+  src <- .cpgd_rung_evidence(rkey, smr_src)
 
   bconf <- rep(NA_real_, n)
   bconf[which(src == "measured")] <- 1

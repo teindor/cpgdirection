@@ -88,7 +88,7 @@ direction*, and *how sure can one be*. It is a natural companion to
 `r BiocStyle::Biocpkg("limma")` results, and is the engine behind directional
 methylation set analysis in the `dmsa` package.
 
-The data layers are large (ten resources, about 120 MB) and are served by the
+The data layers are large (ten resources, about 215 MB) and are served by the
 companion ExperimentHub package `cpgdirectionData`; the small tables
 (measured eQTMs, distance curves, probe QC, the brain-bridge deliverable) ship
 inside this package. All coordinates are hg19.
@@ -152,27 +152,37 @@ for the rung.
 
 | `best_evidence` | adult blood | what it means |
 |---|---|---|
-| `measured` | 0.75-0.97 | an eQTM study measured this pair; highest when two or more independent blood studies agree |
-| `smr_replicated` | 0.85-0.93 | Mendelian randomisation, same sign in two outcome studies (eQTLGen, FinnGen PBMC) |
-| `smr_high` | 0.91 | Mendelian randomisation, several instruments agreeing |
-| `onco_consensus` | 0.85 | five or more tumour types agreeing; tumour evidence, reported as such |
-| `catalogue_consensus` | 0.79-0.83 | genomic-context models, tissues agreeing |
-| `smr_moderate` | 0.71-0.80 | Mendelian randomisation, one instrument, or a FinnGen-only pair |
-| `catalogue_single` | 0.55-0.90 | one tissue model only |
-| `smr_weak` | 0.58-0.85 | instruments disagree; a warning, not evidence |
-| `distance_only` | 0.67 | distance to the TSS, nothing else |
+| `measured` | 0.82-0.99 | an eQTM study measured this pair; highest when two or more independent blood studies agree |
+| `smr_replicated` | 0.62-0.96 by accuracy band | Mendelian randomisation, same sign in at least two outcome studies (eQTLGen, FinnGen PBMC, INTERVAL), none dissenting |
+| `smr_high` | as above | Mendelian randomisation, several instruments agreeing |
+| `smr_moderate` | as above | Mendelian randomisation, one instrument, or one outcome study |
+| `smr_weak` | as above | instruments or outcome studies disagree |
+| `onco_consensus` | 0.83 | five or more tumour types agreeing; tumour evidence, reported as such |
+| `catalogue_consensus` | 0.73 | genomic-context models, tissues agreeing |
+| `catalogue_single` | 0.60-0.77 | one tissue model only |
+| `distance_only` | 0.57-0.77 by distance band | distance to the TSS, nothing else |
 | `no_evidence` | --- | nothing available; a correct answer, not a failure |
 
-The figures are agreement with an independent measured yardstick (MESA sorted
-blood cells for adult blood), and **the ladder is ordered by them**, in each
+The figures are agreement with an independent measured yardstick (for adult
+blood, MESA sorted blood cells and the BLUEPRINT monocytes, neutrophils and
+T cells), and **the ladder is ordered by them**, in each
 tissue separately, by the lower bound of each source's 95% interval: the
 source with the highest bound holding a sign for the pair answers, and
-`best_rung` names it (`measured_blood_single`, `smr_replicated_S2`,
-`catalogue_single_nasal_A`, ...). In adult blood that puts replicated SMR S1
-above a single measured blood study, SMR moderate just above the catalogue
-consensus (formed from predictions, not from the measured pairs the models
-were trained on), and single calls of the nasal and solid-tissue models below
-the distance curves. Name the tissue (`target_tissue =`,
+`best_rung` names it (`measured_blood_single`, `smr_acc_90`,
+`catalogue_single_nasal_A`, `distance_only_b2`, ...).
+
+Two sources are ranked in bands rather than as one. Every SMR pair carries
+`smr_accuracy`, its own held-out probability of matching the sign measured in
+blood; the ladder groups pairs by it (0.95 or higher, 0.90 to 0.95, 0.80 to
+0.90, 0.65 to 0.80, 0.55 to 0.65), scores each band like any source, and a
+pair below 0.55 supplies nothing. `best_evidence` still says how the SMR sign
+was obtained (`smr_replicated`, ...). The distance source is scored by how far
+the CpG is from the TSS (within 0.5 kb, 0.5 to 1.5, 1.5 to 5, 5 to 10, 10 to
+50, 50 to 250 kb): about 0.8 next to the TSS, about 0.6 beyond 5 kb, and
+nothing where a band falls below 0.55 or the CpG is more than 250 kb away.
+In adult blood that puts the top SMR band above a single measured blood
+study, and the nearest distance band above the catalogue consensus (formed
+from predictions, not from the measured pairs the models were trained on). Name the tissue (`target_tissue =`,
 or `tissue =` in `cpg_gene_pairs()`) to use the nasal or solid-tissue order
 and figures; `cpgd_accuracy_values()` lists them all, with their n and
 interval.
@@ -214,8 +224,8 @@ figure.
 # Children and adolescents: `age_group`
 
 Age did not move the ladder in validation: child blood (HELIX, ages 6-11)
-scores the SMR rungs higher than adult blood (`smr_replicated` S1 0.96
-against 0.93, `smr_moderate` 0.90 against 0.80), and with age
+scores the SMR accuracy bands within a few points of adult blood (0.93
+against 0.96 in the top band, 0.89 against 0.85 in the 0.80-0.90 band), and with age
 regressed out, 1-25-year cortex agrees with adult cortex at 0.975. So
 `age_group` changes no direction and no rung. It changes which validation
 figures are quoted (every blood source HELIX scores on 100+ pairs), adds the
@@ -249,7 +259,7 @@ epithelium or solid tissue.
 Where the input names a gene, the answer comes from the strongest evidence held,
 in this order: measured in cortex (`cpgd_brain_measured()`: ROSMAP aged DLPFC
 and Jaffe DLPFC, age-adjusted), brain SMR tier T1, tier T2, then measured blood
-and blood SMR as labelled fallbacks (0.84 and 0.67-0.77 against adult cortex).
+and blood SMR as labelled fallbacks (0.84, and 0.53-0.83 by accuracy band, against adult cortex).
 Blood evidence never ranks above brain evidence. Brain directions are validated
 in postnatal cortex from 1 year to old age; fetal and infant (< 1 year) cortex
 is untested.

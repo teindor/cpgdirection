@@ -45,25 +45,78 @@ CPGD_AGE_POPULATION <- c(
   child = "child blood (HELIX, 6-11 y, n = 823, where it scores the source on 100+ pairs; adult otherwise)",
   any   = "adult and child blood side by side")
 
-# The accuracy key of an SMR row that supplies a direction: which validated
-# stratum its sign belongs to. `src` is the ladder rung (smr_replicated,
-# smr_high, smr_moderate, smr_weak); anything else gives NA. Within moderate,
-# eQTLGen pairs whose cell-type FinnGen arm disagrees (discordant_celltype S2)
-# are their own stratum: they validate well below the rest of the rung.
-.cpgd_smr_key <- function(src, tier, outcome, replication) {
-  eq <- outcome %in% "eQTLGen"
-  data.table::fcase(
-    src %in% "smr_replicated" & tier %in% "S1", "replicated_S1",
-    src %in% "smr_replicated" & !is.na(tier), "replicated_S2",
-    src %in% "smr_high", "high",
-    src %in% "smr_moderate" & !eq, "moderate_finngen",
-    src %in% "smr_moderate" & tier %in% "S3", "moderate_s3_replicated",
-    src %in% "smr_moderate" & replication %in% "discordant_celltype",
-      "moderate_discordant_celltype",
-    src %in% "smr_moderate", "moderate",
-    src %in% "smr_weak" & replication %in% "discordant", "weak_discordant",
-    src %in% "smr_weak", "weak",
-    default = NA_character_)
+# Accuracy bands of the SMR layer (1.1.0; PI rulings of 12 Nov 2026). Every
+# pair of smr_directions carries `smr_accuracy`: the probability that its sign
+# equals the sign measured in blood, from a model of the pair's SMR evidence
+# fitted leaving the pair's chromosome out (tools/build_smr_layer_interval.py).
+# The band that figure falls in is the pair's accuracy key: each band is a
+# ladder source, validated per tissue like any other and ranked on its lower
+# bound. A pair below the floor supplies no direction (and is never flipped).
+CPGD_SMR_FLOOR <- 0.55
+CPGD_SMR_BAND_BREAKS <- c(0.55, 0.65, 0.80, 0.90, 0.95)
+CPGD_SMR_BAND_KEYS <- c("acc_55", "acc_65", "acc_80", "acc_90", "acc_95")
+.cpgd_smr_band <- function(accuracy) {
+  a <- suppressWarnings(as.numeric(accuracy))
+  i <- findInterval(a, CPGD_SMR_BAND_BREAKS)
+  out <- rep(NA_character_, length(a))
+  ok <- !is.na(i) & i >= 1L
+  out[ok] <- CPGD_SMR_BAND_KEYS[i[ok]]
+  out
+}
+
+# Distance bands (1.1.0; PI ruling of 12 Nov 2026). The distance source is
+# validated, and ranked, separately in six bands of |CpG - TSS|: its accuracy
+# falls from about 0.8 within 500 bp to chance beyond 50 kb, so one pooled
+# figure overstated the far calls and understated the near ones. A band whose
+# validated figure in the call's tissue is below the floor supplies nothing
+# there. Beyond 250 kb (band b7) the measured tables hold almost nothing (they
+# stop at 250 kb): the band is scored on the few yardstick pairs there are,
+# stays below the floor, and is never a source of best_direction.
+CPGD_DISTANCE_FLOOR <- 0.55
+CPGD_DISTANCE_BAND_EDGES <- c(0, 500, 1500, 5000, 10000, 50000, 250000)
+CPGD_DISTANCE_BAND_LABELS <- c(b1 = "within 0.5 kb", b2 = "0.5 to 1.5 kb", b3 = "1.5 to 5 kb",
+                               b4 = "5 to 10 kb", b5 = "10 to 50 kb", b6 = "50 to 250 kb",
+                               b7 = "beyond 250 kb")
+.cpgd_distance_band <- function(dist) {
+  a <- abs(suppressWarnings(as.numeric(dist)))
+  i <- findInterval(a, CPGD_DISTANCE_BAND_EDGES, rightmost.closed = TRUE)
+  out <- rep(NA_character_, length(a))
+  ok <- !is.na(i) & i >= 1L
+  out[ok] <- paste0("b", i[ok])
+  out
+}
+# The accuracy key of a distance call: <prefix>_<band> (prefix distance_only,
+# or distance_curve_<tissue>); NA where the distance is unknown.
+.cpgd_distance_key <- function(prefix, dist) {
+  b <- .cpgd_distance_band(dist)
+  ifelse(is.na(b), NA_character_, paste0(prefix, "_", b))
+}
+
+# The per-pair accuracy column of an SMR table. A table built before 1.1.0 has
+# none: its rows are still reported, but none can be placed in a band, so the
+# layer supplies no best_direction. Said once per session.
+.cpgd_smr_accuracy <- function(S) {
+  if ("smr_accuracy" %in% names(S)) return(suppressWarnings(as.numeric(S$smr_accuracy)))
+  if (!isTRUE(.cpgd_env$smr_accuracy_warned)) {
+    .cpgd_env$smr_accuracy_warned <- TRUE
+    warning("this smr_directions resource predates the per-pair accuracy ",
+            "(smr_accuracy) that cpgdirection 1.1.0 ranks SMR pairs by: SMR rows ",
+            "are reported but supply no best_direction. Update cpgdirectionData.",
+            call. = FALSE)
+  }
+  rep(NA_real_, nrow(S))
+}
+
+# The accuracy key of an SMR row that supplies a direction: the band of its
+# per-pair accuracy. `src` is the ladder rung (smr_replicated, smr_high,
+# smr_moderate, smr_weak); anything else (the `reported` rung, no row) gives
+# NA, and so does an accuracy below the floor. The rung stays the row's
+# provenance (best_evidence, smr_rung); the band is what it is worth.
+.cpgd_smr_key <- function(src, accuracy) {
+  band <- .cpgd_smr_band(accuracy)
+  ok <- rep_len(src %in% c("smr_replicated", "smr_high", "smr_moderate", "smr_weak"), length(band))
+  band[!ok] <- NA_character_
+  band
 }
 
 # require_detected acts only with age_group = "child"; anywhere else it is

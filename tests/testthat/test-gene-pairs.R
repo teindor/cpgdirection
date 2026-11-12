@@ -32,12 +32,14 @@ fx_measured_row <- function(cpg, gene, direction = 1, tissue = "blood") {
              direction = direction, tss_dist = 500)
 }
 
-fx_smr_row <- function(cpg, gene, direction = -1, tier = "S1", p = 1e-10) {
+# smr_accuracy 0.93: the pair sits in the 0.90-0.95 band (smr_acc_90), which is
+# what the ladder ranks; the tier still gives the rung (S1 -> high)
+fx_smr_row <- function(cpg, gene, direction = -1, tier = "S1", p = 1e-10, accuracy = 0.93) {
   data.table(cpg_id = cpg, target_gene = gene, direction = direction,
              smr_tier = tier, p_SMR = p, n_instruments = 3L,
              instrument_agreement = 1, cpg_gene_dist = 1000,
              top_instrument = "rs1", p_HEIDI = 0.5, nsnp_HEIDI = 3L,
-             heidi_status = "pass")
+             heidi_status = "pass", smr_accuracy = accuracy)
 }
 
 CG1 <- "cg10000001"
@@ -266,23 +268,24 @@ test_that("the pair ladder answers with the most accurate source in the call's t
     lookup   = list(
       blood            = fx_lookup_row(CG1, "GENEA", direction = -1),
       nasal_epithelium = fx_lookup_row(CG1, "GENEA", direction = -1)))
-  sign_of <- c(measured = 1, smr_high = -1, catalogue_consensus = -1)
+  sign_of <- c(measured = 1, smr = -1, catalogue_consensus = -1)
   for (tis in CPGD_TISSUES) {
     o <- cpgdirection:::.cpgd_rung_order(tis)
     p <- cpg_gene_pairs(CG1, tissue = tis, universal = FALSE, verbose = FALSE, sources = srcs)
     # the three sources present: never the answer itself, so a wrong winner fails
-    present <- c("measured_blood_single", "smr_high", "catalogue_consensus_A")
+    present <- c("measured_blood_single", "smr_acc_90", "catalogue_consensus_A")
     win <- o[o %in% present][1]
     expect_identical(p$best_rung, win, info = tis)
     expect_equal(p$best_direction, unname(sign_of[cpgdirection:::.cpgd_rung_evidence(win)]),
                  info = tis)
   }
-  # lower bounds: blood (MESA), replicated SMR S1 above a single measured
-  # blood study (0.89 vs 0.87); solid tissue, the measured blood sign above
-  # SMR high (0.85 vs 0.78)
+  # lower bounds: in blood the top SMR band sits above a single measured blood
+  # study and the next band below it; in solid tissue the measured blood sign
+  # is above that band too
   ob <- cpgdirection:::.cpgd_rung_order("blood"); os <- cpgdirection:::.cpgd_rung_order("solid_tissue")
-  expect_lt(match("smr_replicated_S1", ob), match("measured_blood_single", ob))
-  expect_lt(match("measured_blood_single", os), match("smr_high", os))
+  expect_lt(match("smr_acc_95", ob), match("measured_blood_single", ob))
+  expect_lt(match("measured_blood_single", ob), match("smr_acc_90", ob))
+  expect_lt(match("measured_blood_single", os), match("smr_acc_90", os))
 
   srcs$measured <- EMPTY_SRC$measured
   srcs$smr <- EMPTY_SRC$smr

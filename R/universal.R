@@ -254,10 +254,12 @@ cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
   }
   d[, "evidence_tier" := "U"]
   # the curves agreeing (all tissues), or the one curve asked for
+  # by distance band: each band has its own validated figure (beyond 250 kb:
+  # no yardstick pair, unquantified)
   uk <- if (length(tis) > 1) "distance_only" else paste0("distance_curve_", short[[tis]])
   ut <- if (length(tis) > 1) "blood" else tis
   data.table::set(d, j = "expected_accuracy",
-                  value = rep(.cpgd_rung_label(uk, ut, "adult"), nrow(d)))
+                  value = .cpgd_rung_label(.cpgd_distance_key(uk, d$abs_dist), ut, "adult"))
   data.table::set(d, j = "accuracy",
                   value = .cpgd_accuracy_number(d$expected_accuracy, accuracy))
   data.table::setnames(d, "gene_use", "target_gene")

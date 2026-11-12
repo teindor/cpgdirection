@@ -14,7 +14,65 @@ test_that("the measured table carries cohort provenance and no tumour class", {
   expect_true(all(M$n_cohorts >= 1L))
   expect_true(all(M$cohort_agreement > 0.5 & M$cohort_agreement <= 1))
   expect_true(any(M$n_cohorts >= 2L))
-  expect_true(all(M$source %in% c("eqtm_atlas", "packaged_v1", "helix_dryad_2022", "wang2021_S2")))
+  expect_true(all(M$source %in% c("eqtm_atlas", "packaged_v1", "helix_dryad_2022", "wang2021_S2",
+                                  "kreitmaier2026_msk", "liu2022_kidney", "delahaye2018_placenta",
+                                  "voisin2016_adipose", "kennedy2018_gtp")))
+})
+
+test_that("kidney, placenta, adipose and GTP blood are single-cohort donor groups in their tissue", {
+  co <- c("Liu2022_kidney", "Delahaye2018_placenta", "Voisin2016_adipose", "Kennedy2018_GTP_blood")
+  expect_equal(cpgdirection:::.cpgd_donor_group(co), co)
+  skip_if(!cpgd_has_data("measured_eqtms"), "measured table unavailable")
+  M <- cpgd_measured_eqtms()
+  skip_if(!"liu2022_kidney" %in% M$source, "measured table predates the kidney source")
+  has <- function(x) M[grepl(x, M$cohorts, fixed = TRUE), ]
+  expect_true(all(has("Liu2022_kidney")$tissue == "solid_tissue"))
+  expect_true(all(has("Delahaye2018_placenta")$tissue == "solid_tissue"))
+  expect_true(all(has("Voisin2016_adipose")$tissue == "solid_tissue"))
+  expect_true(all(has("Kennedy2018_GTP_blood")$tissue == "blood"))
+  expect_gt(nrow(has("Liu2022_kidney")), 29000L)
+  expect_gt(nrow(has("Delahaye2018_placenta")), 2000L)
+  expect_gt(nrow(has("Voisin2016_adipose")), 350L)
+  expect_gt(nrow(has("Kennedy2018_GTP_blood")), 3500L)
+  # no pair of the table is left split between cohorts
+  expect_true(all(M$n_cohorts == lengths(strsplit(M$cohorts, "|", fixed = TRUE)) | M$cohorts == "packaged_v1"))
+  # a kidney pair also measured, with the same sign, in another donor group is replicated; a kidney-only pair is not
+  K <- has("Liu2022_kidney"); K <- K[!grepl(";", K$target_gene), ]
+  only <- K[K$cohorts == "Liu2022_kidney", ][1, ]
+  both <- K[grepl("FUSION|GTEx", K$cohorts) & K$cohort_agreement >= 0.99, ][1, ]
+  p <- cpg_gene_pairs(c(only$cpg_id, both$cpg_id), genes = c(only$target_gene, both$target_gene),
+                      gene_mode = "pairwise", probe_qc = "flag", tissue = "solid_tissue", verbose = FALSE)
+  d <- as.data.frame(p)
+  r1 <- d[d$cpg_id == only$cpg_id & d$target_gene == only$target_gene, ]
+  r2 <- d[d$cpg_id == both$cpg_id & d$target_gene == both$target_gene, ]
+  expect_equal(r1$measured_n_cohorts, 1L)
+  expect_equal(r1$best_rung, "measured_solid_single")
+  expect_equal(r1$best_direction, only$direction)
+  expect_equal(r2$best_rung, "measured_solid_replicated")
+})
+
+test_that("the osteoarthritis joint tissues are one donor group in solid tissue", {
+  g <- cpgdirection:::.cpgd_donor_group(c("Kreitmaier2026_cartilage", "Kreitmaier2026_synovium", "FUSION",
+                                           "GTEx_Lung", "MESA_Tcells"))
+  expect_equal(g, c("Kreitmaier2026", "Kreitmaier2026", "FUSION", "GTEx", "MESA"))
+  skip_if(!cpgd_has_data("measured_eqtms"), "measured table unavailable")
+  M <- cpgd_measured_eqtms()
+  skip_if(!"kreitmaier2026_msk" %in% M$source, "measured table predates the osteoarthritis source")
+  K <- M[grepl("Kreitmaier2026", M$cohorts, fixed = TRUE), ]
+  expect_true(all(K$tissue == "solid_tissue"))
+  expect_gt(nrow(K), 15000L)
+  # a pair seen only in cartilage and synovium is measured in one study, not replicated
+  only <- K[K$cohorts == "Kreitmaier2026_cartilage|Kreitmaier2026_synovium" & K$cohort_agreement >= 0.99 &
+              !grepl(";", K$target_gene), ][1, ]
+  both <- K[grepl("FUSION|GTEx", K$cohorts) & K$cohort_agreement >= 0.99 & !grepl(";", K$target_gene), ][1, ]
+  p <- cpg_gene_pairs(c(only$cpg_id, both$cpg_id), genes = c(only$target_gene, both$target_gene),
+                      gene_mode = "pairwise", probe_qc = "flag", tissue = "solid_tissue", verbose = FALSE)
+  d <- as.data.frame(p)
+  r1 <- d[d$cpg_id == only$cpg_id & d$target_gene == only$target_gene, ]
+  r2 <- d[d$cpg_id == both$cpg_id & d$target_gene == both$target_gene, ]
+  expect_equal(r1$measured_n_cohorts, 2L)
+  expect_false(grepl("replicated", r1$best_rung))
+  expect_equal(r2$best_rung, "measured_solid_replicated")
 })
 
 test_that("a measured pair reports its cohort count and a replication-based accuracy", {

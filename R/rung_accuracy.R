@@ -37,12 +37,10 @@ CPGD_RUNG_TARGETS <- c(blood = "blood", nasal_epithelium = "nasal epithelium",
 CPGD_LADDER_SOURCES <- c(
   paste0("measured_", rep(c("blood", "nasal", "solid"), each = 2),
          c("_replicated", "_single")),
-  paste0("smr_", c("replicated_S1", "replicated_S2", "high", "moderate",
-                   "moderate_finngen", "moderate_s3_replicated",
-                   "moderate_discordant_celltype", "weak", "weak_discordant")),
+  paste0("smr_acc_", c(95, 90, 80, 65, 55)),   # .cpgd_smr_band(), R/utils.R
   "catalogue_consensus_A", "catalogue_consensus_B",
   paste0("catalogue_single_", rep(c("blood", "nasal", "solid"), each = 2), c("_A", "_B")),
-  "onco_consensus", "distance_only")
+  "onco_consensus", paste0("distance_only_b", 1:6))   # .cpgd_distance_band(), R/utils.R
 
 CPGD_RUNG_DESC <- c(
   measured_blood_replicated = "measured in blood, 2+ independent cohorts agree",
@@ -51,15 +49,11 @@ CPGD_RUNG_DESC <- c(
   measured_nasal_single     = "measured in nasal epithelium, one study",
   measured_solid_replicated = "measured in solid tissue, 2+ independent cohorts agree",
   measured_solid_single     = "measured in solid tissue, one study",
-  smr_replicated_S1 = "SMR tier S1, same sign in eQTLGen and FinnGen PBMC",
-  smr_replicated_S2 = "SMR tier S2, same sign in eQTLGen and FinnGen PBMC",
-  smr_high          = "SMR tier S1, concordant instruments",
-  smr_moderate      = "SMR tier S2, single instrument",
-  smr_moderate_finngen = "SMR p<5e-8 at the top cis-mQTL, FinnGen PBMC outcome only",
-  smr_moderate_s3_replicated = "SMR tier S3, majority sign reproduced by FinnGen PBMC",
-  smr_moderate_discordant_celltype = "SMR tier S2, FinnGen cell-type arm disagrees",
-  smr_weak          = "SMR tier S3, instruments disagree",
-  smr_weak_discordant = "SMR tier S1, FinnGen PBMC disagrees, eQTLGen sign kept",
+  smr_acc_95 = "SMR (blood), per-pair accuracy 0.95 or higher",
+  smr_acc_90 = "SMR (blood), per-pair accuracy 0.90 to 0.95",
+  smr_acc_80 = "SMR (blood), per-pair accuracy 0.80 to 0.90",
+  smr_acc_65 = "SMR (blood), per-pair accuracy 0.65 to 0.80",
+  smr_acc_55 = "SMR (blood), per-pair accuracy 0.55 to 0.65",
   catalogue_consensus_A = "catalogue models agree, tier A",
   catalogue_consensus_B = "catalogue models agree, tier B",
   catalogue_single_blood_A = "blood catalogue model alone, tier A",
@@ -79,6 +73,16 @@ CPGD_RUNG_DESC <- c(
   distance_curve_blood = "blood distance curve",
   distance_curve_nasal = "nasal distance curve",
   distance_curve_solid = "solid-tissue distance curve")
+# the distance sources by band of |CpG - TSS| (b7, beyond 250 kb, has no yardstick pair)
+CPGD_RUNG_DESC <- c(CPGD_RUNG_DESC, local({
+  lab <- c(b1 = "within 0.5 kb", b2 = "0.5 to 1.5 kb", b3 = "1.5 to 5 kb", b4 = "5 to 10 kb",
+           b5 = "10 to 50 kb", b6 = "50 to 250 kb", b7 = "beyond 250 kb")
+  base <- CPGD_RUNG_DESC[c("distance_only", "distance_curve_blood", "distance_curve_nasal",
+                           "distance_curve_solid")]
+  x <- unlist(lapply(names(base), function(s)
+    stats::setNames(paste0(base[[s]], ", CpG ", lab, " of the TSS"), paste0(s, "_", names(lab)))))
+  x
+}))
 
 .cpgd_rung_target <- function(target) {
   if (is.null(target) || is.na(target)) "blood" else match.arg(target, CPGD_TISSUES)
@@ -164,16 +168,32 @@ CPGD_RUNG_DESC <- c(
   out
 }
 
+# Whether a distance key can supply a sign in a tissue: its figure there is at
+# or above the distance floor (0.55; PI ruling of 12 Nov 2026).
+.cpgd_distance_supplies <- function(key, target = "blood") {
+  target <- .cpgd_rung_target(target)
+  age <- if (identical(target, "blood")) "adult" else "any"
+  u <- unique(key[!is.na(key)])
+  ok <- vapply(u, function(s) {
+    f <- .cpgd_rung_figure1(s, target, age)
+    !is.null(f) && f$agree >= 0.55
+  }, logical(1))
+  out <- rep(FALSE, length(key))
+  i <- !is.na(key)
+  out[i] <- ok[match(key[i], u)]
+  out
+}
+
 # The ladder order in one tissue: sources (of `pool`) by the lower bound of
 # their figure there, highest first, without those whose point estimate is
-# below 0.5. Age never changes it.
+# below 0.5 (a distance band: below 0.55). Age never changes it.
 .cpgd_rung_order <- function(target = "blood", pool = CPGD_LADDER_SOURCES) {
   target <- .cpgd_rung_target(target)
   age <- if (identical(target, "blood")) "adult" else "any"
   F <- lapply(pool, function(s) .cpgd_rung_figure1(s, target, age))
   pt <- vapply(F, function(f) if (is.null(f)) NA_real_ else f$agree, numeric(1))
   lo <- vapply(F, function(f) if (is.null(f)) NA_real_ else f$lo, numeric(1))
-  keep <- !is.na(pt) & pt >= 0.5
+  keep <- !is.na(pt) & pt >= ifelse(startsWith(pool, "distance_"), 0.55, 0.5)
   pool[keep][order(-lo[keep], -pt[keep], seq_along(pool)[keep])]
 }
 
@@ -185,8 +205,11 @@ CPGD_RUNG_DESC <- c(
 .cpgd_apply_ladder <- function(cand, ord, conflict, n) {
   best <- rep(NA_real_, n); key <- rep(NA_character_, n)
   conflict[is.na(conflict)] <- FALSE
+  dist_seen <- FALSE
   for (s in ord) {
-    if (identical(s, "distance_only")) {
+    # from the highest-ranked distance band down
+    if (!dist_seen && startsWith(s, "distance_only")) {
+      dist_seen <- TRUE
       i <- which(is.na(key) & conflict)
       key[i] <- "tissue_conflict"
     }
@@ -237,21 +260,25 @@ CPGD_RUNG_DESC <- c(
   list(cons = cons, worst = worst, single = single, conflict = conflict, direct = direct)
 }
 
-# Fine source -> the coarse best_evidence label the outputs keep.
-.cpgd_rung_evidence <- function(key) {
+# Fine source -> the coarse best_evidence label the outputs keep. An SMR band
+# is labelled by the rung of the row that supplied it (`smr_src`, one per row:
+# smr_replicated, smr_high, smr_moderate, smr_weak): the rung says how the sign
+# was obtained, the band (best_rung) what it is worth.
+.cpgd_rung_evidence <- function(key, smr_src = NULL) {
+  band <- startsWith(key, "smr_acc_")
+  smr_lab <- if (is.null(smr_src)) rep("smr", length(key)) else as.character(smr_src)
   data.table::fcase(
     startsWith(key, "measured_"), "measured",
-    startsWith(key, "smr_replicated"), "smr_replicated",
-    key %in% "smr_high", "smr_high",
-    startsWith(key, "smr_moderate"), "smr_moderate",
-    startsWith(key, "smr_weak"), "smr_weak",
+    band, smr_lab,
+    startsWith(key, "distance_only_b"), "distance_only",
     startsWith(key, "catalogue_consensus"), "catalogue_consensus",
     startsWith(key, "catalogue_single"), "catalogue_single",
     default = key)
 }
 
 # The donor group of a measured cohort. Subsets of one study (EVA-PR's asthma
-# and control strata, MESA's monocytes and T cells, GTEx's tissues) share
+# and control strata, MESA's monocytes and T cells, GTEx's tissues, the
+# cartilage and synovium of the Kreitmaier 2026 osteoarthritis patients) share
 # donors, so a sign they agree on is one study's result, not a replication.
 .cpgd_donor_group <- function(cohort) {
   cohort <- trimws(as.character(cohort))
@@ -260,6 +287,7 @@ CPGD_RUNG_DESC <- c(
     startsWith(cohort, "EVA-PR"), "EVAPR",
     grepl("Framingham", cohort, fixed = TRUE), "FHS",
     startsWith(cohort, "HELIX"), "HELIX",
+    startsWith(cohort, "Kreitmaier2026"), "Kreitmaier2026",
     startsWith(cohort, "MESA"), "MESA",
     startsWith(cohort, "ROSMAP"), "ROSMAP",
     default = cohort)

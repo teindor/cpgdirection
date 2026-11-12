@@ -164,7 +164,8 @@ test_that("blood evidence is a labelled fallback and never outranks brain", {
   S <- cpgdirection:::.cpgd_smr_table()
   sk <- paste(S$cpg_id, toupper(S$target_gene))
   free <- !(sk %in% brain_any) & !(sk %in% bl) & !grepl("_", S$target_gene)
-  sm <- S[free & S$smr_rung == "replicated"]
+  # the fallback quotes the cortex figure of the pair's accuracy band
+  sm <- S[free & S$smr_rung == "replicated" & S$smr_accuracy >= 0.95]
   sm <- sm[!duplicated(sm$cpg_id)][1:3]
   sm <- sm[!is.na(sm$cpg_id)]
   skip_if(!nrow(sm), "no SMR-only pair")
@@ -172,8 +173,15 @@ test_that("blood evidence is a labelled fallback and never outranks brain", {
   q <- q[match(sm$cpg_id, q$cpg_id)]
   expect_true(all(q$requested_gene_best_evidence == "blood_SMR"))
   expect_true(all(q$requested_gene_best_accuracy ==
-                    CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_replicated"]]))
-  expect_true(all(q$requested_gene_accuracy == 0.745))
+                    CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_95"]]))
+  expect_true(all(q$requested_gene_accuracy == 0.804))
+  # a pair below the accuracy floor is no fallback, whatever its rung
+  lowp <- S[free & S$smr_rung != "reported" & S$smr_accuracy < cpgdirection:::CPGD_SMR_FLOOR &
+              !(S$cpg_id %chin% S$cpg_id[S$smr_accuracy >= cpgdirection:::CPGD_SMR_FLOOR])][1]
+  if (nrow(lowp) && !is.na(lowp$cpg_id)) {
+    q <- cpg_brain_bridge(paste0(lowp$cpg_id, "_", lowp$target_gene))
+    expect_true(is.na(q$requested_gene_best_evidence))
+  }
   rp <- S[free & S$smr_rung == "reported" &
             !(S$cpg_id %chin% S$cpg_id[S$smr_rung != "reported"])][1]
   if (nrow(rp) && !is.na(rp$cpg_id)) {
@@ -193,7 +201,8 @@ test_that("require_detected filters the blood-SMR fallback only", {
   taken <- unique(c(paste(M$cpg_id, M$target_gene), paste(B12$cpg_id, toupper(B12$target_gene)),
                     paste(Mb$cpg_id[Mb$tissue == "blood"], toupper(Mb$target_gene[Mb$tissue == "blood"]))))
   sk <- paste(S$cpg_id, toupper(S$target_gene))
-  ok <- !(sk %in% taken) & !grepl("_", S$target_gene) & S$smr_rung == "replicated"
+  ok <- !(sk %in% taken) & !grepl("_", S$target_gene) & S$smr_rung == "replicated" &
+        S$smr_accuracy >= cpgdirection:::CPGD_SMR_FLOOR
   nul <- S[ok & S$child_blood_helix == "null"][1]
   sig <- S[ok & S$child_blood_helix == "sig" & S$cpg_id != nul$cpg_id][1]
   skip_if(is.na(nul$cpg_id) || is.na(sig$cpg_id), "no suitable pairs")

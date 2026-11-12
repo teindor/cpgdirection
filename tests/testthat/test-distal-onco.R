@@ -170,27 +170,30 @@ test_that("onco_consensus is ranked by its accuracy in the call's tissue", {
     expect_equal(a$best_evidence, "catalogue_single"); expect_equal(a$best_direction, 1)
     expect_false(a$onco_agreement)
   }
-  # against an S3 SMR row (smr_weak) and an S2 row (smr_moderate)
+  # against an S3 SMR row (smr_weak) in the 0.65-0.80 accuracy band and an S2
+  # row (smr_moderate) in the 0.95+ band: the band is what is ranked
   smr3 <- data.table(cpg_id = CG1, target_gene = "GENEA", direction = 1,
                      smr_tier = "S3", p_SMR = 1e-3, n_instruments = 2L,
-                     instrument_agreement = 0.5, cpg_gene_dist = 5000)
+                     instrument_agreement = 0.5, cpg_gene_dist = 5000, smr_accuracy = 0.70)
   for (tr in c("S3", "S2")) {
-    sm <- data.table::copy(smr3)[, smr_tier := tr]
+    sm <- data.table::copy(smr3)[, smr_tier := tr][, smr_accuracy := if (tr == "S3") 0.70 else 0.97]
     src <- src_with(smr = sm, onco = fx_onco(CG1, "GENEA", direction = -1))
     p <- cpg_gene_pairs(CG1, universal = FALSE, verbose = FALSE, sources = src)
     a <- p[p$target_gene == "GENEA", ]
     rk <- if (tr == "S3") "smr_weak" else "smr_moderate"
-    if (above("onco_consensus", rk)) {
+    band <- if (tr == "S3") "smr_acc_65" else "smr_acc_95"
+    if (above("onco_consensus", band)) {
       expect_equal(a$best_evidence, "onco_consensus", info = tr)
       expect_equal(a$best_direction, -1, info = tr)
     } else {
       expect_equal(a$best_evidence, rk, info = tr)
+      expect_equal(a$best_rung, band, info = tr)
       expect_equal(a$best_direction, 1, info = tr)
     }
   }
-  # in blood, as validated against MESA: O1 above SMR moderate and S3
-  expect_true(above("onco_consensus", "smr_moderate"))
-  expect_true(above("onco_consensus", "smr_weak"))
+  # in blood: O1 above the 0.65-0.80 SMR band and below the top band
+  expect_true(above("onco_consensus", "smr_acc_65"))
+  expect_true(above("smr_acc_95", "onco_consensus"))
 })
 
 test_that("the tumour columns are always present; include_onco only adds targets", {

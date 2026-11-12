@@ -11,8 +11,10 @@ A \code{data.table} with \code{cpg_id}, \code{target_gene},
   \code{tissue}, \code{direction}, \code{tss_dist}, and (2.99.8)
   \code{n_cohorts}, \code{cohort_agreement}, \code{cohorts} (pipe-separated
   cohort names, or \code{packaged_v1}) and \code{source}
-  (\code{eqtm_atlas}, \code{helix_dryad_2022}, \code{wang2021_S2} or
-  \code{packaged_v1}).
+  (\code{eqtm_atlas}, \code{helix_dryad_2022}, \code{wang2021_S2},
+  \code{kreitmaier2026_msk}, \code{liu2022_kidney},
+  \code{delahaye2018_placenta}, \code{voisin2016_adipose},
+  \code{kennedy2018_gtp} or \code{packaged_v1}).
 }
 \description{
 The CpG-gene pairs that were directly measured in at least one eQTM
@@ -29,7 +31,7 @@ significant by the cohort's own rule, with the sign taken by cohort
 majority (one vote per cohort); sign ties are dropped.
 \code{tissue} is \code{blood}, \code{nasal_epithelium} or
 \code{solid_tissue} (normal muscle, lung, ovary, colon, breast, prostate,
-testis pooled). Tumour-derived pairs are no longer in this table; tumour
+testis pooled; from 1.1.0 also osteoarthritic cartilage and synovium). Tumour-derived pairs are no longer in this table; tumour
 evidence is the Onco-eQTM layer.
 }
 \section{Blood cohorts added in 1.1.0 (November 2026 build)}{
@@ -53,7 +55,78 @@ than one cohort; \code{tools/build_nov2026_extdata.R}, report in
 The 250 kb window is enforced on every row; 10 duplicated rows were removed,
 118 pairs dropped as cohort ties and 13 existing pairs changed sign. Liver
 (Wang et al. 2021, 0.841 against shipped solid tissue, interval straddling
-the 0.85 bar) is held out. Nasal and solid tissue are unchanged.
+the 0.85 bar) is held out. Nasal epithelium is unchanged.
+}
+
+\section{Solid-tissue source added in 1.1.0 (osteoarthritis joint tissues)}{
+
+The solid class grows from 37,462 to 49,832 pairs
+(\code{tools/build_kreitmaier2026_extdata.R}, report in
+\code{tools/reports/build_kreitmaier2026_extdata.md}) with the cartilage
+and synovium eQTMs of Kreitmaier et al. 2026 (Ann Rheum Dis,
+doi:10.1016/j.ard.2026.01.020; low-grade cartilage n = 227, high-grade
+n = 127, synovium n = 226; full statistics from the Musculoskeletal
+Knowledge Portal, read by \code{tools/ingest_kreitmaier2026_oa.R}): the
+pairs significant by the study's own rule (gene at 5\% FDR, pair at the
+gene's Bonferroni threshold), within 250 kb, 15,596 pairs over 13,101
+CpGs, cohorts \code{Kreitmaier2026_cartilage} and
+\code{Kreitmaier2026_synovium}, source \code{kreitmaier2026_msk}. All
+tissues come from the same patients, so the two cohorts are one donor
+group and never count as a replication of each other. Against the solid
+pairs already shipped the signs agree at 0.926 (n = 3,042); against GTEx
+solid tissues 0.969 (n = 1,500) and against FUSION muscle 0.909
+(n = 2,405). 12,554 pairs are new, 184 are dropped as cohort ties and 30
+existing pairs change sign; pairs seen in two or more donor groups with
+every cohort agreeing rise from 1,530 to 3,730. Sub-threshold pairs and
+the fat-pad set (n = 45, no significant pair) are not included. The
+tissue is osteoarthritic; the class label stays \code{solid_tissue}, and
+\code{cohorts} says where a sign was measured.
+}
+
+\section{Sources added in 1.1.0 (kidney, placenta, adipose, GTP whole blood)}{
+
+Four published eQTM tables, each one cohort and one donor group, each
+admitted because its signs agree with the pairs already measured at 0.85
+or better (\code{tools/ingest_nov2026_measured_sources.R},
+\code{tools/build_nov2026_sources_extdata.R}, report in
+\code{tools/reports/build_nov2026_sources_extdata.md}):
+\itemize{
+  \item \strong{Kidney tubule} (Liu et al. 2022, Nat Genet,
+    doi:10.1038/s41588-022-01097-w, Supplementary Table 12; n = 414, EPIC,
+    RNA-seq, global FDR below 0.05): 29,988 pairs within 250 kb, cohort
+    \code{Liu2022_kidney}, source \code{liu2022_kidney}, solid tissue;
+    0.897 against all shared measured pairs (n = 6,156), 0.908 against
+    solid tissue (n = 4,685). The published sheet lists its CpG and
+    Ensembl identifiers in a different row order from its statistics, so
+    each CpG is recovered from the row's chromosome and position; the
+    recovery reproduces the 16,136 pairs of the study's Supplementary
+    Table 11 it can be checked on, with identical effect sizes.
+  \item \strong{Placenta} (Delahaye et al. 2018, PLoS Genet,
+    doi:10.1371/journal.pgen.1007785, S20 Table; n = 74, 450K, RNA-seq):
+    2,314 pairs, cohort \code{Delahaye2018_placenta}, source
+    \code{delahaye2018_placenta}, solid tissue; 0.901 (n = 434).
+  \item \strong{Adipose tissue} (Voisin et al. 2016, PLoS One,
+    doi:10.1371/journal.pone.0157776, S20 Table; n = 118, 450K): 427
+    pairs, cohort \code{Voisin2016_adipose}, source
+    \code{voisin2016_adipose}, solid tissue; 0.913 (n = 277).
+  \item \strong{Whole blood, Grady Trauma Project} (Kennedy et al. 2018,
+    BMC Genomics, doi:10.1186/s12864-018-4842-3, Additional file 1;
+    n = 333, all African American, 450K, expression array): the
+    same-chromosome pairs of the file (p below 1e-5) within 250 kb, 3,735
+    pairs, cohort \code{Kennedy2018_GTP_blood}, source
+    \code{kennedy2018_gtp}, blood; 0.932 (n = 2,259), and 0.939 against
+    the blood pairs (n = 2,156).
+}
+Solid tissue grows from 49,832 to 76,958 pairs and blood from 45,311 to
+46,790; 412 solid and 100 blood pairs are dropped as cohort ties and 2
+existing solid pairs change sign. Pairs seen in two or more donor groups
+with every cohort agreeing rise from 3,730 to 6,891 in solid tissue and
+from 6,333 to 7,159 in blood. CpGs of the 450K array that the package's
+position table does not hold are placed by the Illumina 450K manifest
+(build 37). The class labels stay \code{solid_tissue} and \code{blood};
+\code{cohorts} says where a sign was measured. Retina, liver, pancreatic
+islets and fibroblasts were appraised with the same test, fell below the
+bar (0.73 to 0.82), and are not part of this table.
 
 These matter for a specific reason. Nearest-gene annotation is wrong often
 enough to be a problem: a substantial share of measured pairs involve a

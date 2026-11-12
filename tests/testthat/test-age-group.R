@@ -6,6 +6,9 @@
 
 library(data.table)
 
+# per-pair accuracy by rung: the band is what the ladder ranks (replicated ->
+# smr_acc_95, high -> smr_acc_90, moderate -> smr_acc_80, weak -> smr_acc_65)
+ag_acc <- c(replicated = 0.97, high = 0.93, moderate = 0.85, weak = 0.70, reported = 0.60)
 ag_smr <- function(cpg, gene, direction, rung, tier = "S1", child = "sig",
                    outcome = "eQTLGen", replication = "concordant") {
   data.table(cpg_id = cpg, target_gene = gene, direction = direction,
@@ -14,7 +17,7 @@ ag_smr <- function(cpg, gene, direction, rung, tier = "S1", child = "sig",
              top_instrument = "rs1", p_HEIDI = 0.5, nsnp_HEIDI = 3L,
              heidi_status = "pass", outcome = outcome,
              replication = replication, smr_rung = rung,
-             child_blood_helix = child)
+             smr_accuracy = ag_acc[[rung]], child_blood_helix = child)
 }
 ag_fx_smr <- function() rbindlist(list(
   ag_smr("cg20000001", "GENEA", -1, "replicated", "S1", "sig"),
@@ -34,7 +37,7 @@ ag_pairs <- function(...) cpg_gene_pairs(ag_cpgs, universal = FALSE, verbose = F
 
 test_that("child blood quotes HELIX where HELIX scores the source on 100+ pairs, adult otherwise", {
   R <- CPGD_RUNG_ACCURACY
-  for (src in c("smr_replicated_S1", "smr_moderate", "smr_weak", "catalogue_consensus_A")) {
+  for (src in c("smr_acc_95", "smr_acc_80", "smr_acc_65", "catalogue_consensus_A")) {
     ch <- R[R$source == src & R$target == "blood" & R$age == "child", ]
     k <- cpgdirection:::.cpgd_rung_label(src, "blood", "child")
     a <- cpgdirection:::.cpgd_rung_label(src, "blood", "adult")
@@ -46,7 +49,7 @@ test_that("child blood quotes HELIX where HELIX scores the source on 100+ pairs,
       expect_identical(cpgdirection:::.cpgd_rung_label(src, "blood", "any"), a)
     }
   }
-  expect_true(grepl("in adult blood", cpgdirection:::.cpgd_rung_label("smr_high", "blood", "adult")))
+  expect_true(grepl("in adult blood", cpgdirection:::.cpgd_rung_label("smr_acc_90", "blood", "adult")))
   expect_setequal(names(CPGD_SMR_DETECTION_CHILD),
                   c("replicated", "high", "moderate", "weak", "reported"))
   expect_identical(CPGD_CHILD_BLOOD_LEVELS, c("sig", "nominal", "null", "untested"))
@@ -64,17 +67,19 @@ test_that("the default equals age_group = 'adult' and carries no age-specific co
   r <- p0[p0$target_gene == "GENEA", ]
   expect_equal(r$best_evidence, "smr_replicated")
   expect_identical(r$best_expected_accuracy,
-                   cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "adult"))
+                   cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "adult"))
+  expect_identical(r$best_rung, "smr_acc_95")
 })
 
 test_that("the default output: as at 8896789 except the ranked ladder and the two new columns", {
   # At 8896789 this fixture gave directions -1, 1, 1, 1, NA with evidence
   # smr_replicated, smr_moderate, measured, smr_weak, no_evidence. 1.1.0 ranks
-  # the ladder by the lower bound of each source's figure in the call's tissue:
-  # in blood (MESA yardstick) a single measured study (0.866) edges SMR S1 high
-  # (0.865), so GENEC keeps the measured sign. The columns are those of 8896789
-  # plus best_rung (after best_evidence) and best_accuracy (after
-  # best_expected_accuracy).
+  # the ladder by the lower bound of each source's figure in the call's tissue,
+  # and ranks SMR pairs by the band of their per-pair accuracy: in blood a
+  # single measured study outranks the 0.90-0.95 band, so GENEC keeps the
+  # measured sign. The columns are those of 8896789 plus best_rung (after
+  # best_evidence), best_accuracy (after best_expected_accuracy) and
+  # smr_accuracy (after smr_outcome).
   p <- ag_pairs(sources = ag_src())
   expect_identical(setdiff(names(p), c("best_rung", "best_accuracy")), c(
     "input_id", "input", "cpg_id", "target_gene", "pair_id", "mapping_sources", "mapping_primary",
@@ -85,7 +90,7 @@ test_that("the default output: as at 8896789 except the ranked ladder and the tw
     "measured_n_cohorts", "measured_cohort_agreement", "lookup_direction", "lookup_probability_plus1",
     "lookup_confidence", "lookup_evidence_tier", "n_tissues_calling", "tissue_agreement",
     "smr_direction", "smr_tier", "p_SMR", "n_instruments", "instrument_agreement", "p_HEIDI",
-    "heidi_status", "smr_rung", "smr_replication", "smr_outcome", "abs_dist", "p_universal",
+    "heidi_status", "smr_rung", "smr_replication", "smr_outcome", "smr_accuracy", "abs_dist", "p_universal",
     "dir_universal", "dist_unanimous", "onco_direction", "onco_tier", "onco_n_cancers",
     "onco_sign_agreement", "onco_median_r", "onco_agreement", "input_ids", "inputs"))
   expect_identical(names(p)[match("best_evidence", names(p)) + 1L], "best_rung")
@@ -93,11 +98,11 @@ test_that("the default output: as at 8896789 except the ranked ladder and the tw
   expect_identical(p$pair_id, c("cg20000001|GENEA", "cg20000001|GENEB", "cg20000002|GENEC",
                                 "cg20000003|GENED", "cg20000003|GENEE"))
   ob <- cpgdirection:::.cpgd_rung_order("blood")
-  expect_true(match("measured_blood_single", ob) < match("smr_high", ob))
+  expect_true(match("measured_blood_single", ob) < match("smr_acc_90", ob))
   expect_identical(p$best_direction, c(-1, 1, 1, 1, NA))
   expect_identical(p$best_evidence, c("smr_replicated", "smr_moderate", "measured", "smr_weak",
                                       "no_evidence"))
-  rk <- c("smr_replicated_S1", "smr_moderate", "measured_blood_single", "smr_weak")
+  rk <- c("smr_acc_95", "smr_acc_80", "measured_blood_single", "smr_acc_65")
   expect_identical(p$best_rung, c(rk, "no_evidence"))
   expect_identical(p$best_expected_accuracy,
                    c(cpgdirection:::.cpgd_rung_label(rk, "blood", "adult"), NA))
@@ -106,8 +111,8 @@ test_that("the default output: as at 8896789 except the ranked ladder and the tw
   R <- CPGD_RUNG_ACCURACY[CPGD_RUNG_ACCURACY$target == "blood" & CPGD_RUNG_ACCURACY$age == "adult", ]
   lo <- R$lo[match(rk, R$source)]
   expect_identical(p$best_accuracy, c(pmax(lo, 0.5), NA))
-  # in solid tissue too the single measured study outranks SMR high (0.85 vs
-  # 0.78): GENEC is +1
+  # in solid tissue too the single measured study outranks that SMR band:
+  # GENEC is +1
   q <- ag_pairs(sources = ag_src(), tissue = "solid_tissue")
   expect_identical(q$best_rung[3], "measured_blood_single")
   expect_identical(q$best_direction[3], 1)
@@ -153,8 +158,8 @@ test_that("age_group = 'any' quotes adult and child figures side by side", {
   y <- ag_pairs(sources = ag_src(), age_group = "any")
   s <- y$best_expected_accuracy[y$target_gene == "GENEA"]
   expect_identical(s, paste0(
-    cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "adult"), " | ",
-    cpgdirection:::.cpgd_rung_label("smr_replicated_S1", "blood", "child")))
+    cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "adult"), " | ",
+    cpgdirection:::.cpgd_rung_label("smr_acc_95", "blood", "child")))
   expect_true("smr_child_blood_helix" %in% names(y))
 })
 

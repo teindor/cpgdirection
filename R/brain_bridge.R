@@ -33,7 +33,7 @@ CPGD_BRAIN_ACCURACY <- c(
 CPGD_BRAIN_LADDER <- c("measured_brain", "brain_T1", "brain_T2",
                        "measured_blood", "blood_SMR")
 # The blood SMR fallback, ranked by its accuracy in adult cortex.
-CPGD_BRAIN_SMR_ORDER <- c("replicated", "high", "weak", "moderate")
+CPGD_BRAIN_SMR_ORDER <- c("acc_95", "acc_90", "acc_80", "acc_55", "acc_65")
 CPGD_BRAIN_TARGET_ACCURACY <- c(
   measured_brain_replicated = "~1.00 (measured in cortex, same sign in ROSMAP and Jaffe)",
   measured_brain_single = paste0("0.93-0.98 (measured in one cortex cohort; ROSMAP and ",
@@ -42,10 +42,11 @@ CPGD_BRAIN_TARGET_ACCURACY <- c(
   brain_T2 = CPGD_BRAIN_ACCURACY[["T2"]],
   measured_blood = paste0("0.84 against adult cortex (measured blood eQTMs vs ROSMAP, ",
                           "n=1,654; below the 0.85 bar: fallback only)"),
-  blood_SMR_replicated = "0.77 against adult cortex (blood SMR replicated, n=1,055; fallback only)",
-  blood_SMR_high       = "0.74 against adult cortex (blood SMR high, n=218; fallback only)",
-  blood_SMR_moderate   = "0.67 against adult cortex (blood SMR moderate, n=1,693; fallback only)",
-  blood_SMR_weak       = "0.73 against adult cortex (blood SMR weak, n=91; fallback only)")
+  blood_SMR_acc_95 = "0.83 against adult cortex (blood SMR, per-pair accuracy 0.95 or higher, n=1,426; fallback only)",
+  blood_SMR_acc_90 = "0.71 against adult cortex (blood SMR, per-pair accuracy 0.90 to 0.95, n=686; fallback only)",
+  blood_SMR_acc_80 = "0.69 against adult cortex (blood SMR, per-pair accuracy 0.80 to 0.90, n=664; fallback only)",
+  blood_SMR_acc_65 = "0.53 against adult cortex (blood SMR, per-pair accuracy 0.65 to 0.80, n=418; fallback only)",
+  blood_SMR_acc_55 = "0.55 against adult cortex (blood SMR, per-pair accuracy 0.55 to 0.65, n=160; fallback only)")
 
 # The age caveat the bridge repeats, by age_group (lead18b_result_ruling.md,
 # 4 Nov 2026: with age removed, 1-25 y cortex eQTM signs match adult ROSMAP
@@ -96,7 +97,7 @@ CPGD_BRAIN_CAVEAT <- c(
 #'
 #' Blood evidence transports to adult cortex less well than this layer:
 #' measured blood eQTMs agree with measured cortex 0.84 (n = 1,654) and the
-#' blood SMR rungs 0.67-0.77 (\code{tools/validate_ladder_transport.R}), so a
+#' blood SMR pairs 0.53-0.83 by accuracy band (\code{?cpgd_smr_directions}), so a
 #' peripheral direction is never substituted for a brain one;
 #' \code{\link{cpg_brain_bridge}} uses blood only as a labelled fallback.
 #'
@@ -263,7 +264,7 @@ cpgd_bridge_deliverable <- function() {
 #'   \code{brain_T1} \tab 0.964 [0.926, 0.998] against independent adult cortex (0.995 in-sample on ROSMAP) \cr
 #'   \code{brain_T2} \tab 0.943 [0.899, 0.984] against independent adult cortex (0.939 in-sample on ROSMAP) \cr
 #'   \code{measured_blood} \tab 0.84 against adult cortex (below the 0.85 bar) \cr
-#'   \code{blood_SMR} \tab 0.67-0.77 against adult cortex, by rung \cr
+#'   \code{blood_SMR} \tab 0.53-0.83 against adult cortex, by accuracy band of the pair (0.83 at 0.95 or higher) \cr
 #' }
 #' Blood evidence is a labelled fallback for a brain question and never ranks
 #' above brain SMR. \code{requested_gene_direction} and
@@ -274,7 +275,7 @@ cpgd_bridge_deliverable <- function() {
 #' @section The caveats this function will keep repeating:
 #' \enumerate{
 #'   \item Directions are BRAIN-derived first. Blood evidence transports to
-#'     adult cortex at 0.84 (measured) and 0.67-0.77 (SMR) and enters only as
+#'     adult cortex at 0.84 (measured) and 0.53-0.83 (SMR, by accuracy band) and enters only as
 #'     the labelled fallback of the ladder above.
 #'   \item Age: validated in postnatal cortex from 1 year to old age; fetal
 #'     and infant (< 1 year) cortex is untested. The wording follows
@@ -581,8 +582,10 @@ cpg_brain_bridge <- function(cpgs, tissue = c("saliva", "blood", "buccal"),
       require_detected <- .cpgd_check_child_column(S, age_group, require_detected)
       rung <- .cpgd_smr_rung(S)
       cbs <- .cpgd_smr_child(S)
+      # as in the blood ladders: a pair below the accuracy floor supplies nothing
+      sacc <- .cpgd_smr_accuracy(S)
       ok <- rung %in% c("replicated", "high", "moderate", "weak") &
-            S$cpg_id %chin% cpg_id
+            !is.na(sacc) & sacc >= CPGD_SMR_FLOOR & S$cpg_id %chin% cpg_id
       if (isTRUE(require_detected)) {
         det <- cbs %in% CPGD_CHILD_DETECTED
         message(sprintf(paste0("require_detected: %s blood-SMR pair(s) for these CpGs ",
@@ -591,11 +594,12 @@ cpg_brain_bridge <- function(cpgs, tissue = c("saliva", "blood", "buccal"),
                         format(sum(ok & !det), big.mark = ",")))
         ok <- ok & det
       }
-      key <- paste0("blood_SMR_", rung[ok])
+      band <- .cpgd_smr_band(sacc[ok])
+      key <- paste0("blood_SMR_", band)
       # most accurate in cortex first, so unique() keeps it when spellings
-      # collide: replicated 0.772 > high 0.739 > weak 0.725 > moderate 0.666
-      # against ROSMAP (tools/reports/validate_ladder_transport.md)
-      o <- order(match(rung[ok], CPGD_BRAIN_SMR_ORDER))
+      # collide: by accuracy band of the pair, 0.825 (0.95+) > 0.714 > 0.694 >
+      # 0.550 (0.55-0.65) > 0.529 (0.65-0.80) against ROSMAP
+      o <- order(match(band, CPGD_BRAIN_SMR_ORDER))
       a <- unname(CPGD_BRAIN_TARGET_ACCURACY[key])
       Tb <- keyed(S$cpg_id[ok][o], S$target_gene[ok][o],
                   as.numeric(S$direction[ok][o]), a[o], cbs[ok][o])
@@ -706,7 +710,7 @@ print.cpgd_bridge <- function(x, ...) {
       cat("\n")
     }
     cat("Caveats: brain evidence first (measured cortex > T1 > T2); blood is a\n")
-    cat("labelled fallback (0.84 measured, 0.67-0.77 SMR against adult cortex);\n")
+    cat("labelled fallback (0.84 measured, 0.53-0.83 SMR by accuracy band, against adult cortex);\n")
     cat("couplings rest on n = 27 donors - trust grades over any single rho.\n")
     .cpgd_bridge_age_lines(x)
     cat("Full columns: as.data.frame(x).\n")

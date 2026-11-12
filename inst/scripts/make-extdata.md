@@ -22,9 +22,9 @@ tested); it is documented with the other Hub layers in `cpgdirectionData`.
 
 ## `measured_eqtms.csv.gz`
 
-Directly measured cis-eQTM pairs with a replicated sign, 93,818 rows
-(blood 45,311; nasal epithelium 11,045; solid tissue 37,462) from version 1.1.0;
-75,062 rows (blood 26,555) before.
+Directly measured cis-eQTM pairs with a replicated sign, 106,188 rows
+(blood 45,311; nasal epithelium 11,045; solid tissue 49,832) from version 1.1.0;
+75,062 rows (blood 26,555; solid tissue 37,462) before.
 
 * **Sources.** The eQTM Atlas (Sriram et al. 2026, bioRxiv
   doi:10.64898/2026.06.07.730721; browser
@@ -70,15 +70,156 @@ Directly measured cis-eQTM pairs with a replicated sign, 93,818 rows
   majority sign, ties dropped (118 pairs), `n_cohorts` /
   `cohort_agreement` / `cohorts` recomputed; 10 duplicated blood rows removed;
   13 existing pairs changed sign; 6,997 blood pairs are now multi-cohort.
+* **Osteoarthritis joint tissues (1.1.0, solid tissue).** Kreitmaier et al.
+  2026 (Ann Rheum Dis, doi:10.1016/j.ard.2026.01.020): eQTMs in low-grade
+  cartilage (n = 227), high-grade cartilage (n = 127) and synovium (n = 226)
+  of osteoarthritis patients; EPIC array, RNA-seq, MatrixEQTL, CpG within
+  1 Mb of the TSS. Full statistics for every tested pair from the
+  Musculoskeletal Knowledge Portal (<https://msk.hugeamp.org/downloads.html>,
+  "eQTMs ALL", `eqtm_full.tar.gz`, 3.16 GB, sha256 beginning `6439a10f`),
+  downloaded 11 November 2026. `tools/ingest_kreitmaier2026_oa.R` keeps the
+  pairs the study calls significant (`eQTM_cpg = 1`: gene at 5% FDR, pair at
+  the gene's Bonferroni threshold) within 250 kb on one chromosome, names
+  each Ensembl gene as the catalogue does (cpgdirectionData 0.99.7 gene
+  table, else Ensembl GRCh37), and forms two cohorts,
+  `Kreitmaier2026_cartilage` (low and high grade, one vote, opposite signs
+  dropped) and `Kreitmaier2026_synovium`: 15,596 pairs over 13,101 CpGs and
+  2,814 genes, source `kreitmaier2026_msk`. The two cohorts share patients
+  and are one donor group. Signs agree with the shipped solid pairs at
+  0.926 (n = 3,042), with GTEx solid tissues at 0.969 (n = 1,500) and with
+  FUSION muscle at 0.909 (n = 2,405). `tools/build_kreitmaier2026_extdata.R`
+  merges them by the cohort rule: 12,554 new pairs, 184 dropped as ties,
+  30 existing pairs change sign; solid pairs seen in two or more donor
+  groups with every cohort agreeing rise from 1,530 to 3,730. Not included
+  by ruling: sub-threshold pairs, and the fat-pad set (n = 45, no
+  significant pair).
+* **Kidney, placenta, adipose, GTP whole blood (1.1.0).** Four published
+  eQTM tables admitted on 12 November 2026, each one cohort and one donor
+  group, read by `tools/ingest_nov2026_measured_sources.R`:
+  - Liu et al. 2022 (Nat Genet, doi:10.1038/s41588-022-01097-w), kidney
+    tubule, n = 414, EPIC, RNA-seq; Supplementary Table 12 of
+    `41588_2022_1097_MOESM4_ESM.xlsx` (39,545 rows at global FDR < 0.05).
+    The sheet's CpG ID and Ensembl ID columns are in a different row order
+    from its statistics columns (the listed CpG is on the row's chromosome
+    in 6% of rows). The CpG of each row is recovered from Chr + CpG
+    Position and its gene from the Ensembl ID paired with that CpG whose
+    TSS is within 5 kb of the row's TSS (else the row's gene symbol). The
+    recovery is checked on Supplementary Table 11: 16,136 pairs found, all
+    with identical beta. 29,988 pairs kept, cohort `Liu2022_kidney`,
+    source `liu2022_kidney`, solid tissue.
+  - Delahaye et al. 2018 (PLoS Genet, doi:10.1371/journal.pgen.1007785),
+    placenta, n = 74, 450K, RNA-seq; S20 Table (`pgen.1007785.s032.xlsx`,
+    2,655 rows). 2,314 pairs, cohort `Delahaye2018_placenta`, source
+    `delahaye2018_placenta`, solid tissue.
+  - Voisin et al. 2016 (PLoS One, doi:10.1371/journal.pone.0157776),
+    adipose tissue, n = 118, 450K; S20 Table (`pone.0157776.s020.xlsx`, 546
+    rows). 427 pairs, cohort `Voisin2016_adipose`, source
+    `voisin2016_adipose`, solid tissue.
+  - Kennedy et al. 2018 (BMC Genomics, doi:10.1186/s12864-018-4842-3),
+    Grady Trauma Project whole blood, n = 333, all African American, 450K,
+    HT-12; Additional file 1 (`12864_2018_4842_MOESM1_ESM.txt`). The 8,383
+    rows not marked trans (p < 1e-5) are read; 3,735 pairs lie within
+    250 kb, cohort `Kennedy2018_GTP_blood`, source `kennedy2018_gtp`,
+    blood. Additional file 2 of that paper is MESA monocytes, already in
+    the table, and is not read.
+
+  Genes are named as the catalogue names them (cpgdirectionData 0.99.7 gene
+  table, else the unique Ensembl GRCh37 symbol); pairs sit on one
+  chromosome within 250 kb; one vote per cohort. A CpG the package's
+  position table does not hold (the table follows EPIC v2, which dropped
+  about 91,000 probes of the 450K array) is placed by the Illumina 450K
+  manifest, build 37 (GEO GPL13534,
+  `GPL13534_HumanMethylation450_15017482_v.1.1.csv.gz`; its positions equal
+  the package's on 99.85% of the 391,451 probes both hold): 2,918 of the
+  36,464 pairs. Sign agreement with all shared measured pairs: kidney 0.897
+  (n = 6,156), placenta 0.901 (n = 434), adipose 0.913 (n = 277), GTP 0.932
+  (n = 2,259). `tools/build_nov2026_sources_extdata.R` merges them by the
+  cohort rule: solid tissue 49,832 to 76,958 pairs, blood 45,311 to 46,790;
+  512 pairs dropped as ties, 2 existing signs change; pairs in two or more
+  donor groups with every cohort agreeing 3,730 to 6,891 (solid) and 6,333
+  to 7,159 (blood). Appraised with the same test and not included (below
+  0.85): retina, liver, pancreatic islets, fibroblasts.
 * **Columns.** `cpg_id`, `target_gene`, `tissue`, `direction` (+1/-1),
   `tss_dist` (signed CpG-TSS distance, bp), `n_cohorts`, `cohort_agreement`,
-  `cohorts`, `source` (`eqtm_atlas`, `helix_dryad_2022`, `wang2021_S2` or
-  `packaged_v1`).
+  `cohorts`, `source` (`eqtm_atlas`, `helix_dryad_2022`, `wang2021_S2`,
+  `kreitmaier2026_msk`, `liu2022_kidney`, `delahaye2018_placenta`,
+  `voisin2016_adipose`, `kennedy2018_gtp` or `packaged_v1`).
 * **Reproduce.** From the package root, with the Atlas exports in a directory:
   `Rscript inst/scripts/build_measured_eqtms.R --atlas-dir <dir> --out tools/out`,
   then copy `tools/out/measured_eqtms_v2.csv.gz` to
   `inst/extdata/measured_eqtms.csv.gz`; then add the November sources with
-  `Rscript tools/build_nov2026_extdata.R` (inputs listed in its header).
+  `Rscript tools/build_nov2026_extdata.R` (inputs listed in its header), and
+  the osteoarthritis source with `Rscript tools/ingest_kreitmaier2026_oa.R
+  --tar <eqtm_full.tar.gz> --gene-table <gene_table.csv.gz> --ens
+  <ens_grch37.csv.gz>` followed by
+  `Rscript tools/build_kreitmaier2026_extdata.R`, and the kidney, placenta,
+  adipose and GTP sources with `Rscript
+  tools/ingest_nov2026_measured_sources.R --kidney <MOESM4.xlsx> --placenta
+  <s032.xlsx> --gtp <MOESM1_ESM.txt> --adipose <s020.xlsx> --hm450
+  <GPL13534 manifest csv.gz> --gene-table <gene_table.csv.gz> --ens
+  <ens_grch37.csv.gz>` followed by
+  `Rscript tools/build_nov2026_sources_extdata.R`.
+
+## `reported_contexts.csv.gz` (1.1.0)
+
+CpG-gene signs from tissues without a voting class: 32,146 rows (pancreatic
+islets 19,319; liver 5,032; retina 4,486; saliva 1,965; fibroblasts 1,344).
+Reported only: never part of `measured_eqtms.csv.gz`, never a vote, never a
+source of `best_direction` (PI rulings of 11-12 November 2026).
+
+* **Sources.** Retina: Advani et al. 2024, `eQTM_significant_pairs_retina.txt`
+  (top CpG per gene, adjusted p <= 0.05). Liver: Bonder et al. 2014 (BMC
+  Genomics, Supplementary Table 5) and the
+  Horvath liver pairs of Wang et al. 2021 (Table S2), two independent
+  cohorts; the 337 pairs both hold have the same sign. Pancreatic islets:
+  Olsson et al. 2014 (PLoS Genet, doi:10.1371/journal.pgen.1004735, S25
+  Table a). Fibroblasts: Wagner et al. 2014 (Genome Biol, Additional file 13;
+  hg18 positions mapped to array CpGs by `tools/map_wagner2014_hg18.py`).
+  Saliva: SMR of the GoDMC cis-mQTL instruments against saliva cis-eQTLs
+  (lead 15), every pair within 250 kb kept, flagged for the MHC (466) and
+  the 17q21.31 inversion (134).
+* **Build.** `tools/parse_reported_sources.py` reads the published tables
+  into one long table; `tools/build_reported_contexts.R` names genes as the
+  catalogue does, places CpGs (package positions, else the 450K manifest),
+  keeps pairs on one chromosome within 250 kb, and votes per cohort. Report:
+  `tools/reports/build_reported_contexts.md`.
+* **Why not voting.** Sign agreement with the measured table within 250 kb:
+  fibroblasts 0.721 (n = 380), pancreatic islets 0.805 (n = 2,149), retina
+  0.842 (n = 253), liver 0.847 (n = 1,306; interval 0.826-0.865), saliva
+  0.762 (n = 248); the bar is 0.85.
+* **Columns.** `cpg_id`, `target_gene`, `context`, `direction`, `tss_dist`,
+  `n_cohorts`, `cohort_agreement`, `cohorts`, `source`, `evidence`
+  (`measured_eqtm` or `smr`), `flags`.
+
+## `cpg_region_flags.csv.gz` (1.1.0)
+
+One row per flagged CpG (66,636): `in_corsiv` (5,017; CoRSIVs 2.0),
+`in_imprinted_or_parental_asm` (2,102) and `in_asm` (63,025; Rosenski et al.
+2025, Nat Commun, Supplementary Data). Built by `tools/build_region_flags.py`,
+which also tests whether sign agreement is lower inside the regions (no
+consistent loss; the flags are information only).
+
+## The `smr_directions` Hub resource (1.1.0 INTERVAL rebuild)
+
+Not bundled; served by cpgdirectionData (>= 0.99.8) under the Hub name
+`smr_directions_v2`, because cpgdirection 0.99.x and 1.0.x take every row of
+the Hub resource `smr_directions`, which therefore stays as it was. In a
+local data directory the file may carry either name. Built by
+`tools/build_smr_layer_interval.py` from the previous resource, the INTERVAL
+per-pair record (`tools/collect_interval_smr.py`), the blood pairs of
+`measured_eqtms.csv.gz` (validation signs), the package position table and
+the 450K manifest (chromosome of each pair), and the HELIX full file (child
+blood status of the pairs seen in INTERVAL alone). 768,862 rows; report in
+`tools/reports/build_smr_layer_interval.md`.
+
+## The BLUEPRINT yardstick (1.1.0; not shipped)
+
+`tools/out/blueprint_eqtm_pooled.csv.gz`, used only by
+`tools/validate_rung_accuracy.R --blueprint`: BLUEPRINT monocyte, neutrophil
+and T-cell cis eQTMs (Chen et al. 2016), from the public phenotype matrices
+(`tools/blueprint_convert_matrices.py`, `tools/blueprint_eqtm_cis.py`) by the
+pooled union of two adjustments (`tools/build_blueprint_yardstick.py`; report
+in `tools/reports/build_blueprint_yardstick.md`): 53,369 rows, 43,086 pairs.
 
 ## `cpg_coordinates.csv.gz` (1.1.0)
 

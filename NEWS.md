@@ -29,6 +29,156 @@
   - **Unchanged.** The direction engine works in hg19 (its models and
     distance curves were fitted on hg19 distances). `cpgd_cpg_positions()`
     and every direction are as before.
+* **The SMR layer gains a third outcome study and a per-pair accuracy, and
+  the ladder ranks SMR pairs by it.** Requires cpgdirectionData (>= 0.99.8),
+  which serves this table as `smr_directions_v2`.
+  - **Its own Hub name.** cpgdirection 0.99.x and 1.0.x take every row of
+    the Hub resource `smr_directions` at its tier, so that resource stays as
+    it was (413,982 pairs) and the new table is a second resource. In a
+    directory named by `options(cpgdirection.data_dir = )` the file may be
+    called `smr_directions_v2` or `smr_directions`; the first is preferred
+    when both are there.
+  - **INTERVAL.** The GoDMC instruments were run against the INTERVAL
+    whole-blood RNA-seq cis-eQTLs (SMR and HEIDI on the full summary
+    statistics). The table grows from 549,316 to 768,862 pairs; 219,546 are
+    seen in INTERVAL alone. New columns: `interval_direction`,
+    `interval_tier`, `interval_p_SMR`, `interval_p_HEIDI`,
+    `interval_evidence`, `interval_status`.
+  - **Rung rule.** With three bulk outcomes (eQTLGen, FinnGen PBMC,
+    INTERVAL) a pair is `replicated` when at least two give the same sign,
+    none dissents, and either the instruments are concordant or one outcome
+    reaches p < 1e-40. An absent outcome is neutral; a dissent demotes (two
+    against one `weak`, one against one `reported`). Only an INTERVAL record
+    whose top-SNP test passes and does not conflict with its instrument vote
+    can promote. Against the sign measured in blood: replicated 0.963
+    (n = 13,283; 108,135 pairs), high 0.949, moderate 0.859, weak 0.755,
+    reported 0.412.
+  - **`smr_accuracy`.** Every pair carries the probability that its sign
+    equals the sign measured in blood, from a model of the pair's SMR
+    evidence fitted leaving the pair's chromosome out (AUC 0.85, mean
+    calibration gap 0.009).
+  - **What the ladder does with it.** SMR pairs are grouped into five
+    accuracy bands (0.95 or higher, 0.90 to 0.95, 0.80 to 0.90, 0.65 to
+    0.80, 0.55 to 0.65). Each band is a ladder source, validated in every
+    tissue against the independent yardsticks and ranked on its lower
+    bound, like any other source. A pair below 0.55, and any pair on the
+    `reported` rung, supplies no direction; a pair below 0.50 is not
+    flipped. `best_rung` is now `smr_acc_95` ... `smr_acc_55`;
+    `best_evidence` keeps the rung (`smr_replicated`, ...) as provenance.
+    In adult blood the bands validate at 0.961, 0.904, 0.846, 0.730 and
+    0.618; in solid tissue at 0.850, 0.741, 0.678 and 0.572, and the lowest
+    band is below 0.50 there, so it supplies nothing in solid tissue.
+  - **Why.** A rung pooled pairs of very different reliability: within
+    `moderate` the per-pair figure runs from below 0.55 to above 0.95. The
+    bands separate them, and the BLUEPRINT pairs, which the model never saw,
+    reproduce the band figures (0.969, 0.913, 0.856, 0.745, 0.637).
+  - **Old tables.** A `smr_directions` table without `smr_accuracy` is
+    still reported, with a warning, and supplies no `best_direction`.
+  - **Brain bridge.** The blood-SMR fallback of `cpg_brain_bridge()` uses
+    the same bands (against adult cortex: 0.83, 0.71, 0.69, 0.53, 0.55).
+
+* **The distance source is validated and ranked by distance band.**
+  - **What.** Six bands of the CpG's distance from the TSS (within 0.5 kb,
+    0.5 to 1.5, 1.5 to 5, 5 to 10, 10 to 50, 50 to 250 kb), each with its
+    own figure per tissue (`best_rung` `distance_only_b1` ...; for a
+    declared tissue `distance_curve_<tissue>_b1` ...).
+  - **Why.** One pooled figure (0.67) overstated the far calls and
+    understated the near ones: in adult blood the distance call is right
+    0.77 of the time within 0.5 kb and 0.57 at 10 to 50 kb.
+  - **Floor.** A band whose figure in the call's tissue is below 0.55
+    supplies nothing there. The same holds for `target_tissue`: a row whose
+    band is below the floor in the declared tissue keeps its abstention
+    (the solid-tissue curve beyond 10 kb, for example), so
+    `target_tissue` no longer fills every row.
+  - **Beyond 250 kb** the measured tables hold almost nothing to score the
+    source with, and it supplies no direction.
+
+* **The yardsticks: more folds, by one rule.** Every admitted donor group
+  with at least 5,000 pairs in its tissue, and independent of the sources it
+  scores, is a held-out fold there.
+  - Solid tissue: FUSION, GTEx, the osteoarthritis joint tissues and kidney
+    (was FUSION and GTEx).
+  - Adult blood: MESA and BLUEPRINT (was MESA). BLUEPRINT (Chen et al. 2016;
+    monocytes, neutrophils, T cells of about 200 donors) is a yardstick only:
+    43,086 pairs from the pooled union of two pre-specified adjustments
+    (sex and age; plus 5 principal components of each data type), one
+    false-discovery pass over both. It does not vote in the blood table; its
+    cell types become separate contexts in a later release.
+  - Child blood (HELIX) and nasal epithelium (EVA-PR) are unchanged.
+  - Every figure of `cpgd_accuracy_values()` is regenerated. In adult blood:
+    measured in two or more cohorts 0.987, one study 0.954, catalogue
+    consensus 0.73, the blood model's tier A alone 0.70.
+
+* **Reported tissue contexts and region flags** (information only; they
+  never vote and never supply or change `best_direction`).
+  - `cpgd_reported_contexts()`: 32,146 CpG-gene signs from retina, liver
+    (two cohorts), pancreatic islets, fibroblasts and saliva (SMR). Each
+    fell short of the 0.85 agreement that a voting source needs (0.72 to
+    0.85 within 250 kb), which can reflect tissue-specific regulation as
+    much as error.
+  - `cpgd_region_flags()`: 66,636 CpGs in CoRSIVs, imprinted or
+    parent-of-origin regions, or regions of allele-specific methylation.
+    Sign agreement inside these regions showed no consistent loss, so a
+    flag changes nothing.
+  - `cpgd_annotate()` attaches both to any result with a `cpg_id` column.
+
+* **Four more measured studies: kidney, placenta, adipose tissue, and a
+  second adult whole-blood cohort.**
+  - **What.** Published eQTM tables, each one cohort and one donor group
+    (`tools/ingest_nov2026_measured_sources.R`,
+    `tools/build_nov2026_sources_extdata.R`):
+    - kidney tubule, Liu et al. 2022 (n = 414): 29,988 pairs, cohort
+      `Liu2022_kidney`, solid tissue;
+    - placenta, Delahaye et al. 2018 (n = 74): 2,314 pairs, cohort
+      `Delahaye2018_placenta`, solid tissue;
+    - adipose tissue, Voisin et al. 2016 (n = 118): 427 pairs, cohort
+      `Voisin2016_adipose`, solid tissue;
+    - whole blood of the Grady Trauma Project, Kennedy et al. 2018
+      (n = 333, all African American): 3,735 pairs, cohort
+      `Kennedy2018_GTP_blood`, blood.
+  - **Why they were admitted.** Sign agreement with every pair the package
+    already measures, against a bar of 0.85: kidney 0.897 (n = 6,156),
+    placenta 0.901 (n = 434), adipose 0.913 (n = 277), GTP blood 0.932
+    (n = 2,259).
+  - **Effect.** Solid tissue grows from 49,832 to 76,958 measured pairs and
+    blood from 45,311 to 46,790. 512 pairs on which a new cohort and a
+    single earlier cohort disagree are dropped as ties; 2 existing signs
+    change. Pairs measured in two or more donor groups with every cohort
+    agreeing rise from 3,730 to 6,891 in solid tissue and from 6,333 to
+    7,159 in blood.
+  - **Kidney table.** The published supplementary sheet lists its CpG and
+    gene identifiers in a different row order from its statistics. Each CpG
+    is recovered from the row's chromosome and position, and the recovery
+    is checked against a second table of the same study (16,136 pairs, all
+    with identical effect sizes).
+  - **Not included.** Retina, liver, pancreatic islets and fibroblasts were
+    appraised with the same test and fell below the bar (0.73 to 0.82).
+  - **Positions.** CpGs of the 450K array that the package's position
+    table does not hold (it follows EPIC v2) are placed by the Illumina
+    450K manifest; 2,918 of the 36,464 new pairs.
+
+* **Solid tissue gains a third measured study: osteoarthritis cartilage and
+  synovium (Kreitmaier et al. 2026).**
+  - **What.** The pairs the study calls significant (gene at 5% FDR, pair at
+    the gene's Bonferroni threshold), within 250 kb: 15,596 pairs over 13,101
+    CpGs, cohorts `Kreitmaier2026_cartilage` and `Kreitmaier2026_synovium`,
+    source `kreitmaier2026_msk` (`tools/ingest_kreitmaier2026_oa.R`,
+    `tools/build_kreitmaier2026_extdata.R`). The two tissues come from the
+    same patients and are one donor group.
+  - **Why it was admitted.** Its signs agree with the solid pairs already
+    shipped at 0.926 (n = 3,042), with GTEx solid tissues at 0.969
+    (n = 1,500) and with FUSION muscle at 0.909 (n = 2,405); the bar for a
+    measured source is 0.85.
+  - **Effect.** Solid tissue grows from 37,462 to 49,832 measured pairs
+    (12,554 new, 184 dropped as cohort ties, 30 existing signs change). Pairs
+    measured in two or more donor groups with every cohort agreeing rise
+    from 1,530 to 3,730, so `measured_solid_replicated` is now scored on 635
+    yardstick pairs instead of 16: 0.962, lower bound 0.944 (was 0.806).
+    `measured_solid_single` is scored on 3,447 pairs: 0.906, lower bound
+    0.896 (was 0.921 and 0.907 on 1,644). No other source's figure in solid
+    tissue moves; the yardstick folds are unchanged.
+  - **Not included.** Sub-threshold pairs, and the fat-pad set (n = 45, no
+    significant pair). The solid catalogue model is not retrained.
 
 * **The catalogue's training chain is rebuilt (cpgdirectionData 0.99.7),
   and the ladder's figures with it.**
@@ -387,8 +537,8 @@
   - `CPGD_SMR_ACCURACY` (R/utils.R) holds the rung strings;
     `.cpgd_smr_rung()` maps tier -> rung for tables built before this
     version, so a stale cached resource keeps the old behaviour.
-  - New Hub version of `smr_directions` in cpgdirectionData (row count from
-    the v2 build report).
+  - The table is served by cpgdirectionData 0.99.8 as the Hub resource
+    `smr_directions_v2` (see the SMR entry above).
 
 * **Undermining record** (Undermind workspace "cpgdirection monthly horizon
   scan", 2 Nov 2026): no MR/SMR guideline treats cross-outcome concordance as

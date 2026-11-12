@@ -68,7 +68,7 @@ test_that("the default mode returns the multi-layer column set", {
   expect_true(all(stats::na.omit(r$best_evidence) %in% cpgdirection:::CPGD_EVIDENCE))
 })
 
-test_that("target_tissue only fills blanks and never overwrites a call", {
+test_that("target_tissue ranks by the declared tissue, fills blanks, and never drops a call", {
   skip_if_not(cpgd_has_data("lookup_blood_hg19"), "blood catalogue unavailable")
   skip_on_cran()
   cg <- c("cg00000029", "cg00050692", "cg02079741")
@@ -76,9 +76,16 @@ test_that("target_tissue only fills blanks and never overwrites a call", {
   b <- cpg_expression_direction(cg, target_tissue = "solid_tissue", verbose = FALSE)
   data.table::setkeyv(a, "cpg_id"); data.table::setkeyv(b, "cpg_id")
   called <- !is.na(a$best_direction)
-  expect_equal(b$best_direction[called], a$best_direction[called])
-  expect_equal(b$best_evidence[called],  a$best_evidence[called])
+  expect_false(any(is.na(b$best_direction[called])))
   expect_true(sum(is.na(b$best_direction)) <= sum(is.na(a$best_direction)))
+  # the same source gives the same sign; a different source answers only when
+  # it ranks higher in the declared tissue (the ladder is ranked per tissue)
+  same <- called & b$best_rung == a$best_rung
+  expect_equal(b$best_direction[same], a$best_direction[same])
+  os <- cpgdirection:::.cpgd_rung_order("solid_tissue")
+  other <- called & !same
+  ra <- match(a$best_rung[other], os); rb <- match(b$best_rung[other], os)
+  expect_true(all(!is.na(rb) & (is.na(ra) | rb < ra)))
 })
 
 test_that("the shipped reference reproduces", {

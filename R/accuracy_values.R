@@ -64,14 +64,16 @@
     r(CPGD_BRAIN_TARGET_ACCURACY[["measured_blood"]], "brain_fallback_measured_blood",
       "adult cortex", 0.840, 0.822, 0.857, "1,654", W,
       "measured blood eQTMs vs ROSMAP cortex (tools/reports/validate_ladder_transport.md)"),
-    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_replicated"]], "brain_fallback_blood_SMR_replicated",
-      "adult cortex", 0.772, 0.745, 0.796, "1,055", W, "blood SMR replicated vs ROSMAP cortex"),
-    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_high"]], "brain_fallback_blood_SMR_high",
-      "adult cortex", 0.739, 0.676, 0.792, "218", W, "blood SMR high vs ROSMAP cortex"),
-    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_weak"]], "brain_fallback_blood_SMR_weak",
-      "adult cortex", 0.725, 0.626, 0.806, "91", W, "blood SMR weak vs ROSMAP cortex"),
-    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_moderate"]], "brain_fallback_blood_SMR_moderate",
-      "adult cortex", 0.666, 0.643, 0.688, "1,693", W, "blood SMR moderate vs ROSMAP cortex")))
+    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_95"]], "brain_fallback_blood_SMR_acc_95",
+      "adult cortex", 0.825, 0.804, 0.844, "1,426", W, "blood SMR, per-pair accuracy 0.95 or higher, vs ROSMAP cortex"),
+    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_90"]], "brain_fallback_blood_SMR_acc_90",
+      "adult cortex", 0.714, 0.679, 0.747, "686", W, "blood SMR, per-pair accuracy 0.90 to 0.95, vs ROSMAP cortex"),
+    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_80"]], "brain_fallback_blood_SMR_acc_80",
+      "adult cortex", 0.694, 0.658, 0.728, "664", W, "blood SMR, per-pair accuracy 0.80 to 0.90, vs ROSMAP cortex"),
+    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_55"]], "brain_fallback_blood_SMR_acc_55",
+      "adult cortex", 0.550, 0.473, 0.625, "160", W, "blood SMR, per-pair accuracy 0.55 to 0.65, vs ROSMAP cortex"),
+    r(CPGD_BRAIN_TARGET_ACCURACY[["blood_SMR_acc_65"]], "brain_fallback_blood_SMR_acc_65",
+      "adult cortex", 0.529, 0.481, 0.576, "418", W, "blood SMR, per-pair accuracy 0.65 to 0.80, vs ROSMAP cortex")))
   V <- do.call(rbind, rows)
   V <- V[!duplicated(V$label), , drop = FALSE]
   rownames(V) <- NULL

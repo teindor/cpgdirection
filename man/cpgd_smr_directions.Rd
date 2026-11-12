@@ -29,6 +29,10 @@ A \code{data.table} with \code{cpg_id}, \code{target_gene},
   and from 1.1.0 \code{outcome}, \code{replication}, \code{finngen_direction},
   \code{finngen_tier}, \code{finngen_p_SMR}, \code{finngen_heidi_status},
   \code{finngen_contexts}, \code{finngen_evidence} and \code{smr_rung};
+  from the INTERVAL rebuild \code{interval_direction},
+  \code{interval_tier}, \code{interval_p_SMR}, \code{interval_evidence},
+  \code{interval_p_HEIDI}, \code{interval_status} and
+  \code{smr_accuracy};
   with \code{age_group = "child"} or \code{"any"} also
   \code{child_blood_helix} (\code{NA} where the resource predates it).
 }
@@ -141,6 +145,65 @@ which is noted, and below the 200-pair bar for a rung of its own). Cell-type con
 they add coverage (\code{finngen_contexts}), not sign.
 }
 
+\section{A third outcome study and a per-pair accuracy (1.1.0, INTERVAL rebuild)}{
+
+The GoDMC instruments were also run against the INTERVAL whole-blood
+RNA-seq cis-eQTLs (SMR and HEIDI on the full summary statistics;
+\code{tools/build_smr_layer_interval.py}, report in
+\code{tools/reports/build_smr_layer_interval.md}). The table grows from
+549,316 to 768,862 pairs (219,546 seen in INTERVAL alone) and each row
+carries the INTERVAL side: \code{interval_direction},
+\code{interval_tier}, \code{interval_p_SMR}, \code{interval_p_HEIDI},
+\code{interval_evidence} (\code{"both"}: the top-SNP SMR test passes
+5e-8 and the clumped instruments vote the same way; \code{"smr_top_snp"};
+\code{"instrument_vote"}: only the vote exists; \code{"conflict"}: the
+two disagree, the top-SNP sign is kept) and \code{interval_status}
+(\code{agrees}, \code{disagrees}, \code{absent}, \code{interval_only}).
+
+\strong{Rung rule.} With three bulk outcomes (eQTLGen, FinnGen PBMC,
+INTERVAL) a pair is \code{replicated} when at least two give the same
+sign, none dissents, and either the instruments are concordant (tier S1)
+or one outcome reaches p < 1e-40. An absent outcome is neutral. A dissent
+demotes: two against one is \code{weak}, one against one is
+\code{reported}. Only an INTERVAL record whose top-SNP test passes and
+does not conflict with its instrument vote can promote a pair; any
+INTERVAL dissent demotes; a pair seen in INTERVAL alone enters by its own
+tier when its record is of that kind and as \code{weak} otherwise.
+Against the sign measured in blood (pairs with a measured blood sign):
+\tabular{lll}{
+  rung \tab pairs \tab SMR sign = measured blood sign \cr
+  replicated \tab 108,135 \tab 0.963 (n = 13,283) \cr
+  high \tab 14,284 \tab 0.949 (n = 942) \cr
+  moderate \tab 528,204 \tab 0.859 (n = 8,608) \cr
+  weak \tab 52,878 \tab 0.755 (n = 1,377) \cr
+  reported \tab 65,361 \tab 0.412 (n = 1,667) \cr
+}
+
+\strong{Per-pair accuracy.} \code{smr_accuracy} is the probability that
+the pair's SMR sign equals the sign measured in blood, from a
+gradient-boosted model of the pair's SMR evidence (strength and agreement
+of each outcome, tiers, instruments, HEIDI, distance, the called sign),
+fitted leaving the pair's chromosome out, so no figure comes from a model
+that saw the pair or its neighbors (25,875 validated pairs; AUC 0.85;
+mean calibration gap 0.009 over deciles). It is a figure for blood, and
+like every SMR figure it is conditional on the pair being coupled.
+
+\strong{What the ladder uses.} The direction ladder no longer ranks SMR
+pairs by rung. It groups them into accuracy bands (0.95 or higher, 0.90
+to 0.95, 0.80 to 0.90, 0.65 to 0.80, 0.55 to 0.65), validates each band
+in every tissue against that tissue's independent yardstick like any
+other source, and ranks it on the lower bound of that figure
+(\code{\link{cpgd_accuracy_values}}). A pair below 0.55, and any pair on
+the \code{reported} rung, supplies no direction; a pair below 0.50 is
+not flipped. In blood (pairs that can supply a direction; sign against
+measured blood): 0.95 or higher 0.975 (n = 13,587), 0.90 to 0.95 0.917
+(n = 4,269), 0.80 to 0.90 0.866 (n = 3,352), 0.65 to 0.80 0.743
+(n = 1,970), 0.55 to 0.65 0.643 (n = 502). The rung stays in
+\code{smr_rung} and in \code{best_evidence} as the row's provenance.
+The sections below describe the eQTLGen and FinnGen analyses that the
+rebuild extends; their figures by rung predate INTERVAL.
+}
+
 \section{replicated and high are close, and ranked by the data}{
 
 Scored against five measured references -- adult blood, child blood, nasal
@@ -173,23 +236,23 @@ the reported rung's 4.6\%.
 
 \section{Child blood and age_group}{
 
-The ladder's figures for the SMR strata (\code{\link{cpgd_accuracy_values}};
-adult blood against MESA, child blood against HELIX pairs outside the
-catalogue's training set; agreement, n pairs):
-\tabular{llll}{
-  SMR stratum \tab adult blood (MESA) \tab child blood (HELIX 6-11 y) \tab detected in child blood \cr
-  replicated S1 \tab 0.926 (244) \tab 0.963 (887) \tab 0.40 (replicated) \cr
-  replicated S2 \tab 0.846 (733) \tab 0.960 (2,188) \tab \cr
-  high \tab 0.908 (239) \tab 0.966 (770) \tab 0.40 \cr
-  moderate \tab 0.797 (1,179) \tab 0.902 (2,304) \tab 0.20 \cr
-  weak \tab 0.575 (73) \tab 0.635 (192) \tab 0.28 \cr
-  reported \tab never answers \tab never answers \tab 0.21 \cr
+The ladder's figures for the SMR accuracy bands
+(\code{\link{cpgd_accuracy_values}}; adult blood against MESA and
+BLUEPRINT, child blood against HELIX pairs outside the catalogue's
+training set; agreement, n pairs):
+\tabular{lll}{
+  SMR band (per-pair accuracy) \tab adult blood \tab child blood (HELIX 6-11 y) \cr
+  0.95 or higher \tab 0.961 (11,549) \tab 0.926 (917) \cr
+  0.90 to 0.95 \tab 0.904 (4,424) \tab 0.928 (567) \cr
+  0.80 to 0.90 \tab 0.846 (3,719) \tab 0.893 (438) \cr
+  0.65 to 0.80 \tab 0.730 (2,368) \tab 0.764 (288) \cr
+  0.55 to 0.65 \tab 0.618 (607) \tab 26 pairs: the adult figure is quoted \cr
+  below 0.55, or the reported rung \tab never answers \tab never answers \cr
 }
-Age moves no direction and no rung: child blood scores every SMR rung above
-higher than adult blood (and in the transport table below, where both
-references are scored the same way), and both of the 3 Nov 2026
-rulings (concordant S3 to moderate, discordant S2/S3 reported) replicate
-out of sample in children.
+Age moves no direction and no rung: where HELIX scores a band on 100 or
+more pairs its figure is within 0.05 of the adult one (higher in three
+bands, lower in the top one). The share of pairs HELIX detects at all, by
+rung, is given in the section above.
 \code{age_group} therefore changes only (1) which validation figures the
 ladders quote (every blood source HELIX scores on 100+ pairs, not only
 SMR), (2) which age-specific evidence columns are returned and (3) an
