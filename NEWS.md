@@ -1,5 +1,35 @@
 # cpgdirection 1.1.0 (in development -- lands after Bioconductor accepts 0.99.x)
 
+* **`cpgd_cpg_annotation()`: where a CpG is, in hg19, hg38 and T2T-CHM13,
+  for every probe of the four arrays.**
+  - **What.** One row per probe ID, as your data name it (bare 450K and
+    EPIC v1 IDs, EPIC v2 IDs with their replicate suffix): `chr` and `pos`
+    for the build asked for (`build = "hg38"`; with several builds,
+    `chr_<build>` and `pos_<build>`), the arrays that carry the probe
+    (`array`, for example `"450K;EPICv1;EPICv2"`, with `on_hm27`, `on_450k`,
+    `on_epic_v1`, `on_epic_v2`), the genes of the EPIC v2 annotation layer,
+    and the probe quality flags. `source` says which table placed the probe.
+  - **Why.** The coordinates were already in the package but in three
+    tables, and only for EPIC v2 probes. Many groups work in hg38, and
+    about 154,000 probe IDs of the 450K and EPIC v1 arrays that EPIC v2
+    dropped had no position at all.
+  - **hg38.** From the Zhou-lab (SeSAMe) hg38 manifests, taking the
+    manifest of the first array generation that carries the probe (HM450,
+    EPIC, EPIC v2, HM27; `CpG_beg` + 1), so a 450K probe sits exactly where
+    the SeSAMe HM450 manifest puts it. Every probe ID is placed but 19 that
+    no manifest maps. `hg38_ambiguous` flags 1,094 probes that two sources
+    place differently (multi-mapping probes).
+  - **hg19.** The package's own table wherever it holds the probe (always
+    equal to `cpgd_cpg_positions()`), else the Illumina 450K and EPIC v1
+    coordinates; 98.9% of all probe IDs. T2T-CHM13: EPIC v2 probes only.
+  - **New table.** `cpg_coordinates` (1,084,297 probe IDs): array
+    membership for every probe and the positions the package's other
+    resources do not hold. A coordinate the package does not hold is `NA`,
+    never lifted over.
+  - **Unchanged.** The direction engine works in hg19 (its models and
+    distance curves were fitted on hg19 distances). `cpgd_cpg_positions()`
+    and every direction are as before.
+
 * **The catalogue's training chain is rebuilt (cpgdirectionData 0.99.7),
   and the ladder's figures with it.**
   - **Why.** 0.99.5 corrected the gene placement but kept the original

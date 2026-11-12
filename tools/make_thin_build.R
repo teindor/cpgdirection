@@ -23,7 +23,8 @@ hub_served <- c(
   "cpg_positions_hg19.csv.gz",
   "brain_directions.csv.gz",
   "saliva_bridge_scores.csv.gz",
-  "epicv2_probe_gene_annotation.csv.gz")
+  "epicv2_probe_gene_annotation.csv.gz",
+  "cpg_coordinates.csv.gz")
 
 stopifnot(file.exists("DESCRIPTION"))
 tmp <- file.path(tempdir(), "thin_build")

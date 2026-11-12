@@ -80,6 +80,38 @@ Directly measured cis-eQTM pairs with a replicated sign, 93,818 rows
   `inst/extdata/measured_eqtms.csv.gz`; then add the November sources with
   `Rscript tools/build_nov2026_extdata.R` (inputs listed in its header).
 
+## `cpg_coordinates.csv.gz` (1.1.0)
+
+Array membership and coordinates for every probe ID of the four Illumina
+methylation arrays (1,084,297 rows), read by `cpgd_cpg_annotation()`.
+Served by cpgdirectionData in the thin build (8.2 MB).
+
+* **Columns.** `cpg_id` (manifest spelling; matched without regard to
+  case); `array` (`HM27`, `450K`, `EPICv1`, `EPICv2`, separated by `;`);
+  `chr_hg19`, `pos_hg19`, `source_hg19`, filled only for probes the
+  package's own hg19 table (`cpg_positions_hg19`) does not hold (141,945);
+  `chr_hg38`, `pos_hg38`, `source_hg38`, filled only where the position is
+  not simply the value of `epicv2_probe_gene_annotation` (352,454);
+  `hg38_ambiguous` (1,094 probes that two sources place differently).
+* **hg19 sources.** Illumina 450K manifest v1.1 (GEO GPL13534,
+  `GPL13534_HumanMethylation450_15017482_v.1.1.csv.gz`, build 37 rows), else
+  the Illumina EPIC v1 coordinates (CHR, MAPINFO).
+* **hg38 sources.** Zhou-lab InfiniumAnnotation (SeSAMe) manifests, in this
+  order: `HM450.hg38`, `EPIC.hg38`, `EPICv2.hg38`, `HM27.hg38` (position =
+  `CpG_beg` + 1; EPIC v2 replicate probes collapsed to the CpG, and a CpG
+  whose replicates map to different places is not placed by that manifest
+  and is flagged); the annotation layer where no manifest places the probe.
+  269 probes sit on alternate or unplaced contigs and keep the contig name;
+  19 probe IDs have no hg38 position.
+* **Checks.** Each source against the package on shared probes: identical
+  position in 99.85% (450K, hg19), 99.89% (EPIC v1, hg19), 99.98% or more
+  (hg38). hg19 of every probe in `cpg_positions_hg19` is that table's.
+  With `--check`, a reference table of hg38 positions must be reproduced
+  exactly (used with a 449,659-probe table built from the SeSAMe HM450
+  manifest).
+* **Reproduce.** `Rscript tools/build_cpg_coordinates.R` (arguments in its
+  header); report in `tools/reports/build_cpg_coordinates.md`.
+
 ## `brain_measured_eqtms.csv.gz`
 
 Directly measured cis-eQTM pairs in dorsolateral prefrontal cortex (new in
