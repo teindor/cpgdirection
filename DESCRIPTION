@@ -1,7 +1,7 @@
 Package: cpgdirection
 Type: Package
 Title: Predict the Direction of CpG-Gene Expression Associations
-Version: 0.99.3
+Version: 0.99.4
 Authors@R: c(
  person("Tsachi", "Ein-Dor", email = "teindor@runi.ac.il",
  role = c("aut", "cre", "fnd"),

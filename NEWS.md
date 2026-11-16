@@ -1,3 +1,9 @@
+# cpgdirection 0.99.4
+
+* Version bump only, to trigger a fresh build report after the Bioconductor
+  version record was reset to 0.99.x (BiocContributions #174). No code or data
+  changes since 0.99.3.
+
 # cpgdirection 0.99.3
 
 * **The catalogue's training chain is rebuilt (cpgdirectionData 0.99.7, now
