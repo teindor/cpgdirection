@@ -26,7 +26,6 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = TRUE)
 # The worked examples need the package's data layers, which the
 # cpgdirectionData ExperimentHub package serves (or a local copy named by
 # options(cpgdirection.data_dir = )). Where they cannot be reached the code is
@@ -34,7 +33,8 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = TRUE)
 has_data <- cpgdirection::cpgd_has_data("lookup_blood_hg19") &&
   cpgdirection::cpgd_has_data("smr_directions") &&
   cpgdirection::cpgd_has_data("epicv2_probe_gene_annotation")
-knitr::opts_chunk$set(eval = has_data)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = TRUE,
+                      eval = has_data)
 ```
 
 # Introduction
@@ -152,9 +152,9 @@ for the rung.
 |---|---|---|
 | `measured` | 0.96-1.00 | an eQTM cohort measured this pair; ~1.00 when two or more cohorts agree |
 | `smr_high` | 0.96 | Mendelian randomisation, several instruments agreeing |
-| `catalogue_consensus` | 0.77-0.87 | genomic-context models, tissues agreeing |
+| `catalogue_consensus` | 0.75-0.83 | genomic-context models, tissues agreeing |
 | `smr_moderate` | 0.85 | Mendelian randomisation, one instrument |
-| `catalogue_single` | 0.55-0.87 | one tissue only |
+| `catalogue_single` | 0.50-0.85 | one tissue only |
 | `onco_consensus` | 0.70-0.94 | five or more tumour types agreeing; tumour evidence, reported as such |
 | `smr_weak` | 0.70 | instruments disagree; a warning, not evidence |
 | `distance_only` | 0.60-0.65 | distance to the TSS, nothing else |
@@ -188,8 +188,10 @@ Where the evidence is insufficient the package declines rather than guessing.
 That is why accuracy is high on the sites it does call. If you need a complete
 column, name the tissue your question is about:
 
-```{r target-tissue, eval = FALSE}
-res <- cpg_expression_direction(my_cpgs, target_tissue = "solid_tissue")
+```{r target-tissue}
+res_solid <- cpg_expression_direction(my_cpgs, target_tissue = "solid_tissue",
+                                      universal = FALSE, verbose = FALSE)
+res_solid[, c("cpg_id", "best_direction", "best_evidence"), with = FALSE]
 ```
 
 Declare that tissue on biological grounds **before** looking at the answers.
@@ -212,8 +214,9 @@ explains, and says why distance-only calls are left out of that test.
 working directory unless you ask: the default directory is `tempdir()`, and
 the path is reported.
 
-```{r report, eval = FALSE}
-cpgd_report(res, "my_panel.html", dir = tempdir())
+```{r report}
+html <- cpgd_report(res, "my_panel.html", dir = tempdir())
+file.exists(html)
 ```
 
 # The limitation that governs everything

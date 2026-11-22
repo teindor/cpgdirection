@@ -110,10 +110,11 @@ cpgd_manifest_genes <- function() {
 #'
 #' @param manifest_file Path to the Illumina EPIC v2 manifest CSV (may be
 #'   gzipped).
-#' @param out Path for the resulting \code{.csv.gz}. Defaults to a file named
-#'   like the packaged resource, in the working directory. To make a rebuilt
-#'   table the one \code{\link{cpgd_manifest_genes}} serves, overwrite the
-#'   packaged file under \code{inst/extdata/} and reinstall.
+#' @param out Path for the resulting \code{.csv.gz}; required. To make a
+#'   rebuilt table the one \code{\link{cpgd_manifest_genes}} serves, write it
+#'   as \code{epicv2_probe_gene_annotation.csv.gz} in a folder of your choice
+#'   and name that folder with \code{options(cpgdirection.data_dir = )}; the
+#'   package reads each resource from that folder first.
 #' @return Invisibly, the path written.
 #' @examples
 #' f <- tempfile(fileext = ".csv")
@@ -126,8 +127,11 @@ cpgd_manifest_genes <- function() {
 #' cpgd_build_manifest_genes(f, out = out)
 #' read.csv(out)
 #' @export
-cpgd_build_manifest_genes <- function(manifest_file,
-                                      out = "epicv2_probe_gene_annotation.csv.gz") {
+cpgd_build_manifest_genes <- function(manifest_file, out) {
+  if (missing(out) || !is.character(out) || length(out) != 1L || !nzchar(out))
+    stop("`out` is required: the path of the .csv.gz to write, e.g. ",
+         "file.path(tempdir(), \"epicv2_probe_gene_annotation.csv.gz\").",
+         call. = FALSE)
   if (missing(manifest_file) || !file.exists(manifest_file)) {
     stop("Supply the path to an Illumina EPIC v2 manifest CSV ",
          "(e.g. EPIC-8v2-0_A2.csv).", call. = FALSE)

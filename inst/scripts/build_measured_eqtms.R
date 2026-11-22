@@ -21,9 +21,9 @@
 #      ties dropped.
 #
 # Usage (from the cpgdirection package root)
-#   Rscript inst/scripts/build_measured_eqtms.R --atlas-dir ~/Downloads/eqtm_atlas --out tools/out
+#   Rscript inst/scripts/build_measured_eqtms.R --atlas-dir ~/Downloads/eqtm_atlas --out <dir>
 #
-# The merged table tools/out/measured_eqtms_v2.csv.gz is what ships as
+# The merged table <dir>/measured_eqtms_v2.csv.gz is what ships as
 # inst/extdata/measured_eqtms.csv.gz (copied by hand, see
 # inst/scripts/make-extdata.md). Nothing in the package is changed by running
 # this script; packaging is a separate decision.
@@ -34,7 +34,7 @@ get_arg <- function(flag, default = NULL) {
   i <- match(flag, args); if (is.na(i) || i == length(args)) return(default); args[i + 1L]
 }
 atlas_dir <- get_arg("--atlas-dir"); if (is.null(atlas_dir)) stop("--atlas-dir is required")
-out_dir   <- get_arg("--out", "tools/out")
+out_dir   <- get_arg("--out"); if (is.null(out_dir)) stop("--out is required")
 existing  <- get_arg("--existing", "inst/extdata/measured_eqtms.csv.gz")
 # the packaged measured layer is a |CpG - TSS| <= 250 kb window (max 249,998 in
 # inst/extdata/measured_eqtms.csv.gz); "cis" here means the same thing. The Atlas

@@ -1,7 +1,7 @@
 Package: cpgdirection
 Type: Package
 Title: Predict the Direction of CpG-Gene Expression Associations
-Version: 0.99.4
+Version: 0.99.5
 Authors@R: c(
  person("Tsachi", "Ein-Dor", email = "teindor@runi.ac.il",
  role = c("aut", "cre", "fnd"),
@@ -17,10 +17,7 @@ Description: Assigns a direction to the association between DNA methylation at a
  direction, a calibrated probability, an evidence tier and an expected
  accuracy, and abstains where the evidence is insufficient. Predictions
  estimate direction conditional on the CpG being an eQTM; they do not
- establish that an effect exists. Code provenance: the design, data assembly,
- validation and methodological decisions are the author's; the R code was
- drafted and edited with the assistance of Claude (Anthropic) and was run,
- tested and checked by the author (Assisted-by: Claude (Anthropic)).
+ establish that an effect exists.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.6.0)
@@ -39,4 +36,4 @@ LazyData: false
 URL: https://github.com/teindor/cpgdirection,
  https://doi.org/10.17605/OSF.IO/U3VFK
 BugReports: https://github.com/teindor/cpgdirection/issues
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

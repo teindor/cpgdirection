@@ -35,13 +35,13 @@
 # downstream needs hg38, because every consumer joins on cpg_id.
 #
 # Usage
-#   Rscript tools/build_distal_links.R \
+#   Rscript inst/scripts/build_distal_links.R \
 #     --manifest  ~/EPIC-8v2-0_A2.csv \
 #     --re2g      ~/encode_re2g/              # dir of *.tsv(.gz), one per biosample
 #     --sce2g     ~/sce2g/                     # dir of *.tsv(.gz), one per cell type
 #     --loops     ~/hcea_loops/                # dir of *.bedpe(.gz), one per cell type
 #     --tss-hg38  ~/gencode_v49_tss.bed        # chr start end gene (0-based) for --loops
-#     --biosample-map tools/distal_biosamples.csv   # file,source,biosample,tissue_class
+#     --biosample-map inst/scripts/distal_biosamples.csv   # file,source,biosample,tissue_class
 #     --min-score 0                            # keep links at or above this score
 #     --keep-abc                               # also keep ABC-model files (see below)
 #     --out inst/extdata/distal_links.csv.gz

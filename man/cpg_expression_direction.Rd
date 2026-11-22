@@ -204,12 +204,12 @@ read what it says. Promoting whichever tissue happens to break the tie the way
 you hoped is selecting on the outcome, and a majority rule tuned after seeing
 the votes is the same thing wearing a better hat.
 
-The price is explicit. Rows resolved this way carry that tissue's accuracy:
-0.77-0.85 for blood, 0.70-0.87 for nasal epithelium (not externally
-validated), and 0.55-0.70 for solid tissue, which is tumour, provisional, and
-whose brain and kidney arms did not exceed their own majority baselines under
-leave-one-cohort-out. If solid tissue is your brain proxy, that last clause is
-the one to quote in your limitations.
+The price is explicit. Rows resolved this way carry that tissue's accuracy
+for the shipped models (see \code{\link{cpgd_accuracy_table}}): 0.72 for
+blood (MESA), 0.64 for solid tissue (FUSION and GTEx; the solid model is
+trained on tumour data), and no independent figure for nasal epithelium. If
+solid tissue is your brain proxy, the solid figure is the one to quote in
+your limitations.
 }
 
 \section{How to read best_direction}{

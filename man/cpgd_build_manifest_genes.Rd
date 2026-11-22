@@ -4,19 +4,17 @@
 \alias{cpgd_build_manifest_genes}
 \title{Rebuild the EPIC v2 probe-to-gene annotation from an Illumina manifest}
 \usage{
-cpgd_build_manifest_genes(
-  manifest_file,
-  out = "epicv2_probe_gene_annotation.csv.gz"
-)
+cpgd_build_manifest_genes(manifest_file, out)
 }
 \arguments{
 \item{manifest_file}{Path to the Illumina EPIC v2 manifest CSV (may be
 gzipped).}
 
-\item{out}{Path for the resulting \code{.csv.gz}. Defaults to a file named
-like the packaged resource, in the working directory. To make a rebuilt
-table the one \code{\link{cpgd_manifest_genes}} serves, overwrite the
-packaged file under \code{inst/extdata/} and reinstall.}
+\item{out}{Path for the resulting \code{.csv.gz}; required. To make a
+rebuilt table the one \code{\link{cpgd_manifest_genes}} serves, write it
+as \code{epicv2_probe_gene_annotation.csv.gz} in a folder of your choice
+and name that folder with \code{options(cpgdirection.data_dir = )}; the
+package reads each resource from that folder first.}
 }
 \value{
 Invisibly, the path written.

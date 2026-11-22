@@ -65,8 +65,8 @@ the distance fallback. Read two columns first.
 | value | worth | meaning |
 |---|---|---|
 | `measured` | 0.96–1.00 | an eQTM cohort measured this CpG against this gene; ~1.00 when 2+ cohorts agree |
-| `catalogue_consensus` | 0.64–0.87 | tissues that called it agreed |
-| `catalogue_single` | 0.55–0.87 | one tissue only, no corroboration |
+| `catalogue_consensus` | 0.75–0.83 | tissues that called it agreed |
+| `catalogue_single` | 0.50–0.85 | one tissue only, no corroboration |
 | `distance_only` | 0.60–0.65 | distance to the TSS, nothing else |
 | `tissue_conflict` | — | tissues disagreed; not resolved |
 | `no_evidence` | — | no catalogue holds the pair and no distance available |
@@ -191,15 +191,19 @@ prints the validation figures behind `expected_accuracy`.
 | status | expected accuracy | basis |
 |---|---|---|
 | `DIRECT_eQTM` | 0.96–1.00 | read from a measured catalogue, not predicted; ~1.00 when replicated |
-| tier A | 0.77–0.85 | locked test 0.766; independent cohort 0.854 |
-| tier B | 0.64–0.85 | locked test 0.642; independent cohort 0.854 |
-| baseline | 0.58–0.63 | always guessing −1 |
+| blood, tier A | 0.72 (0.69–0.74) | MESA adult blood, n = 1,587 |
+| blood, tier B | 1.00 (0.72–1.00) | MESA adult blood, n = 10 |
+| nasal, tier A | not independently validated | 0.78 (0.45–0.94) on 9 EVA-PR pairs, the training study |
+| nasal, tier B | not validated | no nasal yardstick pairs |
+| solid, tier A | 0.64 (0.62–0.66) | FUSION + GTEx normal solid tissue, n = 2,298 |
+| solid, tier B | abstains | agreed 0.41 with the solid yardsticks (n = 123) |
+| baseline | 0.57–0.64 | always guessing −1, on the same yardsticks |
 
-The figures are the validation of the original models. The models retrained in
-cpgdirectionData 0.99.7 do as well as the originals against independent
-yardsticks (MESA, HELIX, EVA-PR), except the solid model, which is lower on
-the solid yardsticks and unstable across retrainings. Its tier-B calls agreed
-below chance (0.41) and abstain.
+The figures are those of the shipped models (cpgdirectionData 0.99.7): the
+agreement of their calls with measured cis-eQTMs from cohorts outside their
+training, with Wilson 95% intervals. `inst/scripts/validate_catalogue_accuracy.R`
+reproduces them. Up to 0.99.4 this table quoted the validation of the original
+models (tier A 0.77–0.85, tier B 0.64–0.85).
 
 Tier A means catalogued CpGs lie within 50 kb **and** the target gene is itself
 catalogued. Tier B means one of those. Tier C means neither, and the function
@@ -246,17 +250,20 @@ after, on identified genes).
 **The three are not equally trustworthy, and the package says so in
 `expected_accuracy`.**
 
-*Blood* is the only arm with genuine external validation: for the original
-model, a pre-registered locked test set (tier A AUC 0.781, 76.6% accuracy
-against a 59.2% baseline) and an independent white-blood-cell cohort (85.4%).
+*Blood* is the only arm with genuine external validation: the shipped model's
+tier-A calls agree 0.72 with MESA adult blood, which is not a training cohort.
+The original model had a pre-registered locked test set (tier A AUC 0.781,
+76.6% accuracy against a 59.2% baseline) and an independent white-blood-cell
+cohort (85.4%).
 
 *Nasal epithelium* has the highest cross-validated AUC, but both contributing
 cohorts come from one study and share participants, so 0.865 is within-study
 consistency, not external validation. Treat it as promising rather than proven.
 
-*Solid tissue* is tumour tissue from TCGA. Under leave-one-cohort-out, brain
-does not exceed its own majority baseline (0.66 against 0.67) and kidney only
-just does (0.64 against 0.62). The model is also unstable: over 11
+*Solid tissue* is tumour tissue from TCGA. For the original model, under
+leave-one-cohort-out, brain did not exceed its own majority baseline (0.66
+against 0.67) and kidney only just did (0.64 against 0.62). The model is also
+unstable: over 11
 retrainings its tier-A calls agreed 0.60 to 0.69 with FUSION (0.64 in this
 build). It is provisional, and brain results in particular should not be
 read as applying to healthy brain.

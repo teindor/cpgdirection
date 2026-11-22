@@ -47,8 +47,8 @@ Directly measured cis-eQTM pairs with a replicated sign, 75,062 rows
   `tss_dist` (signed CpG-TSS distance, bp), `n_cohorts`, `cohort_agreement`,
   `cohorts`, `source` (`eqtm_atlas` or `packaged_v1`).
 * **Reproduce.** From the package root, with the Atlas exports in a directory:
-  `Rscript inst/scripts/build_measured_eqtms.R --atlas-dir <dir> --out tools/out`,
-  then copy `tools/out/measured_eqtms_v2.csv.gz` to
+  `Rscript inst/scripts/build_measured_eqtms.R --atlas-dir <dir> --out <out>`,
+  then copy `<out>/measured_eqtms_v2.csv.gz` to
   `inst/extdata/measured_eqtms.csv.gz`.
 
 ## `distance_curves.csv`
@@ -161,6 +161,25 @@ an installation (`input`, `cpg_id`, `target_gene`, `tss_dist`, `status`,
 
 * **Source and rule.** The package's own blood catalogue lookup; the file is
   written by `cpgd_selftest(regenerate = "<path>")` and copied into
-  `inst/extdata`. Last regenerated at version 1.7.1 (NEWS). Regenerate only
+  `inst/extdata`. Last regenerated at version 0.99.3 (NEWS). Regenerate only
   after a deliberate change of behaviour, never to make a failing self-test
   pass.
+
+## Other scripts in this folder
+
+* **Layers served by cpgdirectionData.** `build_distal_links.R` (with its
+  input map `distal_biosamples.csv`) writes `distal_links`,
+  `build_onco_eqtm.R` writes `onco_eqtm_consensus`, and
+  `build_exeter_v3_annotation.R` writes `epicv2_probe_gene_annotation`. Each
+  script's header gives its sources, rule and command line. The
+  cpgdirectionData package documents how the files become Hub resources.
+* **Accuracy figures.** `validate_catalogue_accuracy.R` reproduces the
+  catalogue-model figures of `cpgd_accuracy_table()` and of the
+  `expected_accuracy` and `best_expected_accuracy` columns for the shipped
+  models (cpgdirectionData 0.99.7), against MESA adult blood, HELIX child
+  blood, EVA-PR nasal epithelium and FUSION + GTEx solid tissue. Run on 22
+  November 2026, it reproduced the validation of 9 November 2026 exactly.
+* **Not shipped.** The validation scripts of the distal and Onco-eQTM layers,
+  the script that makes the thin build, the ENCODE download helper and their
+  reports stay in the package's GitHub repository under `tools/`, which the
+  package build excludes.

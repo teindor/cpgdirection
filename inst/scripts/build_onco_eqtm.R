@@ -49,7 +49,7 @@
 # catalogue; it writes a SEPARATE file and labels every row it adds.
 #
 # Usage
-#   Rscript tools/build_onco_eqtm.R --dir ~/onco_eqtm \
+#   Rscript inst/scripts/build_onco_eqtm.R --dir ~/onco_eqtm \
 #       --out inst/extdata/onco_eqtm_consensus.csv.gz \
 #       [--min-cancers 2] [--min-agreement 0.9] [--min-r 0.3] [--all-cancers] \
 #       [--append-solid inst/extdata/measured_eqtms.csv.gz --append-out measured_eqtms_plus_onco.csv.gz]

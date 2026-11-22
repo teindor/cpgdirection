@@ -7,11 +7,21 @@
 cpgd_accuracy_table()
 }
 \value{
-A \code{data.frame}.
+A \code{data.frame} with columns \code{tissue}, \code{status},
+  \code{expected_accuracy} and \code{basis}.
 }
 \description{
 The validation figures behind the \code{expected_accuracy} column, so they can
 be inspected rather than taken on trust.
+}
+\details{
+The catalogue-model rows are those of the shipped models (cpgdirectionData
+0.99.7): the agreement of their calls with measured cis-eQTMs from cohorts
+outside the models' training, with a Wilson 95\% interval. Adult blood is
+scored on MESA, child blood on HELIX, nasal epithelium on EVA-PR (the nasal
+model's own training study, so not an independent check) and solid tissue on
+FUSION and GTEx. \code{inst/scripts/validate_catalogue_accuracy.R}
+reproduces them.
 }
 \examples{
 cpgd_accuracy_table()

@@ -58,9 +58,11 @@
 #' target gene is itself catalogued. Tier B: one of those holds. Tier C:
 #' neither, and the function always abstains.
 #'
-#' \strong{What a direction is worth.} Tier A predictions were 76.6\% accurate
-#' on a pre-registered locked test set (baseline 59.2\%) and 85.4\% in an
-#' independent white-blood-cell cohort. Tier B is weaker. See
+#' \strong{What a direction is worth.} For the shipped models, blood tier-A
+#' calls agree 0.72 with MESA adult blood (not a training cohort) and solid
+#' tier-A calls 0.64 with FUSION and GTEx; the nasal model has no independent
+#' yardstick, and solid tier B abstains. The original blood model was 76.6\%
+#' accurate on a pre-registered locked test set (baseline 59.2\%). See
 #' \code{\link{cpgd_accuracy_table}}.
 #'
 #' \strong{The limitation that governs everything.} Every figure above is
@@ -157,10 +159,7 @@
         get("direction") == -1, "higher methylation -> LOWER expression",
         default = NA_character_)]
 
-  acc <- switch(tissue,
-    blood            = c(A = "0.77-0.85", B = "0.64-0.85"),
-    nasal_epithelium = c(A = "0.84-0.87", B = "0.70-0.84"),
-    solid_tissue     = c(A = "0.62-0.70", B = "0.55-0.66"))
+  acc <- CPGD_CATALOGUE_ACCURACY$tissue[[tissue]]
   out[, "expected_accuracy" := fcase(
         get("status") == "DIRECT_eQTM", CPGD_MEASURED_ACCURACY[["single"]],
         get("status") == "PREDICTED" & get("evidence_tier") == "A", acc[["A"]],
@@ -208,11 +207,21 @@
 #' The validation figures behind the \code{expected_accuracy} column, so they can
 #' be inspected rather than taken on trust.
 #'
-#' @return A \code{data.frame}.
+#' The catalogue-model rows are those of the shipped models (cpgdirectionData
+#' 0.99.7): the agreement of their calls with measured cis-eQTMs from cohorts
+#' outside the models' training, with a Wilson 95\% interval. Adult blood is
+#' scored on MESA, child blood on HELIX, nasal epithelium on EVA-PR (the nasal
+#' model's own training study, so not an independent check) and solid tissue on
+#' FUSION and GTEx. \code{inst/scripts/validate_catalogue_accuracy.R}
+#' reproduces them.
+#'
+#' @return A \code{data.frame} with columns \code{tissue}, \code{status},
+#'   \code{expected_accuracy} and \code{basis}.
 #' @examples
 #' cpgd_accuracy_table()
 #' @export
 cpgd_accuracy_table <- function() {
+  acc <- CPGD_CATALOGUE_ACCURACY$tissue
   data.frame(
     tissue = c("any (measured)", "any (measured)",
                rep("blood", 2), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
@@ -222,19 +231,21 @@ cpgd_accuracy_table <- function() {
                "PREDICTED (tier A)", "PREDICTED (tier B)",
                "PREDICTED (tier A)", "PREDICTED (tier B)",
                "onco_consensus (Onco-eQTM O1)", "majority baseline"),
-    expected_accuracy = c("~1.00", "0.96-0.99", "0.77-0.85", "0.64-0.85",
-                          "0.84-0.87", "0.70-0.84",
-                          "0.62-0.70", "0.55-0.66", "0.70-0.94", "0.55-0.63"),
+    expected_accuracy = c("~1.00", "0.96-0.99",
+                          acc$blood[["A"]], acc$blood[["B"]],
+                          acc$nasal_epithelium[["A"]], acc$nasal_epithelium[["B"]],
+                          acc$solid_tissue[["A"]], acc$solid_tissue[["B"]],
+                          "0.70-0.94", "0.57-0.64"),
     basis = c("same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
               "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; inst/scripts/build_measured_eqtms.R",
-              "HELIX locked test 0.766; EVA-PR white blood cell 0.854",
-              "HELIX locked test 0.642; EVA-PR white blood cell 0.854",
-              "grouped CV AUC 0.865; NOT independently validated (both cohorts, one study)",
-              "grouped CV AUC 0.865; NOT independently validated",
-              "grouped CV AUC 0.664; tumour tissue; brain and kidney below baseline",
-              "grouped CV AUC 0.664; provisional",
-              "agreement with measured blood 0.83 (n=1,955), nasal 0.94 (n=1,500), normal solid tissue 0.87 (n=1,976), SMR S1 0.70 (n=1,033); tools/validate_onco.R, 6 Oct 2026",
-              "always predicting an inverse association"),
+              "shipped model; MESA adult blood (not a training cohort); the blood model makes no PREDICTED call on the HELIX check pairs",
+              "shipped model; MESA adult blood; only 10 pairs",
+              "shipped model; no independent nasal yardstick exists; on the blood and solid yardsticks tier A agrees 0.67 (MESA, n=1,390) and 0.71 (FUSION + GTEx, n=4,264)",
+              "shipped model; on the blood and solid yardsticks tier B agrees 0.80 (MESA, n=78) and 0.83 (FUSION + GTEx, n=284)",
+              "shipped model; FUSION skeletal muscle and GTEx solid tissues, each held out in turn and pooled (FUSION 0.64, GTEx 0.62)",
+              "shipped model; tier-B solid calls abstain in the data (agreement 0.41, 95% CI 0.32-0.49, n=123)",
+              "agreement with measured blood 0.83 (n=1,955), nasal 0.94 (n=1,500), normal solid tissue 0.87 (n=1,976), SMR S1 0.70 (n=1,033); validated 6 Oct 2026",
+              "always predicting an inverse association: share of inverse pairs on the same yardsticks (MESA 0.64, FUSION + GTEx 0.61, HELIX 0.58, EVA-PR nasal 0.57)"),
     stringsAsFactors = FALSE)
 }
 

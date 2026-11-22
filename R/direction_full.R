@@ -167,12 +167,12 @@
 #' you hoped is selecting on the outcome, and a majority rule tuned after seeing
 #' the votes is the same thing wearing a better hat.
 #'
-#' The price is explicit. Rows resolved this way carry that tissue's accuracy:
-#' 0.77-0.85 for blood, 0.70-0.87 for nasal epithelium (not externally
-#' validated), and 0.55-0.70 for solid tissue, which is tumour, provisional, and
-#' whose brain and kidney arms did not exceed their own majority baselines under
-#' leave-one-cohort-out. If solid tissue is your brain proxy, that last clause is
-#' the one to quote in your limitations.
+#' The price is explicit. Rows resolved this way carry that tissue's accuracy
+#' for the shipped models (see \code{\link{cpgd_accuracy_table}}): 0.72 for
+#' blood (MESA), 0.64 for solid tissue (FUSION and GTEx; the solid model is
+#' trained on tumour data), and no independent figure for nasal epithelium. If
+#' solid tissue is your brain proxy, the solid figure is the one to quote in
+#' your limitations.
 #'
 #' @section How to read best_direction:
 #' It is the direction supported by the best evidence this package holds for
@@ -681,17 +681,14 @@ cpg_expression_direction <- function(cpgs,
   bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
   bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
   bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
-  bacc[which(src == "catalogue_consensus" & wt == "A")] <- "0.77-0.87 (tier A, tissues agree)"
-  bacc[which(src == "catalogue_consensus" & wt == "B")] <- "0.64-0.84 (tier B, tissues agree)"
-  bacc[which(src == "catalogue_single"    & wt == "A")] <- "0.62-0.87 (tier A, one tissue only)"
-  bacc[which(src == "catalogue_single"    & wt == "B")] <- "0.55-0.84 (tier B, one tissue only)"
+  bacc[which(src == "catalogue_consensus" & wt == "A")] <- CPGD_CATALOGUE_ACCURACY$consensus_A
+  bacc[which(src == "catalogue_consensus" & wt == "B")] <- CPGD_CATALOGUE_ACCURACY$consensus_B
+  bacc[which(src == "catalogue_single"    & wt == "A")] <- CPGD_CATALOGUE_ACCURACY$single_A
+  bacc[which(src == "catalogue_single"    & wt == "B")] <- CPGD_CATALOGUE_ACCURACY$single_B
   bacc[which(src == "distance_only")] <- "0.60-0.65 (distance only, tier U)"
   if (!is.null(target_tissue)) {
     tt <- match.arg(target_tissue, CPGD_TISSUES)
-    tacc <- switch(tt,
-      blood            = "0.77-0.85 (blood declared as target tissue)",
-      nasal_epithelium = "0.70-0.87 (nasal declared as target; NOT externally validated)",
-      solid_tissue     = "0.55-0.70 (solid tissue declared as target; tumour, provisional, brain and kidney below baseline under LOCO)")
+    tacc <- CPGD_CATALOGUE_ACCURACY$targeted[[tt]]
     bacc[which(src %in% c("distance_targeted", "catalogue_targeted"))] <- tacc
     bacc[which(src == "targeted_last_resort")] <-
       "unquantified (last resort: the target tissue's sign where nothing better exists)"
@@ -1255,10 +1252,10 @@ print.cpgd_full <- function(x, ...) {
   bacc[which(src == "smr_high")]     <- "0.95-0.97 (SMR tier S1, concordant instruments; validated n=2,141)"
   bacc[which(src == "smr_moderate")] <- "0.84-0.86 (SMR tier S2, single instrument; validated n=6,008)"
   bacc[which(src == "smr_weak")]     <- "0.66-0.75 (SMR tier S3, instruments disagree; validated n=456)"
-  bacc[which(src == "catalogue_consensus" & worst_tier == "A")] <- "0.77-0.87 (tier A, tissues agree)"
-  bacc[which(src == "catalogue_consensus" & worst_tier == "B")] <- "0.64-0.84 (tier B, tissues agree)"
-  bacc[which(src == "catalogue_single"    & worst_tier == "A")] <- "0.62-0.87 (tier A, one tissue only)"
-  bacc[which(src == "catalogue_single"    & worst_tier == "B")] <- "0.55-0.84 (tier B, one tissue only)"
+  bacc[which(src == "catalogue_consensus" & worst_tier == "A")] <- CPGD_CATALOGUE_ACCURACY$consensus_A
+  bacc[which(src == "catalogue_consensus" & worst_tier == "B")] <- CPGD_CATALOGUE_ACCURACY$consensus_B
+  bacc[which(src == "catalogue_single"    & worst_tier == "A")] <- CPGD_CATALOGUE_ACCURACY$single_A
+  bacc[which(src == "catalogue_single"    & worst_tier == "B")] <- CPGD_CATALOGUE_ACCURACY$single_B
   bacc[which(src == "onco_consensus")] <- CPGD_ONCO_ACCURACY
   bacc[which(src == "distance_only")] <- "0.60-0.65 (distance only, tier U)"
 

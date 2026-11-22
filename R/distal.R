@@ -98,7 +98,8 @@ cpgd_distal_links <- function() {
 #'
 #' @section The onco_consensus rung (2.99.7):
 #' Tier O1 (five or more cancer types, one sign) was validated against the
-#' package's peripheral references in \code{tools/validate_onco.R}: agreement
+#' package's peripheral references (script \code{tools/validate_onco.R} in the
+#' package's GitHub repository): agreement
 #' 0.82 with measured blood eQTMs (n = 1,455; majority baseline 0.72), 0.93
 #' with nasal epithelium (n = 1,221; baseline 0.71) and 0.70 with SMR tier S1
 #' (n = 1,033; baseline 0.60). Near the TSS that agreement is mostly the

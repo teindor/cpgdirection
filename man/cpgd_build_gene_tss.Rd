@@ -7,7 +7,8 @@
 cpgd_build_gene_tss(
   out = NULL,
   source = c("txdb", "manifest"),
-  manifest_file = NULL
+  manifest_file = NULL,
+  genome_build = c("hg19", "hg38")
 )
 }
 \arguments{
@@ -20,10 +21,21 @@ manifest instead, via \code{manifest_file}.}
 
 \item{manifest_file}{Path to an Illumina EPIC manifest CSV, used when
 \code{source = "manifest"}.}
+
+\item{genome_build}{Genome build of the positions returned, \code{"hg19"}
+(default) or \code{"hg38"}. Every cpgdirection layer, and therefore
+\code{\link{cpg_direction_universal}}, is hg19; an hg38 table is for use
+with your own hg38 coordinates. With \code{source = "manifest"} the
+manifest's columns for that build are used (\code{CHR_hg19} /
+\code{MAPINFO_hg19} or \code{CHR_hg38} / \code{Start_hg38} where
+present, otherwise \code{CHR} / \code{MAPINFO} when \code{Genome_Build}
+names that build), and a manifest that does not carry it is refused.
+\code{source = "txdb"} is hg19 only.}
 }
 \value{
 A \code{data.table} with \code{gene}, \code{chr}, \code{tss} and
-  \code{strand} (hg19), returned invisibly.
+  \code{strand}, in the build named by \code{genome_build} (also stored as
+  its \code{"genome_build"} attribute), returned invisibly.
 }
 \description{
 The catalogue-based prediction only covers genes some catalogue measured. To

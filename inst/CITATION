@@ -1,0 +1,16 @@
+citHeader("To cite cpgdirection in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "cpgdirection: Predict the Direction of CpG-Gene Expression Associations",
+  author = person("Tsachi", "Ein-Dor", email = "teindor@runi.ac.il",
+                  comment = c(ORCID = "0000-0002-3078-7591")),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  doi = "10.5281/zenodo.22024184",
+  url = "https://github.com/teindor/cpgdirection",
+  textVersion = paste0(
+    "Ein-Dor T (2026). cpgdirection: Predict the Direction of CpG-Gene ",
+    "Expression Associations. R package version ", meta$Version,
+    ". doi:10.5281/zenodo.22024184")
+)

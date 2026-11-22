@@ -397,6 +397,15 @@ test_that("cpg_expression_direction() is unchanged by the pair machinery", {
 
 # ---- the manifest builder --------------------------------------------------
 
+test_that("cpgd_build_manifest_genes() requires `out` and writes nothing without it", {
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("[Assay]", "IlmnID,Name,UCSC_RefGene_Name,UCSC_RefGene_Group",
+               "cg10000001_TC21,cg10000001,GENEA,TSS200"), f)
+  before <- list.files(getwd())
+  expect_error(cpgd_build_manifest_genes(f), "`out` is required")
+  expect_identical(list.files(getwd()), before)
+})
+
 test_that("cpgd_build_manifest_genes() parses an Illumina-format CSV", {
   f <- tempfile(fileext = ".csv")
   writeLines(c(

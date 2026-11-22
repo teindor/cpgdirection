@@ -26,7 +26,8 @@ CPGD_EVIDENCE <- c(
   "no_evidence")
 stopifnot(!anyDuplicated(CPGD_EVIDENCE))
 
-# Validated once, quoted in two ladders: tools/validate_onco.R, 3 Oct 2026.
+# Validated once, quoted in two ladders: tools/validate_onco.R in the GitHub
+# repository (not shipped), 3 Oct 2026.
 CPGD_ONCO_ACCURACY <- paste0(
   "0.70-0.94 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.83 n=1,955, ",
   "nasal 0.94 n=1,500, normal solid tissue 0.87 n=1,976, SMR-S1 0.70 n=1,033; ",
@@ -44,6 +45,48 @@ CPGD_MEASURED_ACCURACY <- c(
                       "between independent cohorts on shared pairs: blood 0.99, ",
                       "nasal 1.00, solid 0.92-0.99)"),
   replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+
+# Catalogue-model figures for the shipped models (cpgdirectionData 0.99.7).
+# Each is the agreement of the models' calls with measured cis-eQTMs from
+# cohorts outside the models' training, with a Wilson 95% interval:
+#   adult blood  MESA monocytes and T cells (Wang et al. 2021);
+#   child blood  HELIX (Ruiz-Arenas et al. 2022), pairs the blood catalogue
+#                does not hold as DIRECT_eQTM;
+#   nasal        EVA-PR nasal epithelium, pairs the nasal catalogue does not
+#                hold as DIRECT_eQTM (the nasal model was trained on EVA-PR,
+#                so this figure is same-study);
+#   solid        FUSION skeletal muscle and GTEx solid tissues, each held out
+#                in turn and pooled.
+# The call rule is the package's (tier A confidence >= 0.30, tier B >= 0.50).
+# Validated 9 Nov 2026 and re-run on the released lookups 22 Nov 2026 with
+# inst/scripts/validate_catalogue_accuracy.R; see inst/scripts/make-extdata.md.
+CPGD_CATALOGUE_ACCURACY <- list(
+  tissue = list(
+    blood = c(
+      A = "0.72 (95% CI 0.69-0.74; MESA adult blood, n=1,587)",
+      B = "1.00 (95% CI 0.72-1.00; MESA adult blood, n=10)"),
+    nasal_epithelium = c(
+      A = paste0("not independently validated; 0.78 (95% CI 0.45-0.94) on ",
+                 "9 EVA-PR nasal pairs, the training study"),
+      B = "not validated in nasal epithelium (no nasal yardstick pairs)"),
+    solid_tissue = c(
+      A = "0.64 (95% CI 0.62-0.66; FUSION + GTEx normal solid tissue, n=2,298)",
+      B = "abstains (tier-B solid calls agreed 0.41 with solid yardsticks, n=123)")),
+  consensus_A = paste0("0.75-0.79 (tier A, tissues agree; MESA blood 0.79 ",
+                       "n=641, FUSION + GTEx solid 0.75 n=1,572)"),
+  consensus_B = paste0("0.83 (tier B, tissues agree; MESA blood n=30, ",
+                       "FUSION + GTEx solid n=118)"),
+  single_A = paste0("0.50-0.69 (tier A, one tissue only; FUSION + GTEx solid ",
+                    "0.69 n=7,559, MESA blood 0.63 n=1,937, HELIX child blood ",
+                    "0.50 n=251)"),
+  single_B = paste0("0.82-0.85 (tier B, one tissue only; FUSION + GTEx solid ",
+                    "0.82 n=195, MESA blood 0.85 n=52)"),
+  targeted = c(
+    blood = "0.72 (blood declared as target tissue; MESA adult blood, n=1,587)",
+    nasal_epithelium = paste0("not independently validated (nasal declared as ",
+                              "target)"),
+    solid_tissue = paste0("0.64 (solid tissue declared as target; FUSION + ",
+                          "GTEx normal solid tissue, n=2,298)")))
 
 # Verbose summaries go through message() so that they can be silenced with
 # suppressMessages() and never mix with a function's return value on stdout;

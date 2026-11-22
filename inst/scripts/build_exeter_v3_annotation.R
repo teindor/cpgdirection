@@ -25,11 +25,11 @@
 #   --report    Markdown diff report path (default exeter_v3_diff.md).
 #
 # Usage
-#   Rscript tools/build_exeter_v3_annotation.R \
+#   Rscript inst/scripts/build_exeter_v3_annotation.R \
 #     --exeter  ~/Downloads/EPICv2_reannotated_manifest_v3.0.csv \
 #     --current inst/extdata/epicv2_probe_gene_annotation.csv.gz \
 #     --out     inst/extdata/epicv2_probe_gene_annotation.csv.gz \
-#     --report  tools/reports/exeter_v3_diff.md
+#     --report  <dir>/exeter_v3_diff.md
 #
 # What the table looks like afterwards: identical column set, except that
 # src_Exeter_GENCODEv47 becomes src_Exeter_GENCODEv49 and the annotation_source

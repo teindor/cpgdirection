@@ -1,3 +1,53 @@
+# cpgdirection 0.99.5
+
+Changes for the Bioconductor review (BiocContributions #174).
+
+* **The catalogue accuracy figures are those of the shipped models.**
+  0.99.3 retrained the catalogue models (cpgdirectionData 0.99.7) but kept
+  the original models' validation figures in `expected_accuracy`,
+  `best_expected_accuracy` and `cpgd_accuracy_table()`. They are now
+  re-derived for the shipped models: the agreement of their calls with
+  measured cis-eQTMs from cohorts outside their training, with Wilson 95%
+  intervals. Each figure names its yardstick and n.
+  - Blood, tier A: 0.72 (0.69-0.74) on MESA adult blood, n = 1,587
+    (previously 0.77-0.85).
+  - Solid tissue, tier A: 0.64 (0.62-0.66) on FUSION + GTEx, n = 2,298
+    (previously 0.62-0.70). Tier B solid calls abstain, as since 0.99.3.
+  - Nasal epithelium: no independent yardstick exists. Tier A agrees 0.78
+    (0.45-0.94) on 9 pairs of EVA-PR, the training study; the old 0.84-0.87
+    was a cross-validated AUC.
+  - Tissues agreeing: 0.75-0.79 (tier A), 0.83 (tier B). One tissue only:
+    0.50-0.69 (tier A), 0.82-0.85 (tier B).
+  - The majority baseline on the same yardsticks is 0.57-0.64.
+  - New `inst/scripts/validate_catalogue_accuracy.R` reproduces the figures.
+    Run on the released lookups on 22 November 2026, it reproduced the
+    validation of 9 November 2026 exactly.
+  - The figures are descriptive strings; no call, probability or ladder
+    order changes.
+* **Vignette.** The target-tissue and report chunks are evaluated (when the
+  data layers can be reached); the two `knitr::opts_chunk$set()` calls are
+  one.
+* **`cpgd_build_manifest_genes(out =)` is required.** It no longer writes to
+  the working directory by default. The help page points to
+  `options(cpgdirection.data_dir = )` for using a rebuilt table, instead of
+  overwriting the packaged file.
+* **`cpgd_build_gene_tss(genome_build =)`**, `"hg19"` (default) or `"hg38"`,
+  for `source = "manifest"`: the positions are taken from the manifest's
+  columns for that build, a manifest that does not carry it is refused, and
+  the table records its build in a `"genome_build"` attribute. The package's
+  layers stay hg19.
+* **Scripts.** The builders of the cpgdirectionData layers
+  (`build_distal_links.R` with `distal_biosamples.csv`, `build_onco_eqtm.R`,
+  `build_exeter_v3_annotation.R`) move from `tools/` to `inst/scripts/`;
+  `inst/scripts/make-extdata.md` lists them. The rest of `tools/`
+  (validation scripts, the ENCODE download helper, the thin-build script,
+  reports) is excluded from the package build.
+* **`inst/CITATION`**, with the Zenodo concept DOI 10.5281/zenodo.22024184.
+* The code-provenance paragraph moves out of the DESCRIPTION `Description:`
+  field; it stays, unchanged, in the README and on the package help page.
+* The code is reformatted with styler (tidyverse style, 4-space indents); no
+  change in behavior.
+
 # cpgdirection 0.99.4
 
 * Version bump only, to trigger a fresh build report after the Bioconductor

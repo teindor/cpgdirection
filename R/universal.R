@@ -17,9 +17,19 @@
 #'   manifest instead, via \code{manifest_file}.
 #' @param manifest_file Path to an Illumina EPIC manifest CSV, used when
 #'   \code{source = "manifest"}.
+#' @param genome_build Genome build of the positions returned, \code{"hg19"}
+#'   (default) or \code{"hg38"}. Every cpgdirection layer, and therefore
+#'   \code{\link{cpg_direction_universal}}, is hg19; an hg38 table is for use
+#'   with your own hg38 coordinates. With \code{source = "manifest"} the
+#'   manifest's columns for that build are used (\code{CHR_hg19} /
+#'   \code{MAPINFO_hg19} or \code{CHR_hg38} / \code{Start_hg38} where
+#'   present, otherwise \code{CHR} / \code{MAPINFO} when \code{Genome_Build}
+#'   names that build), and a manifest that does not carry it is refused.
+#'   \code{source = "txdb"} is hg19 only.
 #'
 #' @return A \code{data.table} with \code{gene}, \code{chr}, \code{tss} and
-#'   \code{strand} (hg19), returned invisibly.
+#'   \code{strand}, in the build named by \code{genome_build} (also stored as
+#'   its \code{"genome_build"} attribute), returned invisibly.
 #'
 #' @details
 #' TxDb is the more accurate source: real transcription start sites, strand
@@ -36,8 +46,14 @@
 #' @export
 cpgd_build_gene_tss <- function(out = NULL,
                                 source = c("txdb", "manifest"),
-                                manifest_file = NULL) {
+                                manifest_file = NULL,
+                                genome_build = c("hg19", "hg38")) {
   source <- match.arg(source)
+  genome_build <- match.arg(genome_build)
+  if (source == "txdb" && genome_build != "hg19")
+    stop("source = \"txdb\" uses TxDb.Hsapiens.UCSC.hg19.knownGene and is hg19 ",
+         "only; use source = \"manifest\" with an hg38 manifest for hg38.",
+         call. = FALSE)
 
   if (source == "txdb") {
     need <- c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
@@ -68,29 +84,46 @@ cpgd_build_gene_tss <- function(out = NULL,
     m <- .cpgd_fread(manifest_file)
     nm <- names(m)
     gcol <- nm[grepl("RefGene_Name|UCSC_RefGene_Name", nm)][1]
-    # Every layer in this package is hg19, so the manifest must be too. An
-    # hg19-labelled column pair is used when present (re-annotated manifests
-    # carry both builds); otherwise an hg38 manifest -- EPIC v2 ships CHR and
-    # MAPINFO in hg38 and says so in Genome_Build, Exeter's re-annotation
-    # carries CHR_hg38/Start_hg38 -- is refused rather than silently mixed in.
+    # The positions must be in the requested build. A build-labelled column
+    # pair is used when present (re-annotated manifests carry both builds);
+    # otherwise the plain CHR/MAPINFO columns are used only when the manifest
+    # does not say they are the other build (EPIC v2 ships CHR and MAPINFO in
+    # hg38 and says so in Genome_Build; Exeter's re-annotation carries
+    # CHR_hg38/Start_hg38). A mismatch is refused, never silently mixed in.
+    build <- if ("Genome_Build" %in% nm)
+      unique(stats::na.omit(as.character(m[["Genome_Build"]]))) else character(0)
+    if (genome_build == "hg38") {
+      ccol <- nm[grepl("^CHR_hg38$", nm, ignore.case = TRUE)][1]
+      pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg38$", nm, ignore.case = TRUE)][1]
+      if (is.na(ccol) || is.na(pcol)) {
+        if (!any(grepl("38", build)))
+          stop("genome_build = \"hg38\" but the manifest carries no hg38 ",
+               "coordinates (no CHR_hg38/Start_hg38 columns and no ",
+               "Genome_Build naming GRCh38/hg38).", call. = FALSE)
+        ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
+        pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
+        message("Manifest coordinates taken as hg38 (Genome_Build = ",
+                paste(build, collapse = "/"), ").")
+      }
+    } else {
     ccol <- nm[grepl("^CHR_hg19$", nm, ignore.case = TRUE)][1]
     pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg19$", nm, ignore.case = TRUE)][1]
     if (is.na(ccol) || is.na(pcol)) {
-      build <- if ("Genome_Build" %in% nm)
-        unique(stats::na.omit(as.character(m[["Genome_Build"]]))) else character(0)
       if (any(grepl("hg38", nm, ignore.case = TRUE)) || any(grepl("38", build))) {
         stop("This manifest is hg38 (",
              if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
              else "it carries hg38 coordinate columns and no hg19 ones",
              ") while every cpgdirection layer is hg19. Use source = \"txdb\", ",
-             "or an hg19 manifest (450K, EPIC v1, or a re-annotated EPIC v2 ",
-             "manifest with CHR_hg19/MAPINFO_hg19 columns).", call. = FALSE)
+             "an hg19 manifest (450K, EPIC v1, or a re-annotated EPIC v2 ",
+             "manifest with CHR_hg19/MAPINFO_hg19 columns), or ",
+             "genome_build = \"hg38\" for an hg38 table.", call. = FALSE)
       }
       ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
       pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
       message("Manifest coordinates taken as hg19 (",
               if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
               else "no Genome_Build column", ").")
+    }
     }
     if (any(is.na(c(gcol, ccol, pcol))))
       stop("Could not find gene, chromosome and position columns in the manifest.",
@@ -106,6 +139,7 @@ cpgd_build_gene_tss <- function(out = NULL,
     message("Manifest-derived positions approximate a gene region, not a TSS. ",
             "TxDb is more accurate.")
   }
+  data.table::setattr(d, "genome_build", genome_build)
   if (!is.null(out)) {
     data.table::fwrite(d, out)
     message(sprintf("wrote %s (%d genes)", out, nrow(d)))

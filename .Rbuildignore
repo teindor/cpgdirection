@@ -15,4 +15,4 @@
 ^cpgdirection_.*\.tar\.gz$
 ^\.zenodo\.json$
 ^CITATION\.cff$
-^tools/out$
+^tools$
