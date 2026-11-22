@@ -9,30 +9,32 @@ CPGD_TISSUES <- c("blood", "nasal_epithelium", "solid_tissue")
 # added, which duplicated two of them and made factor() refuse the vector.
 # A constant cannot drift from itself.
 CPGD_EVIDENCE <- c(
-  "measured",
-  "smr_high",
-  "catalogue_consensus",
-  "smr_moderate",
-  "catalogue_single",
-  "onco_consensus",
-  "smr_weak",
-  "distance_only",
-  "distance_targeted",
-  "catalogue_targeted",
-  "targeted_last_resort",
-  "distance_tissue_conflict",
-  "distance_uninformative",
-  "tissue_conflict",
-  "no_evidence")
+    "measured",
+    "smr_high",
+    "catalogue_consensus",
+    "smr_moderate",
+    "catalogue_single",
+    "onco_consensus",
+    "smr_weak",
+    "distance_only",
+    "distance_targeted",
+    "catalogue_targeted",
+    "targeted_last_resort",
+    "distance_tissue_conflict",
+    "distance_uninformative",
+    "tissue_conflict",
+    "no_evidence"
+)
 stopifnot(!anyDuplicated(CPGD_EVIDENCE))
 
 # Validated once, quoted in two ladders: tools/validate_onco.R in the GitHub
 # repository (not shipped), 3 Oct 2026.
 CPGD_ONCO_ACCURACY <- paste0(
-  "0.70-0.94 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.83 n=1,955, ",
-  "nasal 0.94 n=1,500, normal solid tissue 0.87 n=1,976, SMR-S1 0.70 n=1,033; ",
-  "near-TSS agreement is largely ",
-  "the -1 base rate)")
+    "0.70-0.94 (Onco-eQTM O1, >=5 cancers agreeing; blood 0.83 n=1,955, ",
+    "nasal 0.94 n=1,500, normal solid tissue 0.87 n=1,976, SMR-S1 0.70 n=1,033; ",
+    "near-TSS agreement is largely ",
+    "the -1 base rate)"
+)
 
 # The measured rung is no longer "~1.00 by definition". From 2.99.8 the table is
 # built from the eQTM Atlas cohorts plus the packaged Framingham/HELIX blood
@@ -41,10 +43,13 @@ CPGD_ONCO_ACCURACY <- paste0(
 # 0.92-0.99 between independent cohorts) is the honest figure for a measured
 # sign. A pair replicated in two or more cohorts keeps the ~1.00 reading.
 CPGD_MEASURED_ACCURACY <- c(
-  single     = paste0("0.96-0.99 (measured eQTM, one cohort; sign replicated ",
-                      "between independent cohorts on shared pairs: blood 0.99, ",
-                      "nasal 1.00, solid 0.92-0.99)"),
-  replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)")
+    single = paste0(
+        "0.96-0.99 (measured eQTM, one cohort; sign replicated ",
+        "between independent cohorts on shared pairs: blood 0.99, ",
+        "nasal 1.00, solid 0.92-0.99)"
+    ),
+    replicated = "~1.00 (measured eQTM, same sign in 2+ independent cohorts)"
+)
 
 # Catalogue-model figures for the shipped models (cpgdirectionData 0.99.7).
 # Each is the agreement of the models' calls with measured cis-eQTMs from
@@ -61,67 +66,96 @@ CPGD_MEASURED_ACCURACY <- c(
 # Validated 9 Nov 2026 and re-run on the released lookups 22 Nov 2026 with
 # inst/scripts/validate_catalogue_accuracy.R; see inst/scripts/make-extdata.md.
 CPGD_CATALOGUE_ACCURACY <- list(
-  tissue = list(
-    blood = c(
-      A = "0.72 (95% CI 0.69-0.74; MESA adult blood, n=1,587)",
-      B = "1.00 (95% CI 0.72-1.00; MESA adult blood, n=10)"),
-    nasal_epithelium = c(
-      A = paste0("not independently validated; 0.78 (95% CI 0.45-0.94) on ",
-                 "9 EVA-PR nasal pairs, the training study"),
-      B = "not validated in nasal epithelium (no nasal yardstick pairs)"),
-    solid_tissue = c(
-      A = "0.64 (95% CI 0.62-0.66; FUSION + GTEx normal solid tissue, n=2,298)",
-      B = "abstains (tier-B solid calls agreed 0.41 with solid yardsticks, n=123)")),
-  consensus_A = paste0("0.75-0.79 (tier A, tissues agree; MESA blood 0.79 ",
-                       "n=641, FUSION + GTEx solid 0.75 n=1,572)"),
-  consensus_B = paste0("0.83 (tier B, tissues agree; MESA blood n=30, ",
-                       "FUSION + GTEx solid n=118)"),
-  single_A = paste0("0.50-0.69 (tier A, one tissue only; FUSION + GTEx solid ",
-                    "0.69 n=7,559, MESA blood 0.63 n=1,937, HELIX child blood ",
-                    "0.50 n=251)"),
-  single_B = paste0("0.82-0.85 (tier B, one tissue only; FUSION + GTEx solid ",
-                    "0.82 n=195, MESA blood 0.85 n=52)"),
-  targeted = c(
-    blood = "0.72 (blood declared as target tissue; MESA adult blood, n=1,587)",
-    nasal_epithelium = paste0("not independently validated (nasal declared as ",
-                              "target)"),
-    solid_tissue = paste0("0.64 (solid tissue declared as target; FUSION + ",
-                          "GTEx normal solid tissue, n=2,298)")))
+    tissue = list(
+        blood = c(
+            A = "0.72 (95% CI 0.69-0.74; MESA adult blood, n=1,587)",
+            B = "1.00 (95% CI 0.72-1.00; MESA adult blood, n=10)"
+        ),
+        nasal_epithelium = c(
+            A = paste0(
+                "not independently validated; 0.78 (95% CI 0.45-0.94) on ",
+                "9 EVA-PR nasal pairs, the training study"
+            ),
+            B = "not validated in nasal epithelium (no nasal yardstick pairs)"
+        ),
+        solid_tissue = c(
+            A = "0.64 (95% CI 0.62-0.66; FUSION + GTEx normal solid tissue, n=2,298)",
+            B = "abstains (tier-B solid calls agreed 0.41 with solid yardsticks, n=123)"
+        )
+    ),
+    consensus_A = paste0(
+        "0.75-0.79 (tier A, tissues agree; MESA blood 0.79 ",
+        "n=641, FUSION + GTEx solid 0.75 n=1,572)"
+    ),
+    consensus_B = paste0(
+        "0.83 (tier B, tissues agree; MESA blood n=30, ",
+        "FUSION + GTEx solid n=118)"
+    ),
+    single_A = paste0(
+        "0.50-0.69 (tier A, one tissue only; FUSION + GTEx solid ",
+        "0.69 n=7,559, MESA blood 0.63 n=1,937, HELIX child blood ",
+        "0.50 n=251)"
+    ),
+    single_B = paste0(
+        "0.82-0.85 (tier B, one tissue only; FUSION + GTEx solid ",
+        "0.82 n=195, MESA blood 0.85 n=52)"
+    ),
+    targeted = c(
+        blood = "0.72 (blood declared as target tissue; MESA adult blood, n=1,587)",
+        nasal_epithelium = paste0(
+            "not independently validated (nasal declared as ",
+            "target)"
+        ),
+        solid_tissue = paste0(
+            "0.64 (solid tissue declared as target; FUSION + ",
+            "GTEx normal solid tissue, n=2,298)"
+        )
+    )
+)
 
 # Verbose summaries go through message() so that they can be silenced with
 # suppressMessages() and never mix with a function's return value on stdout;
 # the print methods (which cat()) are reused by capturing their output.
 .cpgd_message_print <- function(x) {
-  message(paste(utils::capture.output(print(x)), collapse = "\n"))
-  invisible(x)
+    message(paste(utils::capture.output(print(x)), collapse = "\n"))
+    invisible(x)
 }
 
 # Path of the BUNDLED lookup file, or NA when this (thin) installation holds
 # none and the table comes from the cpgdirectionData ExperimentHub package
 # instead. See R/data_backend.R for the resolution order.
 .cpgd_lookup_path <- function(tissue = "blood") {
-  p <- system.file("extdata", sprintf("lookup_%s_hg19.csv.gz", tissue),
-                   package = "cpgdirection")
-  if (!nzchar(p) || !file.exists(p)) return(NA_character_)
-  p
+    p <- system.file("extdata", sprintf("lookup_%s_hg19.csv.gz", tissue),
+        package = "cpgdirection"
+    )
+    if (!nzchar(p) || !file.exists(p)) {
+        return(NA_character_)
+    }
+    p
 }
 
 # Read once per session and cache. The table is ~1.6M rows; fread takes a few
 # seconds, and repeating that on every call would make interactive use painful.
 .cpgd_lookup <- function(tissue = "blood") {
-  key <- paste0("lookup_", tissue)
-  if (!is.null(.cpgd_env[[key]])) return(.cpgd_env[[key]])
-  L <- .cpgd_data(sprintf("lookup_%s_hg19", tissue))
-  req <- c("cpg_id", "target_gene", "tss_dist", "status", "direction",
-           "probability_plus1", "confidence", "evidence_tier")
-  miss <- setdiff(req, names(L))
-  if (length(miss)) {
-    stop("The lookup table is missing expected columns: ",
-         paste(miss, collapse = ", "), call. = FALSE)
-  }
-  data.table::setkeyv(L, "cpg_id")
-  .cpgd_env[[key]] <- L
-  L
+    key <- paste0("lookup_", tissue)
+    if (!is.null(.cpgd_env[[key]])) {
+        return(.cpgd_env[[key]])
+    }
+    L <- .cpgd_data(sprintf("lookup_%s_hg19", tissue))
+    req <- c(
+        "cpg_id", "target_gene", "tss_dist", "status", "direction",
+        "probability_plus1", "confidence", "evidence_tier"
+    )
+    miss <- setdiff(req, names(L))
+    if (length(miss)) {
+        stop("The lookup table is missing expected columns: ",
+            paste(miss, collapse = ", "),
+            call. = FALSE
+        )
+    }
+    data.table::setkeyv(L, "cpg_id")
+    .cpgd_env[[key]] <- L
+    L
 }
 
 # Accepts a character vector, a data.frame, or a path to a text/CSV file.
@@ -135,101 +169,111 @@ CPGD_CATALOGUE_ACCURACY <- list(
 # biological co-effect. The parser parses; it does not decide which biological
 # records are redundant.
 .cpgd_parse_input <- function(cpgs, genes = NULL, dedupe = TRUE) {
+    given <- NA_character_
+    origin <- "none"
 
-  given <- NA_character_
-  origin <- "none"
-
-  if (is.data.frame(cpgs)) {
-    nm <- names(cpgs)
-    cc <- nm[grepl("^(cpg|probe|cg|id)", nm, ignore.case = TRUE)][1]
-    if (is.na(cc)) cc <- nm[1]
-    gc_ <- nm[grepl("^(gene|symbol|target)", nm, ignore.case = TRUE)][1]
-    raw <- as.character(cpgs[[cc]])
-    if (!is.na(gc_)) { given <- toupper(trimws(as.character(cpgs[[gc_]]))); origin <- "user" }
-  } else if (is.character(cpgs) && length(cpgs) == 1L && file.exists(cpgs)) {
-    if (grepl("\\.(csv|tsv)(\\.gz)?$", cpgs, ignore.case = TRUE)) {
-      return(.cpgd_parse_input(.cpgd_fread(cpgs), genes,
-                               dedupe = dedupe))
+    if (is.data.frame(cpgs)) {
+        nm <- names(cpgs)
+        cc <- nm[grepl("^(cpg|probe|cg|id)", nm, ignore.case = TRUE)][1]
+        if (is.na(cc)) cc <- nm[1]
+        gc_ <- nm[grepl("^(gene|symbol|target)", nm, ignore.case = TRUE)][1]
+        raw <- as.character(cpgs[[cc]])
+        if (!is.na(gc_)) {
+            given <- toupper(trimws(as.character(cpgs[[gc_]])))
+            origin <- "user"
+        }
+    } else if (is.character(cpgs) && length(cpgs) == 1L && file.exists(cpgs)) {
+        if (grepl("\\.(csv|tsv)(\\.gz)?$", cpgs, ignore.case = TRUE)) {
+            return(.cpgd_parse_input(.cpgd_fread(cpgs), genes,
+                dedupe = dedupe
+            ))
+        }
+        raw <- trimws(readLines(cpgs, warn = FALSE))
+        raw <- raw[nzchar(raw) & !startsWith(raw, "#")]
+    } else {
+        raw <- trimws(as.character(cpgs))
     }
-    raw <- trimws(readLines(cpgs, warn = FALSE))
-    raw <- raw[nzchar(raw) & !startsWith(raw, "#")]
-  } else {
-    raw <- trimws(as.character(cpgs))
-  }
 
-  if (!is.null(genes)) {
-    if (length(genes) != length(raw)) {
-      stop("`genes` must be the same length as `cpgs` (", length(raw), ").", call. = FALSE)
+    if (!is.null(genes)) {
+        if (length(genes) != length(raw)) {
+            stop("`genes` must be the same length as `cpgs` (", length(raw), ").", call. = FALSE)
+        }
+        given <- toupper(trimws(as.character(genes)))
+        origin <- "user"
     }
-    given <- toupper(trimws(as.character(genes))); origin <- "user"
-  }
 
-  # Extract the cg identifier from ANYWHERE in the string. Callers prefix names
-  # for all sorts of reasons ("Zcg00335286_TC21_MC2R" from a z-scored column),
-  # and taking the first underscore field would silently drop every such row.
-  # Fully vectorised: regexpr gives position and length, substr extracts in place.
-  # regmatches() would return only the matching elements, a shorter vector, and
-  # realigning it to the input is easy to get wrong.
-  pos <- regexpr("cg[0-9]{6,}", raw, ignore.case = TRUE)
-  len <- attr(pos, "match.length")
-  cpg <- ifelse(pos > 0L, tolower(substr(raw, pos, pos + len - 1L)), NA_character_)
+    # Extract the cg identifier from ANYWHERE in the string. Callers prefix names
+    # for all sorts of reasons ("Zcg00335286_TC21_MC2R" from a z-scored column),
+    # and taking the first underscore field would silently drop every such row.
+    # Fully vectorised: regexpr gives position and length, substr extracts in place.
+    # regmatches() would return only the matching elements, a shorter vector, and
+    # realigning it to the input is easy to get wrong.
+    pos <- regexpr("cg[0-9]{6,}", raw, ignore.case = TRUE)
+    len <- attr(pos, "match.length")
+    cpg <- ifelse(pos > 0L, tolower(substr(raw, pos, pos + len - 1L)), NA_character_)
 
-  parts <- strsplit(raw, "_", fixed = TRUE)
-  # Gene candidates: everything AFTER the token that carries the cg identifier,
-  # as a whole and as its last token. Panel names carry things like
-  # "Zcg00335286_TC21_MC2R" and "Zcg01961214_TC21_LINC02210_CRHR1", where the
-  # informative symbol sits at the end.
-  #
-  # Locating the cg token is not the same as dropping positions 1 and 2. An
-  # earlier version did the latter, which silently returned NA for the plainest
-  # form a user would ever type -- "cg00039463_TRAP1" has only two tokens, so
-  # removing the first two left nothing and the gene was lost. Probe-type codes
-  # (TC21, BC11) are dropped by name rather than by position, and anything that
-  # survives is validated against the TSS gene list by the caller, so a spurious
-  # candidate costs nothing while a missing one costs a whole evidence layer.
-  .drop_code <- function(p) p[!grepl("^([TB]C[0-9]+|[0-9]+)$", p)]
-  tail_toks <- lapply(parts, function(p) {
-    i <- grep("cg[0-9]{6,}", p, ignore.case = TRUE)[1]
-    if (is.na(i)) i <- 1L
-    tl <- if (i < length(p)) p[(i + 1L):length(p)] else character(0)
-    .drop_code(tl)
-  })
-  tail_full <- vapply(tail_toks, function(tl)
-    if (length(tl)) toupper(paste(tl, collapse = "_")) else NA_character_,
-    character(1))
-  tail_last <- vapply(tail_toks, function(tl)
-    if (length(tl)) toupper(tl[length(tl)]) else NA_character_, character(1))
+    parts <- strsplit(raw, "_", fixed = TRUE)
+    # Gene candidates: everything AFTER the token that carries the cg identifier,
+    # as a whole and as its last token. Panel names carry things like
+    # "Zcg00335286_TC21_MC2R" and "Zcg01961214_TC21_LINC02210_CRHR1", where the
+    # informative symbol sits at the end.
+    #
+    # Locating the cg token is not the same as dropping positions 1 and 2. An
+    # earlier version did the latter, which silently returned NA for the plainest
+    # form a user would ever type -- "cg00039463_TRAP1" has only two tokens, so
+    # removing the first two left nothing and the gene was lost. Probe-type codes
+    # (TC21, BC11) are dropped by name rather than by position, and anything that
+    # survives is validated against the TSS gene list by the caller, so a spurious
+    # candidate costs nothing while a missing one costs a whole evidence layer.
+    .drop_code <- function(p) p[!grepl("^([TB]C[0-9]+|[0-9]+)$", p)]
+    tail_toks <- lapply(parts, function(p) {
+        i <- grep("cg[0-9]{6,}", p, ignore.case = TRUE)[1]
+        if (is.na(i)) i <- 1L
+        tl <- if (i < length(p)) p[(i + 1L):length(p)] else character(0)
+        .drop_code(tl)
+    })
+    tail_full <- vapply(
+        tail_toks, function(tl) {
+            if (length(tl)) toupper(paste(tl, collapse = "_")) else NA_character_
+        },
+        character(1)
+    )
+    tail_last <- vapply(tail_toks, function(tl) {
+        if (length(tl)) toupper(tl[length(tl)]) else NA_character_
+    }, character(1))
 
-  if (all(is.na(given))) {
-    gene  <- tail_full
-    gene2 <- tail_last
-    origin <- "parsed"
-  } else {
-    gene  <- given
-    gene2 <- given
-  }
+    if (all(is.na(given))) {
+        gene <- tail_full
+        gene2 <- tail_last
+        origin <- "parsed"
+    } else {
+        gene <- given
+        gene2 <- given
+    }
 
-  d <- data.table::data.table(input = raw, cpg_id = cpg,
-                              given_gene = gene, given_gene2 = gene2,
-                              gene_origin = origin)
-  # Position of the row in the caller's input, assigned BEFORE any row is
-  # removed or collapsed, so every surviving row can be traced back to the
-  # physical input column it came from.
-  d[, "input_id" := .I]
-  d <- d[!is.na(d$cpg_id), ]
-  for (col in c("given_gene", "given_gene2")) {
-    bad <- which(d[[col]] %in% c("", "NA", "NAN", "NONE"))
-    if (length(bad)) data.table::set(d, i = bad, j = col, value = NA_character_)
-  }
-  # A panel can carry the same probe several times under different suffixes
-  # (cg09527270_TC11 / _TC12 / _TC13). The legacy interfaces deduplicate, but
-  # record the raw count so callers can say how many inputs collapsed rather
-  # than losing them silently. The pair workflow passes dedupe = FALSE and
-  # receives every parsed row.
-  n_raw <- nrow(d)
-  if (isTRUE(dedupe)) d <- unique(d, by = "cpg_id")
-  data.table::setattr(d, "n_raw", n_raw)
-  d
+    d <- data.table::data.table(
+        input = raw, cpg_id = cpg,
+        given_gene = gene, given_gene2 = gene2,
+        gene_origin = origin
+    )
+    # Position of the row in the caller's input, assigned BEFORE any row is
+    # removed or collapsed, so every surviving row can be traced back to the
+    # physical input column it came from.
+    d[, "input_id" := .I]
+    d <- d[!is.na(d$cpg_id), ]
+    for (col in c("given_gene", "given_gene2")) {
+        bad <- which(d[[col]] %in% c("", "NA", "NAN", "NONE"))
+        if (length(bad)) data.table::set(d, i = bad, j = col, value = NA_character_)
+    }
+    # A panel can carry the same probe several times under different suffixes
+    # (cg09527270_TC11 / _TC12 / _TC13). The legacy interfaces deduplicate, but
+    # record the raw count so callers can say how many inputs collapsed rather
+    # than losing them silently. The pair workflow passes dedupe = FALSE and
+    # receives every parsed row.
+    n_raw <- nrow(d)
+    if (isTRUE(dedupe)) d <- unique(d, by = "cpg_id")
+    data.table::setattr(d, "n_raw", n_raw)
+    d
 }
 
 #' Show what the identifier parser extracted
@@ -246,10 +290,10 @@ CPGD_CATALOGUE_ACCURACY <- list(
 #' cpgd_parse_check(c("Zcg00335286_TC21_MC2R", "cg00000029", "not_a_probe"))
 #' @export
 cpgd_parse_check <- function(cpgs) {
-  d <- .cpgd_parse_input(cpgs)
-  if (!nrow(d)) {
-    message("Nothing parsed. Identifiers need 'cg' followed by 6+ digits.")
-    return(invisible(d))
-  }
-  d[, c("input", "cpg_id", "given_gene", "given_gene2"), with = FALSE]
+    d <- .cpgd_parse_input(cpgs)
+    if (!nrow(d)) {
+        message("Nothing parsed. Identifiers need 'cg' followed by 6+ digits.")
+        return(invisible(d))
+    }
+    d[, c("input", "cpg_id", "given_gene", "given_gene2"), with = FALSE]
 }

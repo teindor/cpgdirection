@@ -66,20 +66,24 @@
 #'   \code{position} and \code{strand}.
 #' @examplesIf cpgd_has_data("epicv2_probe_gene_annotation")
 #' m <- cpgd_manifest_genes()
-#' m[m$cpg_id == "cg26261055", ]   # CRHBP, 4 independent sources, TSS -899 bp
+#' m[m$cpg_id == "cg26261055", ] # CRHBP, 4 independent sources, TSS -899 bp
 #' @export
 cpgd_manifest_genes <- function() {
-  if (!is.null(.cpgd_env$manifest_genes)) return(.cpgd_env$manifest_genes)
-  M <- .cpgd_data("epicv2_probe_gene_annotation")
-  req <- c("cpg_id", "target_gene", "array", "annotation_source", "refgene_group")
-  miss <- setdiff(req, names(M))
-  if (length(miss)) {
-    stop("The EPIC v2 annotation table is missing expected columns: ",
-         paste(miss, collapse = ", "), call. = FALSE)
-  }
-  data.table::setkeyv(M, c("cpg_id", "target_gene"))
-  .cpgd_env$manifest_genes <- M
-  M
+    if (!is.null(.cpgd_env$manifest_genes)) {
+        return(.cpgd_env$manifest_genes)
+    }
+    M <- .cpgd_data("epicv2_probe_gene_annotation")
+    req <- c("cpg_id", "target_gene", "array", "annotation_source", "refgene_group")
+    miss <- setdiff(req, names(M))
+    if (length(miss)) {
+        stop("The EPIC v2 annotation table is missing expected columns: ",
+            paste(miss, collapse = ", "),
+            call. = FALSE
+        )
+    }
+    data.table::setkeyv(M, c("cpg_id", "target_gene"))
+    .cpgd_env$manifest_genes <- M
+    M
 }
 
 
@@ -118,76 +122,91 @@ cpgd_manifest_genes <- function() {
 #' @return Invisibly, the path written.
 #' @examples
 #' f <- tempfile(fileext = ".csv")
-#' writeLines(c("[Heading]", "Descriptor File Name,EPIC-8v2-0_TEST",
-#'   "[Assay]",
-#'   "IlmnID,Name,CHR,MAPINFO,Strand_FR,UCSC_RefGene_Name,UCSC_RefGene_Group",
-#'   "cg10000001_TC21,cg10000001,chr1,1000,F,GENEA;GENEB,TSS200;TSS1500",
-#'   "[Controls]", "ctl1,negative,0,0"), f)
+#' writeLines(c(
+#'     "[Heading]", "Descriptor File Name,EPIC-8v2-0_TEST",
+#'     "[Assay]",
+#'     "IlmnID,Name,CHR,MAPINFO,Strand_FR,UCSC_RefGene_Name,UCSC_RefGene_Group",
+#'     "cg10000001_TC21,cg10000001,chr1,1000,F,GENEA;GENEB,TSS200;TSS1500",
+#'     "[Controls]", "ctl1,negative,0,0"
+#' ), f)
 #' out <- tempfile(fileext = ".csv.gz")
 #' cpgd_build_manifest_genes(f, out = out)
 #' read.csv(out)
 #' @export
 cpgd_build_manifest_genes <- function(manifest_file, out) {
-  if (missing(out) || !is.character(out) || length(out) != 1L || !nzchar(out))
-    stop("`out` is required: the path of the .csv.gz to write, e.g. ",
-         "file.path(tempdir(), \"epicv2_probe_gene_annotation.csv.gz\").",
-         call. = FALSE)
-  if (missing(manifest_file) || !file.exists(manifest_file)) {
-    stop("Supply the path to an Illumina EPIC v2 manifest CSV ",
-         "(e.g. EPIC-8v2-0_A2.csv).", call. = FALSE)
-  }
+    if (missing(out) || !is.character(out) || length(out) != 1L || !nzchar(out)) {
+        stop("`out` is required: the path of the .csv.gz to write, e.g. ",
+            "file.path(tempdir(), \"epicv2_probe_gene_annotation.csv.gz\").",
+            call. = FALSE
+        )
+    }
+    if (missing(manifest_file) || !file.exists(manifest_file)) {
+        stop("Supply the path to an Illumina EPIC v2 manifest CSV ",
+            "(e.g. EPIC-8v2-0_A2.csv).",
+            call. = FALSE
+        )
+    }
 
-  # The Illumina CSV has a [Heading] preamble before [Assay] and a [Controls]
-  # section after the probes. Find the preamble without loading the whole file.
-  con <- if (grepl("\\.gz$", manifest_file)) gzfile(manifest_file, "r")
-         else file(manifest_file, "r")
-  first <- readLines(con, n = 200L, warn = FALSE)
-  close(con)
-  assay_at <- grep("^\\[Assay\\]", first)[1]
-  skip <- if (is.na(assay_at)) 0L else assay_at
-  m <- .cpgd_fread(manifest_file, skip = skip, fill = TRUE)
-  # rows past [Controls] have a bracketed first field; cut them
-  ctrl <- grep("^\\[Controls\\]", m[[1]])[1]
-  if (!is.na(ctrl)) m <- m[seq_len(ctrl - 1L)]
+    # The Illumina CSV has a [Heading] preamble before [Assay] and a [Controls]
+    # section after the probes. Find the preamble without loading the whole file.
+    con <- if (grepl("\\.gz$", manifest_file)) {
+        gzfile(manifest_file, "r")
+    } else {
+        file(manifest_file, "r")
+    }
+    first <- readLines(con, n = 200L, warn = FALSE)
+    close(con)
+    assay_at <- grep("^\\[Assay\\]", first)[1]
+    skip <- if (is.na(assay_at)) 0L else assay_at
+    m <- .cpgd_fread(manifest_file, skip = skip, fill = TRUE)
+    # rows past [Controls] have a bracketed first field; cut them
+    ctrl <- grep("^\\[Controls\\]", m[[1]])[1]
+    if (!is.na(ctrl)) m <- m[seq_len(ctrl - 1L)]
 
-  nm <- names(m)
-  idc <- nm[nm %in% c("IlmnID", "Name", "Probe_ID")][1]
-  gnc <- nm[grepl("UCSC_RefGene_Name|^RefGene_Name$", nm)][1]
-  ggc <- nm[grepl("UCSC_RefGene_Group|^RefGene_Group$", nm)][1]
-  if (is.na(idc) || is.na(gnc)) {
-    stop("Could not locate the probe identifier and UCSC_RefGene_Name columns ",
-         "in the manifest.", call. = FALSE)
-  }
-  enc <- nm[grepl("GencodeV\\d+_Name", nm)][1]
-  egc <- nm[grepl("GencodeV\\d+_Group", nm)][1]
-  chrc <- nm[nm %in% c("CHR", "Chr", "chr")][1]
-  posc <- nm[nm %in% c("MAPINFO", "mapinfo", "Start_hg38", "pos")][1]
-  strc <- nm[nm %in% c("Strand_FR", "Strand", "strand")][1]
+    nm <- names(m)
+    idc <- nm[nm %in% c("IlmnID", "Name", "Probe_ID")][1]
+    gnc <- nm[grepl("UCSC_RefGene_Name|^RefGene_Name$", nm)][1]
+    ggc <- nm[grepl("UCSC_RefGene_Group|^RefGene_Group$", nm)][1]
+    if (is.na(idc) || is.na(gnc)) {
+        stop("Could not locate the probe identifier and UCSC_RefGene_Name columns ",
+            "in the manifest.",
+            call. = FALSE
+        )
+    }
+    enc <- nm[grepl("GencodeV\\d+_Name", nm)][1]
+    egc <- nm[grepl("GencodeV\\d+_Group", nm)][1]
+    chrc <- nm[nm %in% c("CHR", "Chr", "chr")][1]
+    posc <- nm[nm %in% c("MAPINFO", "mapinfo", "Start_hg38", "pos")][1]
+    strc <- nm[nm %in% c("Strand_FR", "Strand", "strand")][1]
 
-  probe_id <- as.character(m[[idc]])
-  posn <- regexpr("cg[0-9]{6,}", probe_id, ignore.case = TRUE)
-  lenn <- attr(posn, "match.length")
-  cpg <- ifelse(posn > 0L, tolower(substr(probe_id, posn, posn + lenn - 1L)),
-                NA_character_)
+    probe_id <- as.character(m[[idc]])
+    posn <- regexpr("cg[0-9]{6,}", probe_id, ignore.case = TRUE)
+    lenn <- attr(posn, "match.length")
+    cpg <- ifelse(posn > 0L, tolower(substr(probe_id, posn, posn + lenn - 1L)),
+        NA_character_
+    )
 
-  base <- data.table::data.table(
-    manifest_probe_id = probe_id,
-    cpg_id   = cpg,
-    chr      = if (!is.na(chrc)) as.character(m[[chrc]]) else NA_character_,
-    position = if (!is.na(posc)) suppressWarnings(as.integer(m[[posc]])) else NA_integer_,
-    strand   = if (!is.na(strc)) as.character(m[[strc]]) else NA_character_,
-    ucsc_name  = as.character(m[[gnc]]),
-    ucsc_group = if (!is.na(ggc)) as.character(m[[ggc]]) else "",
-    gen_name   = if (!is.na(enc)) as.character(m[[enc]]) else "",
-    gen_group  = if (!is.na(egc)) as.character(m[[egc]]) else "")
-  base <- base[!is.na(base$cpg_id), ]
+    base <- data.table::data.table(
+        manifest_probe_id = probe_id,
+        cpg_id = cpg,
+        chr = if (!is.na(chrc)) as.character(m[[chrc]]) else NA_character_,
+        position = if (!is.na(posc)) suppressWarnings(as.integer(m[[posc]])) else NA_integer_,
+        strand = if (!is.na(strc)) as.character(m[[strc]]) else NA_character_,
+        ucsc_name = as.character(m[[gnc]]),
+        ucsc_group = if (!is.na(ggc)) as.character(m[[ggc]]) else "",
+        gen_name = if (!is.na(enc)) as.character(m[[enc]]) else "",
+        gen_group = if (!is.na(egc)) as.character(m[[egc]]) else ""
+    )
+    base <- base[!is.na(base$cpg_id), ]
 
-  ann <- .cpgd_manifest_long(base)
-  data.table::fwrite(ann, out, compress = "gzip")
-  message(sprintf("wrote %s: %d CpG-gene rows, %d CpGs, %d genes",
-                  out, nrow(ann), length(unique(ann$cpg_id)),
-                  length(unique(ann$target_gene))))
-  invisible(out)
+    ann <- .cpgd_manifest_long(base)
+    data.table::fwrite(ann, out, compress = "gzip")
+    message(sprintf(
+        "wrote %s: %d CpG-gene rows, %d CpGs, %d genes",
+        out, nrow(ann), length(unique(ann$cpg_id)),
+        length(unique(ann$target_gene))
+    ))
+    invisible(out)
 }
 
 
@@ -195,64 +214,75 @@ cpgd_build_manifest_genes <- function(manifest_file, out) {
 # row, gene and group tokens are paired per transcript, Gencode supplements
 # UCSC, and the result is one row per CpG x gene with pooled groups.
 .cpgd_manifest_long <- function(base) {
-  expand_pairs <- function(d, name_col, group_col, source_label) {
-    d <- d[nzchar(d[[name_col]]) & !is.na(d[[name_col]]), ]
-    if (!nrow(d)) return(data.table::data.table())
-    ns <- strsplit(d[[name_col]],  ";", fixed = TRUE)
-    gs <- strsplit(d[[group_col]], ";", fixed = TRUE)
-    ln <- lengths(ns)
-    gs <- mapply(function(g, n) if (length(g) == n) g else rep(NA_character_, n),
-                 gs, ln, SIMPLIFY = FALSE)
-    o <- data.table::data.table(
-      manifest_probe_id = rep(d$manifest_probe_id, ln),
-      cpg_id   = rep(d$cpg_id, ln),
-      chr      = rep(d$chr, ln),
-      position = rep(d$position, ln),
-      strand   = rep(d$strand, ln),
-      target_gene    = toupper(trimws(unlist(ns))),
-      refgene_group  = unlist(gs),
-      refgene_source = source_label,
-      raw_name  = rep(d[[name_col]], ln),
-      raw_group = rep(d[[group_col]], ln))
-    o <- o[nzchar(o$target_gene) & !o$target_gene %in% c("NA", "."), ]
-    # Ensembl gene IDs are unusable as symbols anywhere else in the package
-    # (lookup / measured / SMR tables key on symbols); where a symbol exists
-    # the UCSC track already carries it.
-    o[!grepl("^ENSG[0-9]+", o$target_gene), ]
-  }
+    expand_pairs <- function(d, name_col, group_col, source_label) {
+        d <- d[nzchar(d[[name_col]]) & !is.na(d[[name_col]]), ]
+        if (!nrow(d)) {
+            return(data.table::data.table())
+        }
+        ns <- strsplit(d[[name_col]], ";", fixed = TRUE)
+        gs <- strsplit(d[[group_col]], ";", fixed = TRUE)
+        ln <- lengths(ns)
+        gs <- mapply(function(g, n) if (length(g) == n) g else rep(NA_character_, n),
+            gs, ln,
+            SIMPLIFY = FALSE
+        )
+        o <- data.table::data.table(
+            manifest_probe_id = rep(d$manifest_probe_id, ln),
+            cpg_id = rep(d$cpg_id, ln),
+            chr = rep(d$chr, ln),
+            position = rep(d$position, ln),
+            strand = rep(d$strand, ln),
+            target_gene = toupper(trimws(unlist(ns))),
+            refgene_group = unlist(gs),
+            refgene_source = source_label,
+            raw_name = rep(d[[name_col]], ln),
+            raw_group = rep(d[[group_col]], ln)
+        )
+        o <- o[nzchar(o$target_gene) & !o$target_gene %in% c("NA", "."), ]
+        # Ensembl gene IDs are unusable as symbols anywhere else in the package
+        # (lookup / measured / SMR tables key on symbols); where a symbol exists
+        # the UCSC track already carries it.
+        o[!grepl("^ENSG[0-9]+", o$target_gene), ]
+    }
 
-  long <- data.table::rbindlist(list(
-    expand_pairs(base, "ucsc_name", "ucsc_group", "UCSC_RefGene"),
-    expand_pairs(base, "gen_name",  "gen_group",  "GencodeV41")))
-  if (!nrow(long)) {
-    stop("No gene annotation rows could be extracted from the manifest.",
-         call. = FALSE)
-  }
-  # UCSC provenance preferred where both tracks list the gene ("U" > "G")
-  data.table::setorderv(long, c("cpg_id", "target_gene", "refgene_source"),
-                        order = c(1L, 1L, -1L))
-  ann <- long[, list(
-    array             = "EPICv2",
-    annotation_source = "Illumina_EPICv2",
-    refgene_source    = get("refgene_source")[1L],
-    refgene_group     = {
-      g <- unique(get("refgene_group")[!is.na(get("refgene_group")) &
-                                         nzchar(get("refgene_group"))])
-      if (length(g)) paste(sort(g), collapse = ";") else NA_character_
-    },
-    manifest_probe_id = paste(sort(unique(get("manifest_probe_id"))), collapse = ";"),
-    chr      = get("chr")[1L],
-    position = get("position")[1L],
-    strand   = get("strand")[1L],
-    UCSC_RefGene_Name_raw  = get("raw_name")[1L],
-    UCSC_RefGene_Group_raw = get("raw_group")[1L]),
-    by = c("cpg_id", "target_gene")]
-  data.table::setcolorder(ann, c(
-    "cpg_id", "target_gene", "array", "annotation_source", "refgene_source",
-    "refgene_group", "manifest_probe_id", "chr", "position", "strand",
-    "UCSC_RefGene_Name_raw", "UCSC_RefGene_Group_raw"))
-  data.table::setorderv(ann, c("cpg_id", "target_gene"))
-  ann
+    long <- data.table::rbindlist(list(
+        expand_pairs(base, "ucsc_name", "ucsc_group", "UCSC_RefGene"),
+        expand_pairs(base, "gen_name", "gen_group", "GencodeV41")
+    ))
+    if (!nrow(long)) {
+        stop("No gene annotation rows could be extracted from the manifest.",
+            call. = FALSE
+        )
+    }
+    # UCSC provenance preferred where both tracks list the gene ("U" > "G")
+    data.table::setorderv(long, c("cpg_id", "target_gene", "refgene_source"),
+        order = c(1L, 1L, -1L)
+    )
+    ann <- long[, list(
+        array = "EPICv2",
+        annotation_source = "Illumina_EPICv2",
+        refgene_source = get("refgene_source")[1L],
+        refgene_group = {
+            g <- unique(get("refgene_group")[!is.na(get("refgene_group")) &
+                nzchar(get("refgene_group"))])
+            if (length(g)) paste(sort(g), collapse = ";") else NA_character_
+        },
+        manifest_probe_id = paste(sort(unique(get("manifest_probe_id"))), collapse = ";"),
+        chr = get("chr")[1L],
+        position = get("position")[1L],
+        strand = get("strand")[1L],
+        UCSC_RefGene_Name_raw = get("raw_name")[1L],
+        UCSC_RefGene_Group_raw = get("raw_group")[1L]
+    ),
+    by = c("cpg_id", "target_gene")
+    ]
+    data.table::setcolorder(ann, c(
+        "cpg_id", "target_gene", "array", "annotation_source", "refgene_source",
+        "refgene_group", "manifest_probe_id", "chr", "position", "strand",
+        "UCSC_RefGene_Name_raw", "UCSC_RefGene_Group_raw"
+    ))
+    data.table::setorderv(ann, c("cpg_id", "target_gene"))
+    ann
 }
 
 
@@ -294,16 +324,22 @@ cpgd_build_manifest_genes <- function(manifest_file, out) {
 #' head(qc[qc$masked_general == TRUE, ], 3)
 #' @export
 cpgd_probe_qc <- function() {
-  if (!is.null(.cpgd_env$probe_qc)) return(.cpgd_env$probe_qc)
-  Q <- .cpgd_data("epicv2_probe_qc")
-  req <- c("cpg_id", "masked_general", "masked_partial", "mask_reasons",
-           "pos_hg19_verified")
-  miss <- setdiff(req, names(Q))
-  if (length(miss)) {
-    stop("The probe QC table is missing expected columns: ",
-         paste(miss, collapse = ", "), call. = FALSE)
-  }
-  data.table::setkeyv(Q, "cpg_id")
-  .cpgd_env$probe_qc <- Q
-  Q
+    if (!is.null(.cpgd_env$probe_qc)) {
+        return(.cpgd_env$probe_qc)
+    }
+    Q <- .cpgd_data("epicv2_probe_qc")
+    req <- c(
+        "cpg_id", "masked_general", "masked_partial", "mask_reasons",
+        "pos_hg19_verified"
+    )
+    miss <- setdiff(req, names(Q))
+    if (length(miss)) {
+        stop("The probe QC table is missing expected columns: ",
+            paste(miss, collapse = ", "),
+            call. = FALSE
+        )
+    }
+    data.table::setkeyv(Q, "cpg_id")
+    .cpgd_env$probe_qc <- Q
+    Q
 }

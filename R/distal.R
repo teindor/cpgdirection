@@ -47,22 +47,26 @@
 #' d[d$cpg_id == "cg26261055", ]
 #' @export
 cpgd_distal_links <- function() {
-  if (!is.null(.cpgd_env$distal_links)) return(.cpgd_env$distal_links)
-  D <- .cpgd_data("distal_links", required = FALSE)
-  if (is.null(D)) {
-    message("distal_links layer not available in this installation.")
-    return(NULL)
-  }
-  req <- c("cpg_id", "target_gene", "source", "biosample", "score")
-  miss <- setdiff(req, names(D))
-  if (length(miss)) {
-    stop("The distal_links table is missing expected columns: ",
-         paste(miss, collapse = ", "), call. = FALSE)
-  }
-  if (!"tissue_class" %in% names(D)) D[, "tissue_class" := "other"]
-  data.table::setkeyv(D, c("cpg_id", "target_gene"))
-  .cpgd_env$distal_links <- D
-  D
+    if (!is.null(.cpgd_env$distal_links)) {
+        return(.cpgd_env$distal_links)
+    }
+    D <- .cpgd_data("distal_links", required = FALSE)
+    if (is.null(D)) {
+        message("distal_links layer not available in this installation.")
+        return(NULL)
+    }
+    req <- c("cpg_id", "target_gene", "source", "biosample", "score")
+    miss <- setdiff(req, names(D))
+    if (length(miss)) {
+        stop("The distal_links table is missing expected columns: ",
+            paste(miss, collapse = ", "),
+            call. = FALSE
+        )
+    }
+    if (!"tissue_class" %in% names(D)) D[, "tissue_class" := "other"]
+    data.table::setkeyv(D, c("cpg_id", "target_gene"))
+    .cpgd_env$distal_links <- D
+    D
 }
 
 
@@ -116,22 +120,28 @@ cpgd_distal_links <- function() {
 #' o[o$onco_tier == "O1", ][1:5, ]
 #' @export
 cpgd_onco_eqtm <- function() {
-  if (!is.null(.cpgd_env$onco_eqtm)) return(.cpgd_env$onco_eqtm)
-  O <- .cpgd_data("onco_eqtm_consensus", required = FALSE)
-  if (is.null(O)) {
-    message("onco_eqtm_consensus layer not available in this installation.")
-    return(NULL)
-  }
-  req <- c("cpg_id", "target_gene", "direction", "onco_tier", "n_cancers",
-           "sign_agreement")
-  miss <- setdiff(req, names(O))
-  if (length(miss)) {
-    stop("The onco_eqtm_consensus table is missing expected columns: ",
-         paste(miss, collapse = ", "), call. = FALSE)
-  }
-  data.table::setkeyv(O, c("cpg_id", "target_gene"))
-  .cpgd_env$onco_eqtm <- O
-  O
+    if (!is.null(.cpgd_env$onco_eqtm)) {
+        return(.cpgd_env$onco_eqtm)
+    }
+    O <- .cpgd_data("onco_eqtm_consensus", required = FALSE)
+    if (is.null(O)) {
+        message("onco_eqtm_consensus layer not available in this installation.")
+        return(NULL)
+    }
+    req <- c(
+        "cpg_id", "target_gene", "direction", "onco_tier", "n_cancers",
+        "sign_agreement"
+    )
+    miss <- setdiff(req, names(O))
+    if (length(miss)) {
+        stop("The onco_eqtm_consensus table is missing expected columns: ",
+            paste(miss, collapse = ", "),
+            call. = FALSE
+        )
+    }
+    data.table::setkeyv(O, c("cpg_id", "target_gene"))
+    .cpgd_env$onco_eqtm <- O
+    O
 }
 
 
@@ -140,29 +150,37 @@ cpgd_onco_eqtm <- function() {
 # installed (a missing optional layer weakens the answer; it never kills the
 # call and never nags on every row). `sources$onco` overrides for tests.
 .cpgd_onco_keyed <- function(sources = NULL) {
-  O <- if (!is.null(sources) && "onco" %in% names(sources)) {
-    v <- sources[["onco"]]
-    if (is.null(v)) return(NULL)
-    data.table::as.data.table(v)
-  } else {
-    tryCatch(suppressMessages(cpgd_onco_eqtm()), error = function(e) NULL)
-  }
-  if (is.null(O) || !nrow(O)) return(NULL)
-  OO <- data.table::data.table(
-    cpg_id = as.character(O$cpg_id),
-    g      = toupper(trimws(as.character(O$target_gene))),
-    d      = suppressWarnings(as.numeric(O$direction)),
-    tier   = as.character(O$onco_tier),
-    nc     = suppressWarnings(as.integer(O$n_cancers)),
-    agr    = suppressWarnings(as.numeric(O$sign_agreement)),
-    mr     = if ("median_r" %in% names(O)) suppressWarnings(as.numeric(O$median_r))
-             else rep(NA_real_, nrow(O)))
-  OO[, ".gkey" := gsub("_", "-", get("g"))]
-  # the rung consults O1 only; keep the other tiers for reporting
-  data.table::setorderv(OO, c("cpg_id", "g", "tier"))
-  OO <- unique(OO, by = c("cpg_id", "g"))
-  data.table::setkeyv(OO, c("cpg_id", ".gkey"))
-  OO
+    O <- if (!is.null(sources) && "onco" %in% names(sources)) {
+        v <- sources[["onco"]]
+        if (is.null(v)) {
+            return(NULL)
+        }
+        data.table::as.data.table(v)
+    } else {
+        tryCatch(suppressMessages(cpgd_onco_eqtm()), error = function(e) NULL)
+    }
+    if (is.null(O) || !nrow(O)) {
+        return(NULL)
+    }
+    OO <- data.table::data.table(
+        cpg_id = as.character(O$cpg_id),
+        g = toupper(trimws(as.character(O$target_gene))),
+        d = suppressWarnings(as.numeric(O$direction)),
+        tier = as.character(O$onco_tier),
+        nc = suppressWarnings(as.integer(O$n_cancers)),
+        agr = suppressWarnings(as.numeric(O$sign_agreement)),
+        mr = if ("median_r" %in% names(O)) {
+            suppressWarnings(as.numeric(O$median_r))
+        } else {
+            rep(NA_real_, nrow(O))
+        }
+    )
+    OO[, ".gkey" := gsub("_", "-", get("g"))]
+    # the rung consults O1 only; keep the other tiers for reporting
+    data.table::setorderv(OO, c("cpg_id", "g", "tier"))
+    OO <- unique(OO, by = c("cpg_id", "g"))
+    data.table::setkeyv(OO, c("cpg_id", ".gkey"))
+    OO
 }
 
 
@@ -170,30 +188,37 @@ cpgd_onco_eqtm <- function() {
 # columns the pair workflow reports. `tissue_class` restricts to biosamples of
 # that class ("blood"/"brain"/"other"); NULL keeps all.
 .cpgd_distal_summary <- function(D, cpgs, tissue_class = NULL) {
-  # data.table resolves bare names as columns first: the argument is copied
-  # to a name no column can have before it is used inside the frame.
-  .want_cpgs <- cpgs
-  .want_class <- tissue_class
-  DD <- data.table::as.data.table(D)[get("cpg_id") %chin% .want_cpgs]
-  if (!is.null(.want_class) && "tissue_class" %in% names(DD)) {
-    DD <- DD[get("tissue_class") %chin% .want_class]
-  }
-  if (!nrow(DD)) {
-    return(data.table::data.table(cpg_id = character(0), .gkey = character(0),
-                                  target_gene = character(0),
-                                  distal_sources = character(0),
-                                  distal_n_biosamples = integer(0),
-                                  distal_score_max = numeric(0),
-                                  distal_biosamples = character(0)))
-  }
-  DD[, ".gkey" := gsub("_", "-", toupper(get("target_gene")))]
-  DD[, list(
-    target_gene         = get("target_gene")[1L],
-    distal_sources      = paste(sort(unique(get("source"))), collapse = ";"),
-    distal_n_biosamples = data.table::uniqueN(paste(get("source"), get("biosample"))),
-    distal_score_max    = suppressWarnings(max(as.numeric(get("score")), na.rm = TRUE)),
-    distal_biosamples   = paste(sort(unique(get("biosample"))), collapse = ";")),
-    by = c("cpg_id", ".gkey")][
-    , "distal_score_max" := data.table::fifelse(is.finite(get("distal_score_max")),
-                                                 get("distal_score_max"), NA_real_)][]
+    # data.table resolves bare names as columns first: the argument is copied
+    # to a name no column can have before it is used inside the frame.
+    .want_cpgs <- cpgs
+    .want_class <- tissue_class
+    DD <- data.table::as.data.table(D)[get("cpg_id") %chin% .want_cpgs]
+    if (!is.null(.want_class) && "tissue_class" %in% names(DD)) {
+        DD <- DD[get("tissue_class") %chin% .want_class]
+    }
+    if (!nrow(DD)) {
+        return(data.table::data.table(
+            cpg_id = character(0), .gkey = character(0),
+            target_gene = character(0),
+            distal_sources = character(0),
+            distal_n_biosamples = integer(0),
+            distal_score_max = numeric(0),
+            distal_biosamples = character(0)
+        ))
+    }
+    DD[, ".gkey" := gsub("_", "-", toupper(get("target_gene")))]
+    DD[, list(
+        target_gene         = get("target_gene")[1L],
+        distal_sources      = paste(sort(unique(get("source"))), collapse = ";"),
+        distal_n_biosamples = data.table::uniqueN(paste(get("source"), get("biosample"))),
+        distal_score_max    = suppressWarnings(max(as.numeric(get("score")), na.rm = TRUE)),
+        distal_biosamples   = paste(sort(unique(get("biosample"))), collapse = ";")
+    ),
+    by = c("cpg_id", ".gkey")
+    ][
+        , "distal_score_max" := data.table::fifelse(
+            is.finite(get("distal_score_max")),
+            get("distal_score_max"), NA_real_
+        )
+    ][]
 }

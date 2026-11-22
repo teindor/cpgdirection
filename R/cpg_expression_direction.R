@@ -82,123 +82,135 @@
                              min_confidence = NULL,
                              allow_nearest_gene = FALSE,
                              verbose = TRUE) {
+    tissue <- match.arg(tissue, CPGD_TISSUES)
 
-  tissue <- match.arg(tissue, CPGD_TISSUES)
+    q <- .cpgd_parse_input(cpgs, genes)
+    if (!nrow(q)) {
+        ex <- utils::head(as.character(if (is.data.frame(cpgs)) cpgs[[1]] else cpgs), 3)
+        stop("No valid CpG identifiers found in the input. Identifiers must contain ",
+            "a 'cg' followed by at least six digits, anywhere in the string. ",
+            "First values seen: ", paste(sQuote(ex), collapse = ", "),
+            ". Use cpgd_parse_check() to see what the parser extracted.",
+            call. = FALSE
+        )
+    }
+    n_raw <- attr(q, "n_raw")
+    n_in <- if (is.null(n_raw)) nrow(q) else n_raw
+    n_dup <- n_in - nrow(q)
 
-  q <- .cpgd_parse_input(cpgs, genes)
-  if (!nrow(q)) {
-    ex <- utils::head(as.character(if (is.data.frame(cpgs)) cpgs[[1]] else cpgs), 3)
-    stop("No valid CpG identifiers found in the input. Identifiers must contain ",
-         "a 'cg' followed by at least six digits, anywhere in the string. ",
-         "First values seen: ", paste(sQuote(ex), collapse = ", "),
-         ". Use cpgd_parse_check() to see what the parser extracted.", call. = FALSE)
-  }
-  n_raw <- attr(q, "n_raw")
-  n_in <- if (is.null(n_raw)) nrow(q) else n_raw
-  n_dup <- n_in - nrow(q)
+    L <- .cpgd_lookup(tissue)
+    hit <- L[q, on = "cpg_id", allow.cartesian = TRUE, nomatch = NA]
 
-  L <- .cpgd_lookup(tissue)
-  hit <- L[q, on = "cpg_id", allow.cartesian = TRUE, nomatch = NA]
+    # A right join fills non-matching rows with NA, so an identifier absent from
+    # the table looks exactly like one present but with no gene nearby. They are
+    # different facts and a user needs to tell them apart: the first usually means
+    # a typo or a probe from another array, the second is a real biological
+    # answer. Capture it now, before `status` is overwritten below.
+    hit[, "cpgd_absent" := is.na(get("status"))]
 
-  # A right join fills non-matching rows with NA, so an identifier absent from
-  # the table looks exactly like one present but with no gene nearby. They are
-  # different facts and a user needs to tell them apart: the first usually means
-  # a typo or a probe from another array, the second is a real biological
-  # answer. Capture it now, before `status` is overwritten below.
-  hit[, "cpgd_absent" := is.na(get("status"))]
+    # A supplied gene may appear with underscores where the catalogue uses dashes,
+    # and panel names often carry a compound tail whose informative symbol is the
+    # last token. Accept any of these forms.
+    hit[, "g_dash" := gsub("_", "-", get("given_gene"))]
+    hit[, "g2_dash" := gsub("_", "-", get("given_gene2"))]
+    hit[, "match_user" := !is.na(get("target_gene")) & (
+        (!is.na(get("given_gene")) & (get("target_gene") == get("given_gene") |
+            get("target_gene") == get("g_dash"))) |
+            (!is.na(get("given_gene2")) & (get("target_gene") == get("given_gene2") |
+                get("target_gene") == get("g2_dash"))))]
+    hit[is.na(get("match_user")), "match_user" := FALSE]
 
-  # A supplied gene may appear with underscores where the catalogue uses dashes,
-  # and panel names often carry a compound tail whose informative symbol is the
-  # last token. Accept any of these forms.
-  hit[, "g_dash"  := gsub("_", "-", get("given_gene"))]
-  hit[, "g2_dash" := gsub("_", "-", get("given_gene2"))]
-  hit[, "match_user" := !is.na(get("target_gene")) & (
-        (!is.na(get("given_gene"))  & (get("target_gene") == get("given_gene")  |
-                                       get("target_gene") == get("g_dash"))) |
-        (!is.na(get("given_gene2")) & (get("target_gene") == get("given_gene2") |
-                                       get("target_gene") == get("g2_dash"))))]
-  hit[is.na(get("match_user")), "match_user" := FALSE]
+    # one row per CpG: the requested gene if we hold it, else the nearest TSS
+    hit[, "gene_rank" := fifelse(get("match_user"), 0L, 1L)]
+    hit[, "adist" := abs(as.numeric(get("tss_dist")))]
+    hit[is.na(get("adist")), "adist" := Inf]
+    setorderv(hit, c("cpg_id", "gene_rank", "adist"))
+    out <- hit[, .SD[1L], by = "cpg_id"]
 
-  # one row per CpG: the requested gene if we hold it, else the nearest TSS
-  hit[, "gene_rank" := fifelse(get("match_user"), 0L, 1L)]
-  hit[, "adist" := abs(as.numeric(get("tss_dist")))]
-  hit[is.na(get("adist")), "adist" := Inf]
-  setorderv(hit, c("cpg_id", "gene_rank", "adist"))
-  out <- hit[, .SD[1L], by = "cpg_id"]
-
-  out[, "gene_source" := fifelse(
+    out[, "gene_source" := fifelse(
         is.na(get("target_gene")), NA_character_,
-        fifelse(get("match_user"),
-                fifelse(get("gene_origin") == "parsed", "parsed_from_name", "user_supplied"),
-                fifelse(get("status") == "DIRECT_eQTM", "catalogue", "nearest_TSS")))]
+        fifelse(
+            get("match_user"),
+            fifelse(get("gene_origin") == "parsed", "parsed_from_name", "user_supplied"),
+            fifelse(get("status") == "DIRECT_eQTM", "catalogue", "nearest_TSS")
+        )
+    )]
 
-  out[is.na(get("target_gene")), "status" := "NO_EXPRESSION_ANCHOR"]
-  out[get("cpgd_absent") %in% TRUE, "status" := "UNMAPPED"]
+    out[is.na(get("target_gene")), "status" := "NO_EXPRESSION_ANCHOR"]
+    out[get("cpgd_absent") %in% TRUE, "status" := "UNMAPPED"]
 
-  # If a gene was requested but the table holds no pairing for it, the nearest
-  # catalogued gene is a DIFFERENT gene. Returning a direction for it would
-  # answer a question nobody asked: a CpG near POMC pairs with DNMT3A because
-  # they are 50 kb apart, and a reader skimming the output would take the
-  # direction as being about POMC. Refuse by default.
-  out[, "requested_gene" := get("given_gene")]
-  out[!is.na(get("requested_gene")) & !get("match_user") &
+    # If a gene was requested but the table holds no pairing for it, the nearest
+    # catalogued gene is a DIFFERENT gene. Returning a direction for it would
+    # answer a question nobody asked: a CpG near POMC pairs with DNMT3A because
+    # they are 50 kb apart, and a reader skimming the output would take the
+    # direction as being about POMC. Refuse by default.
+    out[, "requested_gene" := get("given_gene")]
+    out[!is.na(get("requested_gene")) & !get("match_user") &
         !is.na(get("target_gene")), "status" := "REQUESTED_GENE_UNAVAILABLE"]
 
-  thrA <- if (is.null(min_confidence)) 0.30 else min_confidence
-  thrB <- if (is.null(min_confidence)) 0.50 else min_confidence
-  out[, "call" := fcase(
+    thrA <- if (is.null(min_confidence)) 0.30 else min_confidence
+    thrB <- if (is.null(min_confidence)) 0.50 else min_confidence
+    out[, "call" := fcase(
         get("status") == "REQUESTED_GENE_UNAVAILABLE" & !isTRUE(allow_nearest_gene), "ABSTAIN",
         is.na(get("direction")), "ABSTAIN",
         get("evidence_tier") == "A" & get("confidence") >= thrA, as.character(get("direction")),
         get("evidence_tier") == "B" & get("confidence") >= thrB, as.character(get("direction")),
-        default = "ABSTAIN")]
-  out[get("call") == "ABSTAIN" & get("status") == "PREDICTED", "status" := "ABSTAIN"]
+        default = "ABSTAIN"
+    )]
+    out[get("call") == "ABSTAIN" & get("status") == "PREDICTED", "status" := "ABSTAIN"]
 
-  out[, "direction_label" := fcase(
+    out[, "direction_label" := fcase(
         get("direction") == 1,  "higher methylation -> HIGHER expression",
         get("direction") == -1, "higher methylation -> LOWER expression",
-        default = NA_character_)]
+        default = NA_character_
+    )]
 
-  acc <- CPGD_CATALOGUE_ACCURACY$tissue[[tissue]]
-  out[, "expected_accuracy" := fcase(
+    acc <- CPGD_CATALOGUE_ACCURACY$tissue[[tissue]]
+    out[, "expected_accuracy" := fcase(
         get("status") == "DIRECT_eQTM", CPGD_MEASURED_ACCURACY[["single"]],
         get("status") == "PREDICTED" & get("evidence_tier") == "A", acc[["A"]],
         get("status") == "PREDICTED" & get("evidence_tier") == "B", acc[["B"]],
-        default = NA_character_)]
+        default = NA_character_
+    )]
 
-  out[, "note" := ""]
-  out[get("status") == "NO_EXPRESSION_ANCHOR", "note" :=
+    out[, "note" := ""]
+    out[get("status") == "NO_EXPRESSION_ANCHOR", "note" :=
         "no gene with an expression anchor within 250 kb"]
-  out[get("status") == "UNMAPPED", "note" :=
+    out[get("status") == "UNMAPPED", "note" :=
         "identifier not present in the lookup table - check the probe ID and the array version"]
-  out[get("status") == "ABSTAIN", "note" := "below the confidence threshold; no call made"]
-  out[get("gene_source") == "nearest_TSS" & get("status") != "NO_EXPRESSION_ANCHOR",
-      "note" := "gene assigned by nearest TSS, not a measured association - verify"]
-  out[get("evidence_tier") == "C", "note" := "uncharted locus; tier C always abstains"]
-  out[get("status") == "REQUESTED_GENE_UNAVAILABLE", "note" := paste0(
+    out[get("status") == "ABSTAIN", "note" := "below the confidence threshold; no call made"]
+    out[
+        get("gene_source") == "nearest_TSS" & get("status") != "NO_EXPRESSION_ANCHOR",
+        "note" := "gene assigned by nearest TSS, not a measured association - verify"
+    ]
+    out[get("evidence_tier") == "C", "note" := "uncharted locus; tier C always abstains"]
+    out[get("status") == "REQUESTED_GENE_UNAVAILABLE", "note" := paste0(
         "no prediction available for the requested gene; nearest catalogued gene is ",
         get("target_gene"), ". Set allow_nearest_gene = TRUE to use it, but it is a ",
-        "DIFFERENT gene")]
+        "DIFFERENT gene"
+    )]
 
-  keep <- c("input", "cpg_id", "tissue", "requested_gene", "target_gene", "gene_source", "tss_dist", "status",
-            "direction", "direction_label", "probability_plus1", "confidence",
-            "evidence_tier", "expected_accuracy", "call", "note")
-  unmapped <- setdiff(q$cpg_id, out$cpg_id)
-  out <- out[, intersect(keep, names(out)), with = FALSE]
-  if (length(unmapped)) {
-    u <- q[q$cpg_id %in% unmapped, c("input", "cpg_id"), with = FALSE]
-    u[, "status" := "UNMAPPED"]
-    u[, "note" := "identifier not present in the lookup table"]
-    out <- data.table::rbindlist(list(out, u), fill = TRUE)
-  }
+    keep <- c(
+        "input", "cpg_id", "tissue", "requested_gene", "target_gene", "gene_source", "tss_dist", "status",
+        "direction", "direction_label", "probability_plus1", "confidence",
+        "evidence_tier", "expected_accuracy", "call", "note"
+    )
+    unmapped <- setdiff(q$cpg_id, out$cpg_id)
+    out <- out[, intersect(keep, names(out)), with = FALSE]
+    if (length(unmapped)) {
+        u <- q[q$cpg_id %in% unmapped, c("input", "cpg_id"), with = FALSE]
+        u[, "status" := "UNMAPPED"]
+        u[, "note" := "identifier not present in the lookup table"]
+        out <- data.table::rbindlist(list(out, u), fill = TRUE)
+    }
 
-  data.table::setattr(out, "class", c("cpgd_result", class(out)))
-  data.table::setattr(out, "n_submitted", n_in)
-  data.table::setattr(out, "n_duplicate", n_dup)
-  data.table::setattr(out, "tissue", tissue)
-  out[, "tissue" := tissue]
-  if (isTRUE(verbose)) .cpgd_message_print(out)
-  invisible(out)
+    data.table::setattr(out, "class", c("cpgd_result", class(out)))
+    data.table::setattr(out, "n_submitted", n_in)
+    data.table::setattr(out, "n_duplicate", n_dup)
+    data.table::setattr(out, "tissue", tissue)
+    out[, "tissue" := tissue]
+    if (isTRUE(verbose)) .cpgd_message_print(out)
+    invisible(out)
 }
 
 
@@ -221,32 +233,41 @@
 #' cpgd_accuracy_table()
 #' @export
 cpgd_accuracy_table <- function() {
-  acc <- CPGD_CATALOGUE_ACCURACY$tissue
-  data.frame(
-    tissue = c("any (measured)", "any (measured)",
-               rep("blood", 2), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
-               "any (tumour consensus)", "any"),
-    status = c("DIRECT_eQTM (2+ cohorts agree)", "DIRECT_eQTM (one cohort)",
-               "PREDICTED (tier A)", "PREDICTED (tier B)",
-               "PREDICTED (tier A)", "PREDICTED (tier B)",
-               "PREDICTED (tier A)", "PREDICTED (tier B)",
-               "onco_consensus (Onco-eQTM O1)", "majority baseline"),
-    expected_accuracy = c("~1.00", "0.96-0.99",
-                          acc$blood[["A"]], acc$blood[["B"]],
-                          acc$nasal_epithelium[["A"]], acc$nasal_epithelium[["B"]],
-                          acc$solid_tissue[["A"]], acc$solid_tissue[["B"]],
-                          "0.70-0.94", "0.57-0.64"),
-    basis = c("same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
-              "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; inst/scripts/build_measured_eqtms.R",
-              "shipped model; MESA adult blood (not a training cohort); the blood model makes no PREDICTED call on the HELIX check pairs",
-              "shipped model; MESA adult blood; only 10 pairs",
-              "shipped model; no independent nasal yardstick exists; on the blood and solid yardsticks tier A agrees 0.67 (MESA, n=1,390) and 0.71 (FUSION + GTEx, n=4,264)",
-              "shipped model; on the blood and solid yardsticks tier B agrees 0.80 (MESA, n=78) and 0.83 (FUSION + GTEx, n=284)",
-              "shipped model; FUSION skeletal muscle and GTEx solid tissues, each held out in turn and pooled (FUSION 0.64, GTEx 0.62)",
-              "shipped model; tier-B solid calls abstain in the data (agreement 0.41, 95% CI 0.32-0.49, n=123)",
-              "agreement with measured blood 0.83 (n=1,955), nasal 0.94 (n=1,500), normal solid tissue 0.87 (n=1,976), SMR S1 0.70 (n=1,033); validated 6 Oct 2026",
-              "always predicting an inverse association: share of inverse pairs on the same yardsticks (MESA 0.64, FUSION + GTEx 0.61, HELIX 0.58, EVA-PR nasal 0.57)"),
-    stringsAsFactors = FALSE)
+    acc <- CPGD_CATALOGUE_ACCURACY$tissue
+    data.frame(
+        tissue = c(
+            "any (measured)", "any (measured)",
+            rep("blood", 2), rep("nasal_epithelium", 2), rep("solid_tissue", 2),
+            "any (tumour consensus)", "any"
+        ),
+        status = c(
+            "DIRECT_eQTM (2+ cohorts agree)", "DIRECT_eQTM (one cohort)",
+            "PREDICTED (tier A)", "PREDICTED (tier B)",
+            "PREDICTED (tier A)", "PREDICTED (tier B)",
+            "PREDICTED (tier A)", "PREDICTED (tier B)",
+            "onco_consensus (Onco-eQTM O1)", "majority baseline"
+        ),
+        expected_accuracy = c(
+            "~1.00", "0.96-0.99",
+            acc$blood[["A"]], acc$blood[["B"]],
+            acc$nasal_epithelium[["A"]], acc$nasal_epithelium[["B"]],
+            acc$solid_tissue[["A"]], acc$solid_tissue[["B"]],
+            "0.70-0.94", "0.57-0.64"
+        ),
+        basis = c(
+            "same sign in 2+ independent cohorts (eQTM Atlas build, 2.99.8)",
+            "sign replication between independent cohorts on shared pairs: blood 0.99, nasal 1.00, solid 0.92-0.99; inst/scripts/build_measured_eqtms.R",
+            "shipped model; MESA adult blood (not a training cohort); the blood model makes no PREDICTED call on the HELIX check pairs",
+            "shipped model; MESA adult blood; only 10 pairs",
+            "shipped model; no independent nasal yardstick exists; on the blood and solid yardsticks tier A agrees 0.67 (MESA, n=1,390) and 0.71 (FUSION + GTEx, n=4,264)",
+            "shipped model; on the blood and solid yardsticks tier B agrees 0.80 (MESA, n=78) and 0.83 (FUSION + GTEx, n=284)",
+            "shipped model; FUSION skeletal muscle and GTEx solid tissues, each held out in turn and pooled (FUSION 0.64, GTEx 0.62)",
+            "shipped model; tier-B solid calls abstain in the data (agreement 0.41, 95% CI 0.32-0.49, n=123)",
+            "agreement with measured blood 0.83 (n=1,955), nasal 0.94 (n=1,500), normal solid tissue 0.87 (n=1,976), SMR S1 0.70 (n=1,033); validated 6 Oct 2026",
+            "always predicting an inverse association: share of inverse pairs on the same yardsticks (MESA 0.64, FUSION + GTEx 0.61, HELIX 0.58, EVA-PR nasal 0.57)"
+        ),
+        stringsAsFactors = FALSE
+    )
 }
 
 
@@ -260,51 +281,64 @@ cpgd_accuracy_table <- function() {
 #' cpgd_lookup_info("blood")
 #' @export
 cpgd_lookup_info <- function(tissue = c("blood", "nasal_epithelium", "solid_tissue")) {
-  tissue <- match.arg(tissue)
-  L <- .cpgd_lookup(tissue)
-  list(tissue = tissue,
-       pairs = nrow(L),
-       cpgs = length(unique(L$cpg_id)),
-       genes = length(unique(L$target_gene)),
-       genome_build = "hg19",
-       file = {
-         p <- .cpgd_lookup_path(tissue)
-         if (is.na(p)) "cpgdirectionData (ExperimentHub)" else p
-       },
-       package_version = as.character(utils::packageVersion("cpgdirection")))
+    tissue <- match.arg(tissue)
+    L <- .cpgd_lookup(tissue)
+    list(
+        tissue = tissue,
+        pairs = nrow(L),
+        cpgs = length(unique(L$cpg_id)),
+        genes = length(unique(L$target_gene)),
+        genome_build = "hg19",
+        file = {
+            p <- .cpgd_lookup_path(tissue)
+            if (is.na(p)) "cpgdirectionData (ExperimentHub)" else p
+        },
+        package_version = as.character(utils::packageVersion("cpgdirection"))
+    )
 }
 
 
 #' @export
 print.cpgd_result <- function(x, ...) {
-  n_in <- attr(x, "n_submitted")
-  cat(sprintf("\ncpgdirection: %d CpGs submitted, %d returned\n",
-              if (is.null(n_in)) nrow(x) else n_in, nrow(x)))
-  n_dup <- attr(x, "n_duplicate")
-  if (!is.null(n_dup) && n_dup > 0)
-    cat(sprintf("  (%d duplicate probe identifiers collapsed)\n", n_dup))
-  st <- table(x$status)
-  for (nm in names(st)) cat(sprintf("  %-22s %d\n", nm, st[[nm]]))
-  cat("\n+1 = higher methylation -> HIGHER expression",
-      "\n-1 = higher methylation -> LOWER expression\n")
-  cat("\nAll accuracies are CONDITIONAL on the CpG being an eQTM. This gives the\n",
-      "direction of an effect, not evidence that one exists. ABSTAIN and\n",
-      "NO_EXPRESSION_ANCHOR are correct answers. See cpgd_accuracy_table().\n", sep = "")
-  cat("\n")
-  print(utils::head(as.data.frame(x[, intersect(c("cpg_id", "target_gene",
-        "direction", "confidence", "evidence_tier", "call"), names(x)), with = FALSE]), 10))
-  if (nrow(x) > 10) cat(sprintf("... %d more rows\n", nrow(x) - 10))
-  invisible(x)
+    n_in <- attr(x, "n_submitted")
+    cat(sprintf(
+        "\ncpgdirection: %d CpGs submitted, %d returned\n",
+        if (is.null(n_in)) nrow(x) else n_in, nrow(x)
+    ))
+    n_dup <- attr(x, "n_duplicate")
+    if (!is.null(n_dup) && n_dup > 0) {
+        cat(sprintf("  (%d duplicate probe identifiers collapsed)\n", n_dup))
+    }
+    st <- table(x$status)
+    for (nm in names(st)) cat(sprintf("  %-22s %d\n", nm, st[[nm]]))
+    cat(
+        "\n+1 = higher methylation -> HIGHER expression",
+        "\n-1 = higher methylation -> LOWER expression\n"
+    )
+    cat("\nAll accuracies are CONDITIONAL on the CpG being an eQTM. This gives the\n",
+        "direction of an effect, not evidence that one exists. ABSTAIN and\n",
+        "NO_EXPRESSION_ANCHOR are correct answers. See cpgd_accuracy_table().\n",
+        sep = ""
+    )
+    cat("\n")
+    print(utils::head(as.data.frame(x[, intersect(c(
+        "cpg_id", "target_gene",
+        "direction", "confidence", "evidence_tier", "call"
+    ), names(x)), with = FALSE]), 10))
+    if (nrow(x) > 10) cat(sprintf("... %d more rows\n", nrow(x) - 10))
+    invisible(x)
 }
 
 
 #' @export
 summary.cpgd_result <- function(object, ...) {
-  called <- object[object$call %in% c("1", "-1"), , drop = FALSE]
-  list(n = nrow(object),
-       by_status = table(object$status),
-       by_tier = table(object$evidence_tier, useNA = "ifany"),
-       n_called = nrow(called),
-       coverage = if (nrow(object)) nrow(called) / nrow(object) else NA_real_,
-       direction_of_calls = table(called$call))
+    called <- object[object$call %in% c("1", "-1"), , drop = FALSE]
+    list(
+        n = nrow(object),
+        by_status = table(object$status),
+        by_tier = table(object$evidence_tier, useNA = "ifany"),
+        n_called = nrow(called),
+        coverage = if (nrow(object)) nrow(called) / nrow(object) else NA_real_,
+        direction_of_calls = table(called$call)
+    )
 }

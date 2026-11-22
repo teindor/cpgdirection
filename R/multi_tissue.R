@@ -41,15 +41,18 @@
 #'
 #' @examplesIf cpgd_has_data("lookup_blood_hg19")
 #' res <- cpg_direction_all_tissues(c("cg00050692", "cg00000029"),
-#'                                  verbose = FALSE)
+#'     verbose = FALSE
+#' )
 #' res[, c("cpg_id", "best_direction", "best_evidence"), with = FALSE]
 #' @export
 cpg_direction_all_tissues <- function(cpgs, genes = NULL, min_tissues = 2L,
                                       allow_nearest_gene = FALSE, verbose = TRUE) {
-  cpg_expression_direction(cpgs, genes = genes, tissue = "all",
-                           min_tissues = min_tissues,
-                           allow_nearest_gene = allow_nearest_gene,
-                           universal = FALSE, verbose = verbose)
+    cpg_expression_direction(cpgs,
+        genes = genes, tissue = "all",
+        min_tissues = min_tissues,
+        allow_nearest_gene = allow_nearest_gene,
+        universal = FALSE, verbose = verbose
+    )
 }
 
 
@@ -86,11 +89,13 @@ cpg_direction_all_tissues <- function(cpgs, genes = NULL, min_tissues = 2L,
 #' m[m$cpg_id == "cg00000165", ]
 #' @export
 cpgd_measured_eqtms <- function() {
-  if (!is.null(.cpgd_env$measured)) return(.cpgd_env$measured)
-  M <- .cpgd_data("measured_eqtms")
-  data.table::setkeyv(M, "cpg_id")
-  .cpgd_env$measured <- M
-  M
+    if (!is.null(.cpgd_env$measured)) {
+        return(.cpgd_env$measured)
+    }
+    M <- .cpgd_data("measured_eqtms")
+    data.table::setkeyv(M, "cpg_id")
+    .cpgd_env$measured <- M
+    M
 }
 
 
@@ -99,41 +104,53 @@ cpgd_measured_eqtms <- function() {
 # nearest-gene annotation recovers only about half of true target genes, so a
 # measured association with a DIFFERENT gene is a finding, not a footnote.
 .cpgd_add_measured <- function(out) {
-  M <- tryCatch(cpgd_measured_eqtms(), error = function(e) NULL)
-  if (is.null(M)) {
-    out[, c("measured_genes", "measured_tissues", "measured_direction",
-            "annotation_mismatch", "mismatch_note") :=
-          list(NA_character_, NA_character_, NA_character_, NA, NA_character_)]
-    return(out)
-  }
-  agg <- M[, list(
-      measured_genes    = paste(sort(unique(get("target_gene"))), collapse = ";"),
-      measured_tissues  = paste(sort(unique(get("tissue"))), collapse = ";"),
-      measured_direction = paste(sort(unique(paste0(get("target_gene"), ":",
-                                 ifelse(get("direction") > 0, "+1", "-1")))), collapse = ";")),
-      by = "cpg_id"]
-  out <- merge(out, agg, by = "cpg_id", all.x = TRUE)
-  req <- toupper(out$requested_gene)
-  mg  <- strsplit(out$measured_genes, ";", fixed = TRUE)
-  mm <- mapply(function(r, g) {
-      # A CpG with NO measured record is not a mismatch, it is an absence of
-      # evidence. strsplit(NA) returns a length-one element holding NA rather
-      # than an empty vector, so testing length() alone lets every unmeasured
-      # CpG through and flags it. Test the value.
-      if (is.na(r) || is.null(g) || !length(g) || all(is.na(g))) return(NA)
-      # Panel labels are often compound ("LINC02210_CRHR1",
-      # "ENSG00000253356_STAR"); the informative symbol is the last token.
-      # Accept the whole label, both separator forms, and that last token.
-      cand <- unique(c(r, gsub("_", "-", r), gsub("-", "_", r),
-                       utils::tail(strsplit(r, "[_-]")[[1]], 1L)))
-      !any(cand %in% g)
+    M <- tryCatch(cpgd_measured_eqtms(), error = function(e) NULL)
+    if (is.null(M)) {
+        out[, c(
+            "measured_genes", "measured_tissues", "measured_direction",
+            "annotation_mismatch", "mismatch_note"
+        ) :=
+            list(NA_character_, NA_character_, NA_character_, NA, NA_character_)]
+        return(out)
+    }
+    agg <- M[, list(
+        measured_genes = paste(sort(unique(get("target_gene"))), collapse = ";"),
+        measured_tissues = paste(sort(unique(get("tissue"))), collapse = ";"),
+        measured_direction = paste(sort(unique(paste0(
+            get("target_gene"), ":",
+            ifelse(get("direction") > 0, "+1", "-1")
+        ))), collapse = ";")
+    ),
+    by = "cpg_id"
+    ]
+    out <- merge(out, agg, by = "cpg_id", all.x = TRUE)
+    req <- toupper(out$requested_gene)
+    mg <- strsplit(out$measured_genes, ";", fixed = TRUE)
+    mm <- mapply(function(r, g) {
+        # A CpG with NO measured record is not a mismatch, it is an absence of
+        # evidence. strsplit(NA) returns a length-one element holding NA rather
+        # than an empty vector, so testing length() alone lets every unmeasured
+        # CpG through and flags it. Test the value.
+        if (is.na(r) || is.null(g) || !length(g) || all(is.na(g))) {
+            return(NA)
+        }
+        # Panel labels are often compound ("LINC02210_CRHR1",
+        # "ENSG00000253356_STAR"); the informative symbol is the last token.
+        # Accept the whole label, both separator forms, and that last token.
+        cand <- unique(c(
+            r, gsub("_", "-", r), gsub("-", "_", r),
+            utils::tail(strsplit(r, "[_-]")[[1]], 1L)
+        ))
+        !any(cand %in% g)
     }, req, mg)
-  out[, "annotation_mismatch" := as.logical(mm)]
-  out[, "mismatch_note" := ""]
-  out[which(get("annotation_mismatch")), "mismatch_note" :=
-        paste0("measured association is with ", get("measured_genes"),
-               ", not the requested gene - check which gene this CpG actually tracks")]
-  out
+    out[, "annotation_mismatch" := as.logical(mm)]
+    out[, "mismatch_note" := ""]
+    out[which(get("annotation_mismatch")), "mismatch_note" :=
+        paste0(
+            "measured association is with ", get("measured_genes"),
+            ", not the requested gene - check which gene this CpG actually tracks"
+        )]
+    out
 }
 
 
@@ -208,9 +225,11 @@ cpgd_measured_eqtms <- function() {
 #' s[s$cpg_id == "cg18998365", ]
 #' @export
 cpgd_smr_directions <- function() {
-  if (!is.null(.cpgd_env$smr)) return(.cpgd_env$smr)
-  S <- .cpgd_data("smr_directions")
-  data.table::setkeyv(S, c("cpg_id", "target_gene"))
-  .cpgd_env$smr <- S
-  S
+    if (!is.null(.cpgd_env$smr)) {
+        return(.cpgd_env$smr)
+    }
+    S <- .cpgd_data("smr_directions")
+    data.table::setkeyv(S, c("cpg_id", "target_gene"))
+    .cpgd_env$smr <- S
+    S
 }

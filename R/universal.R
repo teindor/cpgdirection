@@ -2,7 +2,7 @@
 #'
 #' The catalogue-based prediction only covers genes some catalogue measured. To
 #' predict for \emph{any} gene, the package needs transcription start sites,
-#' which it does not ship — a gene annotation is large, versioned, and better
+#' which it does not ship <U+2014> a gene annotation is large, versioned, and better
 #' taken from Bioconductor than frozen into a package.
 #'
 #' \code{\link{cpg_direction_universal}} calls \code{\link{cpgd_gene_tss}},
@@ -40,111 +40,146 @@
 #' @examples
 #' if (requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE) &&
 #'     requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
-#' g <- cpgd_build_gene_tss()
-#' head(g)
+#'     g <- cpgd_build_gene_tss()
+#'     head(g)
 #' }
 #' @export
 cpgd_build_gene_tss <- function(out = NULL,
                                 source = c("txdb", "manifest"),
                                 manifest_file = NULL,
                                 genome_build = c("hg19", "hg38")) {
-  source <- match.arg(source)
-  genome_build <- match.arg(genome_build)
-  if (source == "txdb" && genome_build != "hg19")
-    stop("source = \"txdb\" uses TxDb.Hsapiens.UCSC.hg19.knownGene and is hg19 ",
-         "only; use source = \"manifest\" with an hg38 manifest for hg38.",
-         call. = FALSE)
+    source <- match.arg(source)
+    genome_build <- match.arg(genome_build)
+    if (source == "txdb" && genome_build != "hg19") {
+        stop("source = \"txdb\" uses TxDb.Hsapiens.UCSC.hg19.knownGene and is hg19 ",
+            "only; use source = \"manifest\" with an hg38 manifest for hg38.",
+            call. = FALSE
+        )
+    }
 
-  if (source == "txdb") {
-    need <- c("TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
-              "GenomicFeatures", "GenomicRanges", "AnnotationDbi")
-    miss <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
-    if (length(miss)) {
-      stop("Install these first:\n  BiocManager::install(c(",
-           paste(sprintf('"%s"', miss), collapse = ", "), "))", call. = FALSE)
-    }
-    txdb <- get("TxDb.Hsapiens.UCSC.hg19.knownGene",
-                envir = asNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene"))
-    g <- GenomicFeatures::genes(txdb, single.strand.genes.only = TRUE)
-    sym <- AnnotationDbi::mapIds(get("org.Hs.eg.db", envir = asNamespace("org.Hs.eg.db")),
-                                 keys = names(g), keytype = "ENTREZID",
-                                 column = "SYMBOL", multiVals = "first")
-    st <- as.character(GenomicRanges::strand(g))
-    tss <- ifelse(st == "+", GenomicRanges::start(g), GenomicRanges::end(g))
-    d <- data.table::data.table(
-      gene   = toupper(as.character(sym)),
-      chr    = as.character(GenomicRanges::seqnames(g)),
-      tss    = as.integer(tss),
-      strand = st)
-    d <- d[!is.na(d$gene) & grepl("^chr[0-9XY]+$", d$chr), ]
-    d <- unique(d, by = "gene")
-  } else {
-    if (is.null(manifest_file) || !file.exists(manifest_file))
-      stop("Supply manifest_file when source = \"manifest\".", call. = FALSE)
-    m <- .cpgd_fread(manifest_file)
-    nm <- names(m)
-    gcol <- nm[grepl("RefGene_Name|UCSC_RefGene_Name", nm)][1]
-    # The positions must be in the requested build. A build-labelled column
-    # pair is used when present (re-annotated manifests carry both builds);
-    # otherwise the plain CHR/MAPINFO columns are used only when the manifest
-    # does not say they are the other build (EPIC v2 ships CHR and MAPINFO in
-    # hg38 and says so in Genome_Build; Exeter's re-annotation carries
-    # CHR_hg38/Start_hg38). A mismatch is refused, never silently mixed in.
-    build <- if ("Genome_Build" %in% nm)
-      unique(stats::na.omit(as.character(m[["Genome_Build"]]))) else character(0)
-    if (genome_build == "hg38") {
-      ccol <- nm[grepl("^CHR_hg38$", nm, ignore.case = TRUE)][1]
-      pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg38$", nm, ignore.case = TRUE)][1]
-      if (is.na(ccol) || is.na(pcol)) {
-        if (!any(grepl("38", build)))
-          stop("genome_build = \"hg38\" but the manifest carries no hg38 ",
-               "coordinates (no CHR_hg38/Start_hg38 columns and no ",
-               "Genome_Build naming GRCh38/hg38).", call. = FALSE)
-        ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
-        pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
-        message("Manifest coordinates taken as hg38 (Genome_Build = ",
-                paste(build, collapse = "/"), ").")
-      }
+    if (source == "txdb") {
+        need <- c(
+            "TxDb.Hsapiens.UCSC.hg19.knownGene", "org.Hs.eg.db",
+            "GenomicFeatures", "GenomicRanges", "AnnotationDbi"
+        )
+        miss <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
+        if (length(miss)) {
+            stop("Install these first:\n  BiocManager::install(c(",
+                paste(sprintf('"%s"', miss), collapse = ", "), "))",
+                call. = FALSE
+            )
+        }
+        txdb <- get("TxDb.Hsapiens.UCSC.hg19.knownGene",
+            envir = asNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene")
+        )
+        g <- GenomicFeatures::genes(txdb, single.strand.genes.only = TRUE)
+        sym <- AnnotationDbi::mapIds(get("org.Hs.eg.db", envir = asNamespace("org.Hs.eg.db")),
+            keys = names(g), keytype = "ENTREZID",
+            column = "SYMBOL", multiVals = "first"
+        )
+        st <- as.character(GenomicRanges::strand(g))
+        tss <- ifelse(st == "+", GenomicRanges::start(g), GenomicRanges::end(g))
+        d <- data.table::data.table(
+            gene   = toupper(as.character(sym)),
+            chr    = as.character(GenomicRanges::seqnames(g)),
+            tss    = as.integer(tss),
+            strand = st
+        )
+        d <- d[!is.na(d$gene) & grepl("^chr[0-9XY]+$", d$chr), ]
+        d <- unique(d, by = "gene")
     } else {
-    ccol <- nm[grepl("^CHR_hg19$", nm, ignore.case = TRUE)][1]
-    pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg19$", nm, ignore.case = TRUE)][1]
-    if (is.na(ccol) || is.na(pcol)) {
-      if (any(grepl("hg38", nm, ignore.case = TRUE)) || any(grepl("38", build))) {
-        stop("This manifest is hg38 (",
-             if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
-             else "it carries hg38 coordinate columns and no hg19 ones",
-             ") while every cpgdirection layer is hg19. Use source = \"txdb\", ",
-             "an hg19 manifest (450K, EPIC v1, or a re-annotated EPIC v2 ",
-             "manifest with CHR_hg19/MAPINFO_hg19 columns), or ",
-             "genome_build = \"hg38\" for an hg38 table.", call. = FALSE)
-      }
-      ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
-      pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
-      message("Manifest coordinates taken as hg19 (",
-              if (length(build)) paste0("Genome_Build = ", paste(build, collapse = "/"))
-              else "no Genome_Build column", ").")
+        if (is.null(manifest_file) || !file.exists(manifest_file)) {
+            stop("Supply manifest_file when source = \"manifest\".", call. = FALSE)
+        }
+        m <- .cpgd_fread(manifest_file)
+        nm <- names(m)
+        gcol <- nm[grepl("RefGene_Name|UCSC_RefGene_Name", nm)][1]
+        # The positions must be in the requested build. A build-labelled column
+        # pair is used when present (re-annotated manifests carry both builds);
+        # otherwise the plain CHR/MAPINFO columns are used only when the manifest
+        # does not say they are the other build (EPIC v2 ships CHR and MAPINFO in
+        # hg38 and says so in Genome_Build; Exeter's re-annotation carries
+        # CHR_hg38/Start_hg38). A mismatch is refused, never silently mixed in.
+        build <- if ("Genome_Build" %in% nm) {
+            unique(stats::na.omit(as.character(m[["Genome_Build"]])))
+        } else {
+            character(0)
+        }
+        if (genome_build == "hg38") {
+            ccol <- nm[grepl("^CHR_hg38$", nm, ignore.case = TRUE)][1]
+            pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg38$", nm, ignore.case = TRUE)][1]
+            if (is.na(ccol) || is.na(pcol)) {
+                if (!any(grepl("38", build))) {
+                    stop("genome_build = \"hg38\" but the manifest carries no hg38 ",
+                        "coordinates (no CHR_hg38/Start_hg38 columns and no ",
+                        "Genome_Build naming GRCh38/hg38).",
+                        call. = FALSE
+                    )
+                }
+                ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
+                pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
+                message(
+                    "Manifest coordinates taken as hg38 (Genome_Build = ",
+                    paste(build, collapse = "/"), ")."
+                )
+            }
+        } else {
+            ccol <- nm[grepl("^CHR_hg19$", nm, ignore.case = TRUE)][1]
+            pcol <- nm[grepl("^(MAPINFO|Start|pos)_hg19$", nm, ignore.case = TRUE)][1]
+            if (is.na(ccol) || is.na(pcol)) {
+                if (any(grepl("hg38", nm, ignore.case = TRUE)) || any(grepl("38", build))) {
+                    stop("This manifest is hg38 (",
+                        if (length(build)) {
+                            paste0("Genome_Build = ", paste(build, collapse = "/"))
+                        } else {
+                            "it carries hg38 coordinate columns and no hg19 ones"
+                        },
+                        ") while every cpgdirection layer is hg19. Use source = \"txdb\", ",
+                        "an hg19 manifest (450K, EPIC v1, or a re-annotated EPIC v2 ",
+                        "manifest with CHR_hg19/MAPINFO_hg19 columns), or ",
+                        "genome_build = \"hg38\" for an hg38 table.",
+                        call. = FALSE
+                    )
+                }
+                ccol <- nm[grepl("^(CHR|chr|Chromosome)$", nm)][1]
+                pcol <- nm[grepl("^(MAPINFO|pos)$", nm)][1]
+                message(
+                    "Manifest coordinates taken as hg19 (",
+                    if (length(build)) {
+                        paste0("Genome_Build = ", paste(build, collapse = "/"))
+                    } else {
+                        "no Genome_Build column"
+                    }, ")."
+                )
+            }
+        }
+        if (any(is.na(c(gcol, ccol, pcol)))) {
+            stop("Could not find gene, chromosome and position columns in the manifest.",
+                call. = FALSE
+            )
+        }
+        g <- strsplit(as.character(m[[gcol]]), ";", fixed = TRUE)
+        d <- data.table::data.table(
+            gene = toupper(vapply(g, function(x) if (length(x)) x[1] else NA_character_, character(1))),
+            chr = paste0("chr", gsub("^chr", "", as.character(m[[ccol]]))),
+            tss = as.integer(m[[pcol]]), strand = NA_character_
+        )
+        d <- d[!is.na(d$gene) & d$gene != "", ]
+        d <- d[, list(
+            tss = as.integer(stats::median(get("tss"), na.rm = TRUE)),
+            strand = NA_character_
+        ), by = c("gene", "chr")]
+        message(
+            "Manifest-derived positions approximate a gene region, not a TSS. ",
+            "TxDb is more accurate."
+        )
     }
+    data.table::setattr(d, "genome_build", genome_build)
+    if (!is.null(out)) {
+        data.table::fwrite(d, out)
+        message(sprintf("wrote %s (%d genes)", out, nrow(d)))
     }
-    if (any(is.na(c(gcol, ccol, pcol))))
-      stop("Could not find gene, chromosome and position columns in the manifest.",
-           call. = FALSE)
-    g <- strsplit(as.character(m[[gcol]]), ";", fixed = TRUE)
-    d <- data.table::data.table(
-      gene = toupper(vapply(g, function(x) if (length(x)) x[1] else NA_character_, character(1))),
-      chr  = paste0("chr", gsub("^chr", "", as.character(m[[ccol]]))),
-      tss  = as.integer(m[[pcol]]), strand = NA_character_)
-    d <- d[!is.na(d$gene) & d$gene != "", ]
-    d <- d[, list(tss = as.integer(stats::median(get("tss"), na.rm = TRUE)),
-                  strand = NA_character_), by = c("gene", "chr")]
-    message("Manifest-derived positions approximate a gene region, not a TSS. ",
-            "TxDb is more accurate.")
-  }
-  data.table::setattr(d, "genome_build", genome_build)
-  if (!is.null(out)) {
-    data.table::fwrite(d, out)
-    message(sprintf("wrote %s (%d genes)", out, nrow(d)))
-  }
-  invisible(d)
+    invisible(d)
 }
 
 
@@ -152,7 +187,7 @@ cpgd_build_gene_tss <- function(out = NULL,
 #'
 #' Catalogue-based prediction only covers genes some catalogue measured, which
 #' is why genes such as CRH, MC2R or HTR2C return
-#' \code{NO_EXPRESSION_ANCHOR} — they are not transcribed in blood, so no blood
+#' \code{NO_EXPRESSION_ANCHOR} <U+2014> they are not transcribed in blood, so no blood
 #' catalogue contains them. This function drops that restriction and predicts
 #' from distance alone, for any pair whose coordinates you can supply.
 #'
@@ -188,114 +223,142 @@ cpgd_build_gene_tss <- function(out = NULL,
 #' @examples
 #' if (cpgd_has_data("cpg_positions_hg19") &&
 #'     requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE)) {
-#' cpg_direction_universal(c("cg03405789", "cg08215831"),
-#'                         genes = c("CRH", "CRH"))
+#'     cpg_direction_universal(c("cg03405789", "cg08215831"),
+#'         genes = c("CRH", "CRH")
+#'     )
 #' }
 #' @export
 cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
                                     cpg_pos = NULL,
                                     tissue = "all",
                                     max_dist = 1e6, verbose = TRUE) {
+    G <- if (is.null(gene_tss)) {
+        cpgd_gene_tss()
+    } else if (is.character(gene_tss) && length(gene_tss) == 1L) {
+        .cpgd_fread(gene_tss)
+    } else {
+        data.table::as.data.table(gene_tss)
+    }
+    if (!all(c("gene", "chr", "tss") %in% names(G))) {
+        stop("gene_tss needs columns: gene, chr, tss.", call. = FALSE)
+    }
+    G[, "gene" := toupper(get("gene"))]
+    G <- unique(G, by = "gene")
 
-  G <- if (is.null(gene_tss)) cpgd_gene_tss()
-       else if (is.character(gene_tss) && length(gene_tss) == 1L)
-         .cpgd_fread(gene_tss)
-       else data.table::as.data.table(gene_tss)
-  if (!all(c("gene", "chr", "tss") %in% names(G)))
-    stop("gene_tss needs columns: gene, chr, tss.", call. = FALSE)
-  G[, "gene" := toupper(get("gene"))]
-  G <- unique(G, by = "gene")
+    q <- .cpgd_parse_input(cpgs, genes)
+    if (!nrow(q)) stop("No valid CpG identifiers found.", call. = FALSE)
 
-  q <- .cpgd_parse_input(cpgs, genes)
-  if (!nrow(q)) stop("No valid CpG identifiers found.", call. = FALSE)
-
-  # Distance needs a target gene, but it does not have to be supplied
-  # explicitly. Identifiers such as "Zcg01961214_TC21_LINC02210_CRHR1" already
-  # carry it, and refusing to look would make this function the only one in the
-  # package that ignores what the parser extracted. Prefer the full parsed
-  # label, fall back to its last token, which is where the informative symbol
-  # sits in Illumina-style compound annotations.
-  known <- G$gene
-  q[, "gene_use" := data.table::fifelse(
+    # Distance needs a target gene, but it does not have to be supplied
+    # explicitly. Identifiers such as "Zcg01961214_TC21_LINC02210_CRHR1" already
+    # carry it, and refusing to look would make this function the only one in the
+    # package that ignores what the parser extracted. Prefer the full parsed
+    # label, fall back to its last token, which is where the informative symbol
+    # sits in Illumina-style compound annotations.
+    known <- G$gene
+    q[, "gene_use" := data.table::fifelse(
         toupper(get("given_gene")) %in% known, toupper(get("given_gene")),
-        data.table::fifelse(toupper(get("given_gene2")) %in% known,
-                            toupper(get("given_gene2")), NA_character_))]
-  n_nogene <- sum(is.na(q$gene_use))
-  if (n_nogene == nrow(q)) {
-    stop("No target gene could be resolved for any input. Supply `genes`, or ",
-         "use identifiers that carry the symbol (e.g. \"cg01961214_TC21_CRHR1\"). ",
-         "cpgd_parse_check() shows what the parser extracted.", call. = FALSE)
-  }
-  if (n_nogene > 0L) {
-    message(sprintf("%d of %d inputs had no gene symbol matching the annotation; dropped.",
-                    n_nogene, nrow(q)))
-  }
-  q <- q[!is.na(get("gene_use")), ]
+        data.table::fifelse(
+            toupper(get("given_gene2")) %in% known,
+            toupper(get("given_gene2")), NA_character_
+        )
+    )]
+    n_nogene <- sum(is.na(q$gene_use))
+    if (n_nogene == nrow(q)) {
+        stop("No target gene could be resolved for any input. Supply `genes`, or ",
+            "use identifiers that carry the symbol (e.g. \"cg01961214_TC21_CRHR1\"). ",
+            "cpgd_parse_check() shows what the parser extracted.",
+            call. = FALSE
+        )
+    }
+    if (n_nogene > 0L) {
+        message(sprintf(
+            "%d of %d inputs had no gene symbol matching the annotation; dropped.",
+            n_nogene, nrow(q)
+        ))
+    }
+    q <- q[!is.na(get("gene_use")), ]
 
-  if (is.null(cpg_pos)) cpg_pos <- cpgd_cpg_positions()
-  P <- data.table::as.data.table(cpg_pos)
-  names(P) <- tolower(names(P))
-  if (!all(c("cpg_id", "chr", "pos") %in% names(P)))
-    stop("cpg_pos needs columns: cpg_id, chr, pos.", call. = FALSE)
-  P[, "cpg_id" := tolower(get("cpg_id"))]
+    if (is.null(cpg_pos)) cpg_pos <- cpgd_cpg_positions()
+    P <- data.table::as.data.table(cpg_pos)
+    names(P) <- tolower(names(P))
+    if (!all(c("cpg_id", "chr", "pos") %in% names(P))) {
+        stop("cpg_pos needs columns: cpg_id, chr, pos.", call. = FALSE)
+    }
+    P[, "cpg_id" := tolower(get("cpg_id"))]
 
-  d <- merge(q[, c("cpg_id", "input", "gene_use"), with = FALSE], P, by = "cpg_id")
-  d <- merge(d, G[, c("gene", "chr", "tss"), with = FALSE],
-             by.x = "gene_use", by.y = "gene", suffixes = c("", "_gene"))
-  if (!nrow(d)) {
-    message("No CpG-gene pair could be resolved: check that gene symbols match ",
-            "the annotation and that positions are hg19.")
-    return(invisible(data.table::data.table()))
-  }
-  d <- d[get("chr") == get("chr_gene"), ]
-  d[, "abs_dist" := abs(as.numeric(get("pos")) - as.numeric(get("tss")))]
-  d <- d[get("abs_dist") <= max_dist, ]
+    d <- merge(q[, c("cpg_id", "input", "gene_use"), with = FALSE], P, by = "cpg_id")
+    d <- merge(d, G[, c("gene", "chr", "tss"), with = FALSE],
+        by.x = "gene_use", by.y = "gene", suffixes = c("", "_gene")
+    )
+    if (!nrow(d)) {
+        message(
+            "No CpG-gene pair could be resolved: check that gene symbols match ",
+            "the annotation and that positions are hg19."
+        )
+        return(invisible(data.table::data.table()))
+    }
+    d <- d[get("chr") == get("chr_gene"), ]
+    d[, "abs_dist" := abs(as.numeric(get("pos")) - as.numeric(get("tss")))]
+    d <- d[get("abs_dist") <= max_dist, ]
 
-  K <- data.table::fread(system.file("extdata", "distance_curves.csv",
-                                     package = "cpgdirection"), showProgress = FALSE)
-  tis <- if (identical(tissue, "all")) CPGD_TISSUES else match.arg(tissue, CPGD_TISSUES)
-  short <- c(blood = "blood", nasal_epithelium = "nasal", solid_tissue = "solid")
-  for (t in tis) {
-    k <- K[get("tissue") == t, ]
-    p <- stats::approx(log10(pmax(k$dist_mid, 1)), k$p_positive,
-                       xout = log10(pmax(d$abs_dist, 1)), rule = 2)$y
-    lo <- stats::approx(log10(pmax(k$dist_mid, 1)), k$ci_lo,
-                        xout = log10(pmax(d$abs_dist, 1)), rule = 2)$y
-    hi <- stats::approx(log10(pmax(k$dist_mid, 1)), k$ci_hi,
-                        xout = log10(pmax(d$abs_dist, 1)), rule = 2)$y
-    s <- short[[t]]
-    # set(), not `[[<-`: the latter is base-R assignment, which copies the
-    # data.table and marks it, so the `:=` calls further down then emit a
-    # shallow-copy warning that has nothing to do with the caller's code.
-    data.table::set(d, j = paste0("p_", s),   value = round(p, 4))
-    data.table::set(d, j = paste0("dir_", s), value = ifelse(p >= .5, 1, -1))
-    data.table::set(d, j = paste0("ci_", s),
-                    value = paste0("[", round(lo, 2), ",", round(hi, 2), "]"))
-  }
-  if (length(tis) > 1) {
-    D <- as.matrix(d[, paste0("dir_", short[tis]), with = FALSE])
-    n_pos <- rowSums(D == 1); n_neg <- rowSums(D == -1)
-    d[, "consensus_direction" := ifelse(n_pos == ncol(D), 1,
-                                 ifelse(n_neg == ncol(D), -1, NA_real_))]
-    d[, "tissue_agreement" := round(pmax(n_pos, n_neg) / ncol(D), 3)]
-  }
-  d[, "evidence_tier" := "U"]
-  d[, "expected_accuracy" := "0.60-0.65 (distance only; weaker than tier A/B)"]
-  data.table::setnames(d, "gene_use", "target_gene")
-  keep <- c("input", "cpg_id", "target_gene", "abs_dist",
-            unlist(lapply(short[tis], function(s) paste0(c("dir_", "p_", "ci_"), s))),
-            "consensus_direction", "tissue_agreement", "evidence_tier",
-            "expected_accuracy")
-  d <- d[, intersect(keep, names(d)), with = FALSE]
-  if (isTRUE(verbose)) {
-    message(sprintf("universal mode: %d CpG-gene pairs resolved from distance", nrow(d)))
-    message("  tier U - distance only, no neighbourhood or gene evidence.\n",
+    K <- data.table::fread(system.file("extdata", "distance_curves.csv",
+        package = "cpgdirection"
+    ), showProgress = FALSE)
+    tis <- if (identical(tissue, "all")) CPGD_TISSUES else match.arg(tissue, CPGD_TISSUES)
+    short <- c(blood = "blood", nasal_epithelium = "nasal", solid_tissue = "solid")
+    for (t in tis) {
+        k <- K[get("tissue") == t, ]
+        p <- stats::approx(log10(pmax(k$dist_mid, 1)), k$p_positive,
+            xout = log10(pmax(d$abs_dist, 1)), rule = 2
+        )$y
+        lo <- stats::approx(log10(pmax(k$dist_mid, 1)), k$ci_lo,
+            xout = log10(pmax(d$abs_dist, 1)), rule = 2
+        )$y
+        hi <- stats::approx(log10(pmax(k$dist_mid, 1)), k$ci_hi,
+            xout = log10(pmax(d$abs_dist, 1)), rule = 2
+        )$y
+        s <- short[[t]]
+        # set(), not `[[<-`: the latter is base-R assignment, which copies the
+        # data.table and marks it, so the `:=` calls further down then emit a
+        # shallow-copy warning that has nothing to do with the caller's code.
+        data.table::set(d, j = paste0("p_", s), value = round(p, 4))
+        data.table::set(d, j = paste0("dir_", s), value = ifelse(p >= .5, 1, -1))
+        data.table::set(d,
+            j = paste0("ci_", s),
+            value = paste0("[", round(lo, 2), ",", round(hi, 2), "]")
+        )
+    }
+    if (length(tis) > 1) {
+        D <- as.matrix(d[, paste0("dir_", short[tis]), with = FALSE])
+        n_pos <- rowSums(D == 1)
+        n_neg <- rowSums(D == -1)
+        d[, "consensus_direction" := ifelse(n_pos == ncol(D), 1,
+            ifelse(n_neg == ncol(D), -1, NA_real_)
+        )]
+        d[, "tissue_agreement" := round(pmax(n_pos, n_neg) / ncol(D), 3)]
+    }
+    d[, "evidence_tier" := "U"]
+    d[, "expected_accuracy" := "0.60-0.65 (distance only; weaker than tier A/B)"]
+    data.table::setnames(d, "gene_use", "target_gene")
+    keep <- c(
+        "input", "cpg_id", "target_gene", "abs_dist",
+        unlist(lapply(short[tis], function(s) paste0(c("dir_", "p_", "ci_"), s))),
+        "consensus_direction", "tissue_agreement", "evidence_tier",
+        "expected_accuracy"
+    )
+    d <- d[, intersect(keep, names(d)), with = FALSE]
+    if (isTRUE(verbose)) {
+        message(sprintf("universal mode: %d CpG-gene pairs resolved from distance", nrow(d)))
+        message(
+            "  tier U - distance only, no neighbourhood or gene evidence.\n",
             "  AUC 0.616 within cohort, against 0.793 for the full blood model.\n",
-            "  A prior conditioned on distance, not a statement about your CpG.")
-    message(paste(utils::capture.output(print(utils::head(as.data.frame(d), 10))),
-                  collapse = "\n"))
-  }
-  invisible(d)
+            "  A prior conditioned on distance, not a statement about your CpG."
+        )
+        message(paste(utils::capture.output(print(utils::head(as.data.frame(d), 10))),
+            collapse = "\n"
+        ))
+    }
+    invisible(d)
 }
 
 
@@ -312,11 +375,13 @@ cpg_direction_universal <- function(cpgs, genes, gene_tss = NULL,
 #' p[p$cpg_id == "cg00000029", ]
 #' @export
 cpgd_cpg_positions <- function() {
-  if (!is.null(.cpgd_env$positions)) return(.cpgd_env$positions)
-  P <- .cpgd_data("cpg_positions_hg19")
-  data.table::setkeyv(P, "cpg_id")
-  .cpgd_env$positions <- P
-  P
+    if (!is.null(.cpgd_env$positions)) {
+        return(.cpgd_env$positions)
+    }
+    P <- .cpgd_data("cpg_positions_hg19")
+    data.table::setkeyv(P, "cpg_id")
+    .cpgd_env$positions <- P
+    P
 }
 
 
@@ -336,23 +401,26 @@ cpgd_cpg_positions <- function() {
 #'   \code{strand}.
 #' @examples
 #' if (requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE)) {
-#'   g <- cpgd_gene_tss(); g[gene == "CRH"]
+#'     g <- cpgd_gene_tss()
+#'     g[gene == "CRH"]
 #' }
 #' @export
 cpgd_gene_tss <- function(refresh = FALSE) {
-  if (!refresh && !is.null(.cpgd_env$gene_tss)) return(.cpgd_env$gene_tss)
-  dir <- tools::R_user_dir("cpgdirection", "cache")
-  f <- file.path(dir, "gene_tss_hg19.csv.gz")
-  if (!refresh && file.exists(f)) {
-    G <- .cpgd_fread(f)
+    if (!refresh && !is.null(.cpgd_env$gene_tss)) {
+        return(.cpgd_env$gene_tss)
+    }
+    dir <- tools::R_user_dir("cpgdirection", "cache")
+    f <- file.path(dir, "gene_tss_hg19.csv.gz")
+    if (!refresh && file.exists(f)) {
+        G <- .cpgd_fread(f)
+        .cpgd_env$gene_tss <- G
+        return(G)
+    }
+    message("Building the gene TSS annotation from TxDb (once per machine)...")
+    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+    G <- cpgd_build_gene_tss(source = "txdb")
+    data.table::fwrite(G, f)
+    message(sprintf("cached %d genes at %s", nrow(G), f))
     .cpgd_env$gene_tss <- G
-    return(G)
-  }
-  message("Building the gene TSS annotation from TxDb (once per machine)...")
-  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  G <- cpgd_build_gene_tss(source = "txdb")
-  data.table::fwrite(G, f)
-  message(sprintf("cached %d genes at %s", nrow(G), f))
-  .cpgd_env$gene_tss <- G
-  G
+    G
 }
